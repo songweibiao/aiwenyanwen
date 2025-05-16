@@ -1,0 +1,73 @@
+<!--index.wxml-->
+<view class="container">
+  <!-- 欢迎区域 -->
+  <view class="welcome-section">
+    <view class="greeting-text">
+      <text class="greeting">{{greeting}}，</text>
+      <text class="nickname">{{nickname || '同学'}}</text>
+      <text class="slogan">！新的一天，一起品读经典吧</text>
+    </view>
+  </view>
+
+  <!-- 继续学习区域 -->
+  <view class="continue-section card" wx:if="{{lastStudy}}" bindtap="continueStudy">
+    <view class="section-title flex-between">
+      <text class="title-text">继续学习</text>
+      <text class="time-text text-light">{{lastStudy.time}}</text>
+    </view>
+    <view class="article-info">
+      <view class="article-title">{{lastStudy.article.title}}</view>
+      <view class="article-author text-light">{{lastStudy.article.dynasty}} · {{lastStudy.article.author}}</view>
+      <view class="progress-bar">
+        <view class="progress-inner" style="width: {{lastStudy.progress}}%;"></view>
+      </view>
+      <view class="progress-text text-light">已学习 {{lastStudy.progress}}%</view>
+    </view>
+  </view>
+
+  <!-- 主要功能区域 -->
+  <view class="main-functions">
+    <!-- 课文精讲 -->
+    <view class="function-card card" bindtap="goToArticleList">
+      <view class="function-icon">
+        <image src="/miniprogram/images/icon-article.png" mode="aspectFit"></image>
+      </view>
+      <view class="function-title">课文精讲</view>
+      <view class="function-desc text-light">精选课文，逐句解析</view>
+    </view>
+
+    <!-- 虚词实词 -->
+    <view class="function-card card" bindtap="goToWordStudy">
+      <view class="function-icon">
+        <image src="/miniprogram/images/icon-word.png" mode="aspectFit"></image>
+      </view>
+      <view class="function-title">虚词实词</view>
+      <view class="function-desc text-light">文言文常用字词记忆</view>
+    </view>
+  </view>
+
+  <!-- 名句赏析 -->
+  <view class="quote-section card" wx:if="{{famousQuote}}">
+    <view class="section-title flex-between">
+      <text class="title-text">名句赏析</text>
+      <view class="quote-actions">
+        <image class="action-icon" src="/miniprogram/images/icon-refresh.png" bindtap="refreshQuote"></image>
+        <image class="action-icon" src="/miniprogram/images/icon-share.png" bindtap="shareQuote"></image>
+      </view>
+    </view>
+    <view class="quote-content" bindtap="goToQuoteDetail">
+      <text class="quote-text">{{famousQuote.content}}</text>
+      <view class="quote-source text-light">——{{famousQuote.dynasty}} · {{famousQuote.author}}《{{famousQuote.source}}》</view>
+      <view class="quote-translation">{{famousQuote.translation}}</view>
+    </view>
+  </view>
+
+  <!-- 推广领取区域 -->
+  <view class="promotion-section card" bindtap="goToPromotion">
+    <view class="promotion-banner">
+      <text class="promotion-title">小程序学习资料</text>
+      <text class="promotion-desc">点击复制推广码，关注公众号领取</text>
+      <view class="promotion-button btn btn-primary">立即领取</view>
+    </view>
+  </view>
+</view> 

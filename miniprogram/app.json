@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/article/list/list",
+    "pages/article/detail/detail",
+    "pages/exercise/index/index",
+    "pages/exercise/daily/daily",
+    "pages/exercise/specialized/specialized",
+    "pages/ai/index/index",
+    "pages/my/index/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "AI学文言文",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1A1A1A",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tabbar/tab-home.png",
+        "selectedIconPath": "images/tabbar/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/exercise/index/index",
+        "text": "练习",
+        "iconPath": "images/tabbar/tab-exercise.png",
+        "selectedIconPath": "images/tabbar/tab-exercise-active.png"
+      },
+      {
+        "pagePath": "pages/ai/index/index",
+        "text": "AI助手",
+        "iconPath": "images/tabbar/tab-ai.png",
+        "selectedIconPath": "images/tabbar/tab-ai-active.png"
+      },
+      {
+        "pagePath": "pages/my/index/index",
+        "text": "我的",
+        "iconPath": "images/tabbar/tab-my.png",
+        "selectedIconPath": "images/tabbar/tab-my-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "cloud": true
+} 

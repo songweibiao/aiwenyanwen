@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 中国风回纹图案 -->
+  <path d="M20,20 h40 v40 h-40 z M25,25 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M80,20 h40 v40 h-40 z M85,25 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M140,20 h40 v40 h-40 z M145,25 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  
+  <path d="M20,80 h40 v40 h-40 z M25,85 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M80,80 h40 v40 h-40 z M85,85 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M140,80 h40 v40 h-40 z M145,85 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  
+  <path d="M20,140 h40 v40 h-40 z M25,145 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M80,140 h40 v40 h-40 z M85,145 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  <path d="M140,140 h40 v40 h-40 z M145,145 h30 v30 h-30 z" fill="#8B6E4F" opacity="0.2"/>
+  
+  <!-- 文字装饰 - 解析 -->
+  <text x="80" y="110" font-family="SimSun, serif" font-size="40" fill="#8B6E4F" opacity="0.15" transform="rotate(10, 80, 110)">析</text>
+  <text x="120" y="110" font-family="SimSun, serif" font-size="40" fill="#8B6E4F" opacity="0.15" transform="rotate(10, 120, 110)">解</text>
+</svg> 

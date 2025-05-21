@@ -13,13 +13,7 @@ App({
       })
     }
 
-    // 获取用户信息
-    this.getUserInfo()
-
-    // 获取系统信息
-    this.getSystemInfo()
-
-    // 全局数据
+    // 全局数据初始化（移到最前面）
     this.globalData = {
       userInfo: null,
       hasUserInfo: false,
@@ -33,11 +27,42 @@ App({
       ],
       currentGradeLevel: 'junior' // 默认年级为初中
     }
+
+    // 获取系统信息（现在可以安全调用了）
+    this.getSystemInfo()
+    
+    // 获取用户信息（放在最后）
+    this.getUserInfo()
   },
 
   // 获取用户信息
   getUserInfo: function() {
-    // 调用云函数获取用户openid
+    // 安全检查：确保globalData已初始化
+    if (!this.globalData) {
+      console.log('getUserInfo: globalData尚未初始化，先进行初始化');
+      this.globalData = {
+        userInfo: null,
+        hasUserInfo: false,
+        systemInfo: null,
+        isIPhoneX: false,
+        gradeLevels: [
+          { key: 'primary', name: '小学' },
+          { key: 'junior', name: '初中' },
+          { key: 'senior', name: '高中' },
+          { key: 'extra', name: '课外' }
+        ],
+        currentGradeLevel: 'junior'
+      };
+    }
+    
+    // 检查云函数是否可用，避免调用不存在的云函数导致错误
+    if (!wx.cloud || !wx.cloud.callFunction) {
+      console.log('云函数不可用，跳过登录流程');
+      this.setTempUserInfo();
+      return;
+    }
+    
+    // 尝试调用云函数获取用户openid
     wx.cloud.callFunction({
       name: 'login',
       data: {},
@@ -65,22 +90,72 @@ App({
             } else {
               // 新用户，等待授权后注册
               console.log('新用户，等待授权')
+              this.setTempUserInfo();
             }
           },
           fail: err => {
             console.error('查询用户信息失败', err)
+            // 登录失败时仍然设置临时用户信息，避免界面显示问题
+            this.setTempUserInfo();
           }
         })
       },
       fail: err => {
         console.error('[云函数] [login] 调用失败', err)
+        // 登录失败时设置临时用户信息
+        this.setTempUserInfo();
       }
     })
+  },
+  
+  // 设置临时用户信息，解决云函数调用失败时界面显示问题
+  setTempUserInfo: function() {
+    // 安全检查：确保globalData已初始化
+    if (!this.globalData) {
+      console.log('setTempUserInfo: globalData尚未初始化，先进行初始化');
+      this.globalData = {
+        userInfo: null,
+        hasUserInfo: false,
+        systemInfo: null,
+        isIPhoneX: false,
+        gradeLevels: [
+          { key: 'primary', name: '小学' },
+          { key: 'junior', name: '初中' },
+          { key: 'senior', name: '高中' },
+          { key: 'extra', name: '课外' }
+        ],
+        currentGradeLevel: 'junior'
+      };
+    }
+    
+    this.globalData.userInfo = {
+      nickname: '文言同学',
+      avatar_url: '/images/default-avatar.png'
+    };
+    this.globalData.hasUserInfo = true;
   },
 
   // 获取系统信息
   getSystemInfo: function() {
     try {
+      // 安全检查：确保globalData已初始化
+      if (!this.globalData) {
+        console.log('globalData尚未初始化，先进行初始化');
+        this.globalData = {
+          userInfo: null,
+          hasUserInfo: false,
+          systemInfo: null,
+          isIPhoneX: false,
+          gradeLevels: [
+            { key: 'primary', name: '小学' },
+            { key: 'junior', name: '初中' },
+            { key: 'senior', name: '高中' },
+            { key: 'extra', name: '课外' }
+          ],
+          currentGradeLevel: 'junior'
+        };
+      }
+      
       const systemInfo = wx.getSystemInfoSync()
       this.globalData.systemInfo = systemInfo
       

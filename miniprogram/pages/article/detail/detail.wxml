@@ -1,0 +1,274 @@
+<view class="container">
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">古卷加载中...</text>
+  </view>
+
+  <!-- 课文详情内容 -->
+  <view class="article-container" wx:else>
+    <!-- 分享按钮（悬浮） -->
+    <view class="share-button" bindtap="onShareTap">
+      <text class="share-text">分享</text>
+    </view>
+
+    <!-- 原文区域 -->
+    <view class="original-section">
+      <!-- 标题和收藏区域 -->
+      <view class="title-container">
+      <view class="article-title">{{article.title}}</view>
+        <view class="title-collect" bindtap="toggleCollect">
+          <text class="collect-text {{isCollected ? 'collected' : ''}}">{{isCollected ? '已收藏' : '收藏'}}</text>
+        </view>
+      </view>
+      
+      <!-- 作者和朝代信息 -->
+      <view class="author-info">
+        <view class="info-item">
+          <text class="info-label">作者：</text>
+          <text class="info-value">{{article.author}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">朝代：</text>
+          <text class="info-value">{{article.dynasty}}</text>
+        </view>
+      </view>
+      
+      <!-- 原文内容 -->
+      <view class="ancient-text">{{article.full_content}}</view>
+      </view>
+      
+      <!-- 课文信息 -->
+      <view class="lesson-info">
+        <view class="info-item">
+          <text class="info-label">年级：</text>
+        <text class="info-value">{{article.grade}}{{article.semester}}</text>
+        </view>
+        <view class="info-item lesson-number">
+        <text class="info-value">{{article.semester}}</text>
+        </view>
+      <view class="info-status in-progress">
+        学习中
+      </view>
+    </view>
+
+    <!-- 功能选项卡 -->
+    <view class="tab-container">
+      <view class="tab-item {{currentTab === 'translation' ? 'active' : ''}}" bindtap="switchTab" data-tab="translation">
+        <image class="tab-icon" src="https://example.com/icon_translation.png" mode="aspectFit"></image>
+        <text>全文翻译</text>
+      </view>
+      <view class="tab-item {{currentTab === 'analysis' ? 'active' : ''}}" bindtap="switchTab" data-tab="analysis">
+        <image class="tab-icon" src="https://example.com/icon_analysis.png" mode="aspectFit"></image>
+        <text>逐句解析</text>
+      </view>
+      <view class="tab-item {{currentTab === 'author' ? 'active' : ''}}" bindtap="switchTab" data-tab="author">
+        <image class="tab-icon" src="https://example.com/icon_author.png" mode="aspectFit"></image>
+        <text>作者介绍</text>
+      </view>
+      <view class="tab-item {{currentTab === 'background' ? 'active' : ''}}" bindtap="switchTab" data-tab="background">
+        <image class="tab-icon" src="https://example.com/icon_background.png" mode="aspectFit"></image>
+        <text>背景知识</text>
+      </view>
+      <view class="tab-item {{currentTab === 'exercise' ? 'active' : ''}}" bindtap="switchTab" data-tab="exercise">
+        <image class="tab-icon" src="https://example.com/icon_exercise.png" mode="aspectFit"></image>
+        <text>练习巩固</text>
+      </view>
+      <view class="tab-item {{currentTab === 'qa' ? 'active' : ''}}" bindtap="switchTab" data-tab="qa">
+        <image class="tab-icon" src="https://example.com/icon_qa.png" mode="aspectFit"></image>
+        <text>提问拓展</text>
+      </view>
+    </view>
+
+    <!-- 内容区域 -->
+    <view class="content-container">
+      <!-- 翻译 -->
+      <view class="content-section" wx:if="{{currentTab === 'translation'}}">
+        <view class="translation-content">
+          <view class="translation-section">
+          <text class="modern-text">{{article.translation}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 作者介绍 -->
+      <view class="content-section" wx:if="{{currentTab === 'author'}}">
+        <view class="author-content">
+          <view class="author-section">
+            <view class="author-header">
+              <view class="author-avatar"></view>
+              <view class="author-title">
+                <text class="author-name">{{article.author}}</text>
+                <text class="author-dynasty">{{article.dynasty}}</text>
+              </view>
+            </view>
+            <view class="author-bio">{{article.author_intro}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 逐句解析 -->
+      <view class="content-section" wx:if="{{currentTab === 'analysis'}}">
+        <view class="analysis-content">
+          <view class="analysis-navigation">
+            <view class="nav-button {{currentSentenceIndex === 0 ? 'disabled' : ''}}" bindtap="prevSentence">
+              <text>上一句</text>
+            </view>
+            <view class="sentence-index">{{currentSentenceIndex + 1}}/{{sentences.length}}</view>
+            <view class="nav-button {{currentSentenceIndex === sentences.length - 1 ? 'disabled' : ''}}" bindtap="nextSentence">
+              <text>下一句</text>
+            </view>
+          </view>
+
+          <view class="sentence-card">
+            <view class="sentence-section">
+              <view class="section-title">原文</view>
+              <view class="section-content original">{{sentences[currentSentenceIndex].original_text}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">拼音</view>
+              <view class="section-content pinyin">{{sentences[currentSentenceIndex].phonetic_notation}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">断句</view>
+              <view class="section-content punctuated">{{sentences[currentSentenceIndex].punctuated_text}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">翻译</view>
+              <view class="section-content translation">{{sentences[currentSentenceIndex].translation}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">关键词解释</view>
+              <view class="section-content keywords">{{sentences[currentSentenceIndex].key_words_explanation}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">语法结构</view>
+              <view class="section-content structure">{{sentences[currentSentenceIndex].sentence_structure}}</view>
+            </view>
+            
+            <view class="sentence-section">
+              <view class="section-title">修辞手法</view>
+              <view class="section-content rhetoric">{{sentences[currentSentenceIndex].rhetorical_analysis}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 背景知识 -->
+      <view class="content-section" wx:if="{{currentTab === 'background'}}">
+        <view class="background-content">
+          <view class="background-section">
+            <view class="section-title">创作背景介绍</view>
+            <view class="section-content">{{article.creation_background}}</view>
+          </view>
+          
+          <view class="background-section">
+            <view class="section-title">历史时代背景</view>
+            <view class="section-content">{{article.historical_background}}</view>
+          </view>
+          
+          <view class="background-section">
+            <view class="section-title">文章主旨思想</view>
+            <view class="section-content">{{article.main_idea}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 练习巩固 -->
+      <view class="content-section" wx:if="{{currentTab === 'exercise'}}">
+        <view class="exercise-content">
+          <view class="exercise-result" wx:if="{{showExerciseResult}}">
+            <view class="result-card">
+              <view class="result-title">测试结果</view>
+              <view class="result-score">{{exerciseScore}}</view>
+              <view class="result-text">分</view>
+              <view class="result-description">
+                {{exerciseScore >= 80 ? '非常好！你已经掌握了这篇文章的主要内容。' : 
+                  exerciseScore >= 60 ? '不错！再多复习一下可以取得更好的成绩。' : 
+                  '还需要再复习一下哦！加油！'}}
+              </view>
+              <view class="result-button" bindtap="resetExercise">再练一次</view>
+            </view>
+          </view>
+          
+          <view class="exercise-questions" wx:else>
+            <view class="exercise-list">
+              <view class="exercise-item" wx:for="{{exercises}}" wx:key="exercise_id">
+                <view class="question-number">第{{index + 1}}题</view>
+                <view class="question-content">{{item.question}}</view>
+                <view class="options-list">
+                  <view class="option-item {{userAnswers[index] === option ? 'selected' : ''}}" 
+                        wx:for="{{item.options}}" 
+                        wx:for-item="option" 
+                        wx:for-index="optionIndex"
+                        wx:key="*this" 
+                        bindtap="selectAnswer" 
+                        data-index="{{index}}" 
+                        data-option="{{option}}">
+                    <view class="option-marker">{{['A', 'B', 'C', 'D'][optionIndex]}}</view>
+                    <view class="option-text">{{option}}</view>
+                  </view>
+                </view>
+              </view>
+            </view>
+            
+            <view class="submit-button" bindtap="submitExercise">提交答案</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 提问拓展 -->
+      <view class="content-section" wx:if="{{currentTab === 'qa'}}">
+        <view class="qa-content">
+          <view class="messages-container">
+            <view class="welcome-message" wx:if="{{qaMessages.length === 0}}">
+              <view class="assistant-message">
+                <view class="message-content">
+                  你好！我是你的文言文学习助手。关于《{{article.title}}》，你有什么想问的吗？
+                </view>
+                <view class="message-time">文言文学习助手</view>
+              </view>
+            </view>
+            
+            <view class="message-list" wx:else>
+              <view class="message-item {{item.role === 'user' ? 'user-message' : 'assistant-message'}}" 
+                    wx:for="{{qaMessages}}" 
+                    wx:key="timestamp">
+                <view class="message-content">{{item.content}}</view>
+                <view class="message-time">{{item.role === 'user' ? '我' : '文言文学习助手'}}</view>
+              </view>
+            </view>
+          </view>
+          
+          <view class="suggested-questions" wx:if="{{qaMessages.length === 0}}">
+            <view class="suggestion-title">推荐问题：</view>
+            <view class="suggestion-list">
+              <view class="suggestion-item" 
+                    wx:for="{{suggestedQuestions}}" 
+                    wx:key="*this" 
+                    bindtap="selectSuggestedQuestion" 
+                    data-question="{{item}}">
+                {{item}}
+              </view>
+            </view>
+          </view>
+          
+          <view class="input-container">
+            <input class="question-input" 
+                   placeholder="输入你的问题" 
+                   value="{{userQuestion}}" 
+                   bindinput="inputQuestion" 
+                   confirm-type="send"
+                   bindconfirm="askQuestion" />
+            <view class="send-button" bindtap="askQuestion">发送</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

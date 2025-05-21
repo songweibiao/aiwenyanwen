@@ -1,0 +1,44 @@
+# 微信小程序忽略规则
+
+# 本地配置文件
+project.private.config.json
+mini.project.local.json
+
+# 微信开发者工具本地配置文件
+.DS_Store
+Thumbs.db
+
+# 微信开发者工具本地调试文件
+miniprogram_npm/
+node_modules/
+package-lock.json
+yarn.lock
+
+# 编译和打包生成的文件
+dist/
+miniprogram/miniprogram_npm/
+miniprogram/node_modules/
+
+# 本地缓存文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*.log
+*.bak
+*.tmp
+
+# 云函数编译临时文件
+cloudfunctions/*/node_modules/
+cloudfunctions/*/package-lock.json
+cloudfunctions/*/.env
+cloudfunctions/*/dist/
+
+# 小程序测试相关
+coverage/
+minitest/
+
+# 本地的环境变量和私有配置
+.env
+.env.local
+config.private.js 

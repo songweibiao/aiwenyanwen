@@ -1,13 +1,14 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/article/list/list",
+    "pages/course/select/select",
     "pages/article/detail/detail",
     "pages/exercise/index/index",
     "pages/exercise/daily/daily",
     "pages/exercise/specialized/specialized",
     "pages/ai/index/index",
-    "pages/my/index/index"
+    "pages/my/index/index",
+    "pages/logs/logs"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -1,0 +1,392 @@
+/* 课文选择页面样式 */
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 内容区域 */
+.content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 顶部标题 */
+.header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1rpx solid var(--border-color);
+  flex-shrink: 0; /* 防止被挤压 */
+}
+
+.title {
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* 搜索栏 */
+.search-bar {
+  padding: var(--spacing-xs) 0;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 12rpx 20rpx;
+}
+
+.input {
+  flex: 1;
+  height: 64rpx;
+  margin: 0 16rpx;
+  font-size: 28rpx;
+}
+
+/* 局部加载指示器 */
+.mini-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.mini-loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid rgba(139, 110, 79, 0.1);
+  border-top: 4rpx solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16rpx;
+}
+
+.mini-loading-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+/* 搜索结果 */
+.search-results {
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-lg);
+  overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.result-title {
+  font-size: var(--font-md);
+}
+
+/* 无内容提示 */
+.no-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: var(--spacing-md);
+}
+
+.empty-text {
+  font-size: var(--font-md);
+  margin-top: 20rpx;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.search-article-list {
+  width: 100%;
+}
+
+.search-article-list .article-item {
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+/* 两级列表区域 */
+.selection-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  height: calc(100vh - 100rpx); /* 减去顶部搜索栏的高度 */
+}
+
+/* 左侧年级列表 */
+.grade-list {
+  width: 200rpx;
+  background-color: rgba(139, 110, 79, 0.03);
+  height: 100%;
+  border-right: 1rpx solid var(--border-color);
+  box-shadow: 2rpx 0 10rpx rgba(0,0,0,0.05);
+  position: relative;
+  z-index: 1;
+}
+
+.grade-scroll {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch; /* 增强iOS滚动体验 */
+  scroll-behavior: smooth; /* 平滑滚动 */
+}
+
+.grade-item {
+  padding: 16rpx var(--spacing-xs);
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid var(--border-color);
+  background-color: transparent;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  min-height: 72rpx;
+}
+
+.grade-item-hover {
+  background-color: rgba(139, 110, 79, 0.08);
+}
+
+.grade-item text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 12rpx;
+}
+
+.grade-item.active {
+  color: var(--primary-color);
+  font-weight: 600;
+  background-color: var(--card-bg);
+  position: relative;
+  box-shadow: 0 2rpx 8rpx rgba(139, 110, 79, 0.15);
+  z-index: 2;
+}
+
+.active-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rpx;
+  height: 36rpx;
+  background-color: var(--primary-color);
+  border-radius: 3rpx;
+}
+
+/* 为活跃的年级项添加闪烁动画效果 */
+@keyframes pulse {
+  0% { box-shadow: 0 2rpx 8rpx rgba(139, 110, 79, 0.15); }
+  50% { box-shadow: 0 2rpx 12rpx rgba(139, 110, 79, 0.25); }
+  100% { box-shadow: 0 2rpx 8rpx rgba(139, 110, 79, 0.15); }
+}
+
+.grade-item.active {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 右侧课文列表 */
+.article-list {
+  flex: 1;
+  background-color: var(--card-bg);
+  padding: 0;
+  height: 100%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 0;
+}
+
+.article-scroll {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch; /* 增强iOS滚动体验 */
+  scroll-behavior: smooth; /* 平滑滚动 */
+}
+
+.article-section {
+  padding: var(--spacing-md);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.article-item {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+  border-bottom: 1rpx solid var(--border-color);
+  position: relative;
+}
+
+.article-item-hover {
+  background-color: rgba(139, 110, 79, 0.05);
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(139, 110, 79, 0.1);
+}
+
+.article-item:last-child {
+  border-bottom: none;
+}
+
+.article-item.active {
+  background-color: rgba(139, 110, 79, 0.1);
+  border-left: 6rpx solid var(--primary-color, #8b6e4f);
+  padding-left: calc(var(--spacing-md) - 6rpx);
+  position: relative;
+  box-shadow: 0 4rpx 16rpx rgba(139, 110, 79, 0.15);
+  transform: translateY(-2rpx);
+  z-index: 1;
+}
+
+.article-item:active {
+  background-color: rgba(139, 110, 79, 0.05);
+}
+
+.article-title {
+  font-size: var(--font-md);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.article-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.article-meta {
+  font-size: var(--font-sm);
+  margin-bottom: 4rpx;
+}
+
+.grade-tag {
+  display: inline-block;
+  background-color: #f8f1e7;
+  color: #8B6E4F;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  margin-right: 10rpx;
+}
+
+/* 难度星级 */
+.difficulty {
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing-xs);
+}
+
+.difficulty-stars {
+  display: flex;
+  margin-left: var(--spacing-xs);
+}
+
+.star {
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 6rpx;
+  background-color: #e0e0e0;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.star.filled {
+  background-color: var(--warning-color);
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #fff;
+}
+
+.loading-spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid rgba(139, 110, 79, 0.1);
+  border-top: 6rpx solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+.loading-text {
+  font-size: 30rpx;
+  color: var(--text-secondary);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 错误显示 */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #fff;
+  padding: 40rpx;
+}
+
+.error-text {
+  font-size: 32rpx;
+  color: #666;
+  margin: 40rpx 0;
+  text-align: center;
+}
+
+.retry-btn {
+  padding: 16rpx 60rpx;
+  border-radius: 40rpx;
+  margin-top: 30rpx;
+} 

@@ -1,8 +1,8 @@
 <!--index.wxml-->
 <view class="container">
   <!-- 公告栏 -->
-  <view wx:if="{{noticeList.length > 0}}" class="notice-bar">
-    <text class="notice-icon-fixed">📢</text>
+  <view class="notice-bar" wx:if="{{noticeList.length > 0 && !noticeClosed}}">
+    <text class="notice-icon">📢</text>
     <view class="marquee-wrap">
       <view
         class="marquee-content"
@@ -14,164 +14,179 @@
         <text class="notice-gap"> </text>
       </view>
     </view>
+    <view class="notice-close" bindtap="closeNotice">×</view>
   </view>
 
   <!-- 欢迎区域 -->
-  <view class="welcome-section">
-    <image class="user-avatar" src="{{hasUserInfo ? userInfo.avatarUrl : '/miniprogram/images/default-avatar.png'}}" mode="aspectFill"></image>
+  <view class="welcome-card card">
     <view class="welcome-content">
-      <view class="welcome-row">
-        <text class="greeting">{{greeting}}，</text>
-        <text class="nickname">{{nickname || '同学'}}</text>
+      <view class="user-info">
+        <image class="user-avatar" src="{{hasUserInfo ? userInfo.avatarUrl : '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <view class="welcome-text">
+          <view class="welcome-greeting">
+            <text class="greeting text-secondary">{{greeting}}，</text>
+            <text class="nickname text-primary-color text-bold">{{nickname || '同学'}}</text>
+          </view>
+          <text class="slogan text-tertiary">新的一天，一起品读经典吧</text>
+        </view>
       </view>
-      <text class="slogan">新的一天，一起品读经典吧</text>
     </view>
   </view>
 
-  <!-- 整合卡片区域 -->
-  <view class="integrated-card card">
-    <!-- 课堂同步学 -->
-    <view class="section-title flex-between">
-      <text class="title-text">课堂同步学</text>
-      <view class="grade-selector" bindtap="changeGrade">
-        <text>{{currentGrade}}</text>
-        <svg class="dropdown-icon" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#6B4423" d="M7,10l5,5l5-5H7z"/>
-        </svg>
+  <!-- 课堂同步学区域 -->
+  <view class="study-card card">
+    <view class="card-header">
+      <view class="card-title">
+        <text class="title-text">课堂同步学</text>
+      </view>
+      <view class="grade-indicator" wx:if="{{hasSelectedCourse}}">
+        <text class="grade-text text-primary-color">{{currentGrade}}</text>
       </view>
     </view>
-    <view class="textbook-section">
+    
+    <!-- 加载状态 -->
+    <view class="loading-section" wx:if="{{courseLoading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <!-- 未选择课文时显示开始学习区域 -->
+    <view class="empty-study-section" wx:elif="{{!hasSelectedCourse}}">
+      <image class="empty-course-image" src="/images/common/empty-course.svg" mode="aspectFit"></image>
+      <view class="empty-course-text text-lg text-bold">开启文言文学习之旅</view>
+      <view class="empty-course-subtext text-secondary">选择课文后即可享受全面学习体验</view>
+      <view class="btn btn-primary start-btn" bindtap="startLearning">
+        <view class="start-btn-content">
+          <image class="start-btn-icon" src="/images/common/book-icon.svg" mode="aspectFit"></image>
+          <text>立即选择课文</text>
+        </view>
+        <view class="arrow-icon">
+          <view class="arrow-right"></view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 已选择课文时显示课文信息 -->
+    <view class="study-content" wx:else>
       <view class="current-lesson">
-        <text class="lesson-title">{{currentLesson}}</text>
-        <view class="change-course-btn" bindtap="changeCourse">更换课程</view>
+        <text class="lesson-title text-bold">{{currentLesson}}</text>
+        <view class="btn btn-secondary btn-sm change-btn" bindtap="changeCourse">更换</view>
       </view>
-    </view>
 
-    <view class="divider"></view>
+      <view class="divider"></view>
 
-    <!-- 主要功能卡片 -->
-    <view class="main-cards">
-      <!-- 全文翻译卡片 -->
-      <view class="main-card" bindtap="goToFullTranslation">
-        <view class="card-content">
-          <text class="card-title">全文翻译</text>
-          <view class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#6B4423" d="M12.87,15.07l-2.54-2.51l0.03-0.03c1.74-1.94,2.98-4.17,3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5,7.92,10.44,9.75,9,11.35 C8.07,10.32,7.3,9.19,6.69,8h-2c0.73,1.63,1.73,3.17,2.98,4.56l-5.09,5.02L4,19l5-5l3.11,3.11L12.87,15.07z M18.5,10h-2L12,22h2l1.12-3 h4.75L21,22h2L18.5,10z M15.88,17l1.62-4.33L19.12,17H15.88z"/>
-            </svg>
+      <!-- 主要功能卡片 -->
+      <view class="feature-row">
+        <view class="feature-card" bindtap="goToFullTranslation">
+          <view class="feature-icon">
+            <image src="/images/icons/translation.svg" mode="aspectFit"></image>
           </view>
+          <text class="feature-title">全文翻译</text>
+          <image class="feature-bg" src="/images/common/chinese-pattern-1.svg" mode="aspectFill"></image>
         </view>
-      </view>
-      
-      <!-- 逐句解析卡片 -->
-      <view class="main-card" bindtap="goToSentenceAnalysis">
-        <view class="card-content">
-          <text class="card-title">逐句解析</text>
-          <view class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#6B4423" d="M21,5c-1.11-0.35-2.33-0.5-3.5-0.5c-1.95,0-4.05,0.4-5.5,1.5c-1.45-1.1-3.55-1.5-5.5-1.5S2.45,4.9,1,6v14.65 c0,0.25,0.25,0.5,0.5,0.5c0.1,0,0.15-0.05,0.25-0.05C3.1,20.45,5.05,20,6.5,20c1.95,0,4.05,0.4,5.5,1.5c1.35-0.85,3.8-1.5,5.5-1.5 c1.65,0,3.35,0.3,4.75,1.05c0.1,0.05,0.15,0.05,0.25,0.05c0.25,0,0.5-0.25,0.5-0.5V6C22.4,5.55,21.75,5.25,21,5z"/>
-            </svg>
+        
+        <view class="feature-spacing"></view>
+        
+        <view class="feature-card" bindtap="goToSentenceAnalysis">
+          <view class="feature-icon">
+            <image src="/images/icons/analysis.svg" mode="aspectFit"></image>
           </view>
+          <text class="feature-title">逐句解析</text>
+          <image class="feature-bg" src="/images/common/chinese-pattern-2.svg" mode="aspectFill"></image>
         </view>
       </view>
-    </view>
 
-    <view class="divider"></view>
+      <view class="divider"></view>
 
-    <!-- 功能图标行 -->
-    <view class="feature-icons">
-      <view class="feature-item" bindtap="goToAuthorInfo">
-        <view class="feature-icon author-icon">
-          <svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M12,12c2.21,0,4-1.79,4-4s-1.79-4-4-4S8,5.79,8,8S9.79,12,12,12z M12,14c-2.67,0-8,1.34-8,4v2h16v-2C20,15.34,14.67,14,12,14z"/>
-          </svg>
+      <!-- 功能图标行 -->
+      <view class="tool-grid">
+        <view class="tool-item" bindtap="goToAuthorInfo">
+          <view class="tool-icon author-icon">
+            <image src="/images/icons/author.svg" mode="aspectFit"></image>
+          </view>
+          <text class="tool-text">作者介绍</text>
         </view>
-        <text class="feature-text">作者介绍</text>
-      </view>
-      <view class="feature-item" bindtap="goToBackground">
-        <view class="feature-icon background-icon">
-          <svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M12,11.55C9.64,9.35,6.48,8,3,8v11c3.48,0,6.64,1.35,9,3.55 c2.36-2.19,5.52-3.55,9-3.55V8C17.52,8,14.36,9.35,12,11.55z M12,8c1.66,0,3-1.34,3-3s-1.34-3-3-3S9,3.34,9,5S10.34,8,12,8z"/>
-          </svg>
+        <view class="tool-item" bindtap="goToBackground">
+          <view class="tool-icon background-icon">
+            <image src="/images/icons/background.svg" mode="aspectFit"></image>
+          </view>
+          <text class="tool-text">背景知识</text>
         </view>
-        <text class="feature-text">背景知识</text>
-      </view>
-      <view class="feature-item" bindtap="goToExercise">
-        <view class="feature-icon exercise-icon">
-          <svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M19,3H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V5C21,3.9,20.1,3,19,3z M19,19H5V5h14V19z"/>
-            <path fill="#6B4423" d="M18,9l-1.4-1.4L9,15.2L5.4,11.6L4,13l5,5L18,9z"/>
-          </svg>
+        <view class="tool-item" bindtap="goToExercise">
+          <view class="tool-icon exercise-icon">
+            <image src="/images/icons/exercise.svg" mode="aspectFit"></image>
+          </view>
+          <text class="tool-text">练习巩固</text>
         </view>
-        <text class="feature-text">随堂练习</text>
-      </view>
-      <view class="feature-item" bindtap="goToAIInteraction">
-        <view class="feature-icon ai-icon">
-          <svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M21,8c-1.45,0-2.26,1.44-1.93,2.51l-3.55,3.56c-0.3-0.09-0.74-0.09-1.04,0l-2.55-2.55C12.27,10.45,11.46,9,10,9 c-1.45,0-2.27,1.44-1.93,2.52l-4.56,4.55C2.44,15.74,1,16.55,1,18c0,1.1,0.9,2,2,2c1.45,0,2.26-1.44,1.93-2.51l4.55-4.56 c0.3,0.09,0.74,0.09,1.04,0l2.55,2.55C12.73,16.55,13.54,18,15,18c1.45,0,2.27-1.44,1.93-2.52l3.56-3.55 C21.56,12.26,23,11.45,23,10C23,8.9,22.1,8,21,8z"/>
-            <polygon fill="#6B4423" points="15,9 15.94,6.93 18,6 15.94,5.07 15,3 14.08,5.07 12,6 14.08,6.93"/>
-            <polygon fill="#6B4423" points="3.5,11 4,9 6,8.5 4,8 3.5,6 3,8 1,8.5 3,9"/>
-          </svg>
+        <view class="tool-item" bindtap="goToAIInteraction">
+          <view class="tool-icon ai-icon">
+            <image src="/images/icons/ai.svg" mode="aspectFit"></image>
+          </view>
+          <text class="tool-text">AI互动</text>
         </view>
-        <text class="feature-text">AI互动</text>
       </view>
     </view>
   </view>
 
   <!-- 虚实词学习区域 -->
-  <view class="word-study-card card">
-    <view class="section-title flex-between">
-      <text class="title-text">虚实词学习</text>
-      <view class="grade-selector" bindtap="changeWordType">
-        <text>{{currentWordType}}</text>
-        <svg class="dropdown-icon" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#6B4423" d="M7,10l5,5l5-5H7z"/>
-        </svg>
+  <view class="word-card card">
+    <view class="card-header">
+      <view class="card-title">
+        <text class="title-text">虚实词学习</text>
+      </view>
+      <view class="word-selector" bindtap="changeWordType">
+        <text class="word-type text-primary-color">{{currentWordType}}</text>
+        <view class="dropdown-icon">
+          <view class="arrow-down"></view>
+        </view>
       </view>
     </view>
-    <view class="word-options">
-      <view class="current-word-category">
-        <text class="word-option-title">{{currentWordTypeName}}</text>
-        <text class="word-option-count">{{currentWordType === '中考' ? '共124个' : '共186个'}}</text>
-        <view class="change-course-btn" bindtap="changeWordType">更换课程</view>
+    
+    <view class="word-type-info">
+      <view class="word-type-content">
+        <text class="word-type-name text-bold">{{currentWordTypeName}}</text>
+        <text class="word-count text-tertiary">{{currentWordType === '中考' ? '共124个' : '共186个'}}</text>
       </view>
+      <view class="btn btn-secondary btn-sm change-btn" bindtap="changeWordType">更换</view>
     </view>
-    <view class="word-action">
-      <view class="word-btn word-learn-btn" bindtap="goToWordStudy">学习</view>
-      <view class="word-btn word-practice-btn" bindtap="goToWordPractice">练习</view>
+    
+    <view class="word-actions">
+      <view class="btn btn-primary word-btn" bindtap="goToWordStudy">学习</view>
+      <view class="btn btn-secondary word-btn" bindtap="goToWordPractice">练习</view>
     </view>
   </view>
 
   <!-- 名句赏析卡片 -->
-  <view class="quote-section card" wx:if="{{famousQuote}}">
-    <view class="section-title flex-between">
-      <text class="title-text">每日名句</text>
+  <view class="quote-card card" wx:if="{{famousQuote}}">
+    <view class="card-header">
+      <view class="card-title">
+        <text class="title-text">每日名句</text>
+      </view>
       <view class="quote-actions">
-        <view class="action-icon" bindtap="refreshQuote">
-          <svg viewBox="0 0 24 24" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M17.65,6.35C16.2,4.9,14.21,4,12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8,7.99,8c3.73,0,6.84-2.55,7.73-6h-2.08c-0.82,2.33-3.04,4-5.65,4c-3.31,0-6-2.69-6-6s2.69-6,6-6c1.66,0,3.14,0.69,4.22,1.78L13,11h7V4L17.65,6.35z"/>
-          </svg>
+        <view class="icon-btn" bindtap="refreshQuote">
+          <image src="/images/icons/refresh.svg" mode="aspectFit" class="action-icon"></image>
         </view>
-        <view class="action-icon" bindtap="collectQuote">
-          <svg viewBox="0 0 24 24" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#6B4423" d="M17,3H7c-1.1,0-1.99,0.9-1.99,2L5,21l7-3l7,3V5C19,3.9,18.1,3,17,3z"/>
-          </svg>
+        <view class="icon-btn" bindtap="collectQuote">
+          <image src="/images/icons/bookmark.svg" mode="aspectFit" class="action-icon"></image>
         </view>
       </view>
     </view>
+    
     <view class="quote-content" bindtap="goToQuoteDetail">
       <text class="quote-text">{{famousQuote.content}}</text>
-      <view class="quote-source text-light">——{{famousQuote.dynasty}} · {{famousQuote.author}}《{{famousQuote.source}}》</view>
+      <view class="quote-source text-tertiary">——{{famousQuote.dynasty}} · {{famousQuote.author}}《{{famousQuote.source}}》</view>
       <view class="quote-translation">{{famousQuote.translation}}</view>
     </view>
   </view>
 
   <!-- 推广领取区域 -->
-  <view class="promotion-section" bindtap="goToPromotion">
-    <view class="promotion-banner">
-      <text class="promotion-title">文言文学习资料</text>
-      <text class="promotion-desc">点击复制推广码，关注公众号领取</text>
-      <view class="promotion-button">立即领取</view>
+  <view class="promo-card" bindtap="goToPromotion">
+    <view class="promo-content">
+      <view class="promo-info">
+        <text class="promo-title">文言文学习资料</text>
+        <text class="promo-desc">点击复制推广码，关注公众号领取</text>
+      </view>
+      <view class="btn btn-light promo-btn">立即领取</view>
     </view>
   </view>
 </view> 

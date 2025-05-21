@@ -1,0 +1,132 @@
+<view class="container">
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 错误信息显示 -->
+  <view class="error-container" wx:elif="{{errorMsg}}">
+    <icon type="warn" size="64" color="#e64340"></icon>
+    <text class="error-text">{{errorMsg}}</text>
+    <view class="btn btn-primary retry-btn" bindtap="fetchGradeAndSemesterList">重试</view>
+    <view class="btn btn-default debug-btn" bindtap="debugShowArticlesData" wx:if="{{false}}">调试数据</view>
+    <view class="btn btn-default test-btn" bindtap="testGradeOne" wx:if="{{false}}">测试一年级数据</view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content-area" wx:else>
+    <!-- 顶部标题和搜索栏 -->
+    <view class="header">
+      <!-- 搜索栏 -->
+      <view class="search-bar">
+        <view class="input-wrapper">
+          <icon type="search" size="16" color="#999" />
+          <input class="input" placeholder="搜索课文/作者/朝代" value="{{searchKeyword}}" bindinput="onSearchInput" />
+          <icon wx:if="{{isSearching}}" type="clear" size="16" color="#999" bindtap="clearSearch" />
+        </view>
+      </view>
+    </view>
+
+    <!-- 搜索结果 -->
+    <view class="search-results" wx:if="{{showSearchResult}}">
+      <view class="result-header">
+        <text class="result-title text-secondary">搜索结果 ({{searchResult.length}})</text>
+        <view class="btn btn-text" bindtap="clearSearch">返回课文列表</view>
+      </view>
+      
+      <view class="no-result" wx:if="{{searchResult.length === 0}}">
+        <icon type="info" size="64" color="#cccccc"></icon>
+        <text class="empty-text text-tertiary">未找到相关文章，请尝试其他关键词</text>
+      </view>
+      
+      <view class="search-article-list">
+        <view class="article-item card" wx:for="{{searchResult}}" wx:key="_id" bindtap="selectSearchArticle" data-id="{{item._id}}">
+          <view class="article-title text-lg text-bold">{{item.title}}</view>
+          <view class="article-info">
+            <view class="article-meta">
+              <text class="tag tag-primary">{{item.gradeDisplay || item.grade + item.semester}}</text>
+              <text class="text-secondary">{{item.author}} · {{item.dynasty}}</text>
+            </view>
+            <view class="lesson-number">
+              <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 两级列表区域 -->
+    <view class="selection-area" wx:if="{{!showSearchResult}}">
+      <!-- 左侧年级列表 -->
+      <view class="grade-list">
+        <scroll-view 
+          scroll-y 
+          class="grade-scroll" 
+          enhanced="true"
+          show-scrollbar="{{false}}"
+          bounces="true"
+          scroll-with-animation="true"
+          scroll-into-view="{{gradeScrollIntoView}}"
+        >
+          <view 
+            class="grade-item {{index === currentGradeIndex ? 'active' : ''}}" 
+            wx:for="{{gradeList}}" 
+            wx:key="displayName" 
+            bindtap="selectGrade" 
+            data-index="{{index}}"
+            hover-class="grade-item-hover"
+            id="grade-{{index}}"
+          >
+            <text>{{item.displayName}}</text>
+            <view class="active-indicator" wx:if="{{index === currentGradeIndex}}"></view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 右侧课文列表 -->
+      <view class="article-list">
+        <scroll-view 
+          scroll-y 
+          class="article-scroll" 
+          scroll-into-view="{{scrollIntoView}}"
+          enhanced="true"
+          show-scrollbar="{{true}}"
+          bounces="true"
+          scroll-with-animation="true"
+        >
+          <!-- 局部加载指示器 -->
+          <view class="mini-loading" wx:if="{{currentArticles.length === 0 && !errorMsg}}">
+            <view class="mini-loading-spinner"></view>
+            <text class="mini-loading-text">加载中...</text>
+          </view>
+          
+          <view class="no-result" wx:elif="{{currentArticles.length === 0}}">
+            <icon type="info" size="64" color="#cccccc"></icon>
+            <text class="empty-text text-tertiary">该年级暂无课文</text>
+          </view>
+          
+          <view class="article-section" wx:else>
+            <view 
+              class="article-item {{selectedArticleIndex === index ? 'active' : ''}}" 
+              wx:for="{{currentArticles}}" 
+              wx:key="_id" 
+              bindtap="selectArticle" 
+              data-id="{{item._id}}"
+              id="article-{{item._id}}"
+              hover-class="article-item-hover"
+            >
+              <view class="article-title text-bold">{{item.title}}</view>
+              <view class="article-info">
+                <text class="article-meta text-secondary">{{item.author}} · {{item.dynasty}}</text>
+                <view class="lesson-number">
+                  <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+</view> 

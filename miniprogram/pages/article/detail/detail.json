@@ -1,0 +1,9 @@
+{
+  "navigationStyle": "default",
+  "usingComponents": {},
+  "disableScroll": false,
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#F8F4E3",
+  "navigationBarTitleText": "文言文详情",
+  "navigationBarBackgroundColor": "#FFFFFF"
+} 

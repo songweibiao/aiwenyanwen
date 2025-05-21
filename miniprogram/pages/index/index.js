@@ -24,13 +24,21 @@ Page({
     marqueeTranslateX: 0,
     marqueeTimer: null,
     noticeClosed: false,
+    // 是否已选择课文
+    hasSelectedCourse: false,
+    // 当前选择的课文信息
+    selectedCourse: null,
+    // 课文数据加载状态
+    courseLoading: true
   },
 
   onLoad: function () {
     // 设置问候语
     this.setData({
       greeting: this.getGreeting(),
-      gradeLevels: app.globalData.gradeLevels || []
+      gradeLevels: app.globalData.gradeLevels || [],
+      // 初始设置课文加载中
+      courseLoading: true
     })
 
     // 获取用户信息
@@ -78,6 +86,154 @@ Page({
         hasUserInfo: true
       })
     }
+    
+    // 检查是否已选择课文
+    this.checkSelectedCourse();
+  },
+  
+  // 检查是否已选择课文
+  checkSelectedCourse: function() {
+    this.setData({ courseLoading: true });
+    
+    const selectedCourse = wx.getStorageSync('selectedCourse');
+    if (selectedCourse && selectedCourse.article) {
+      console.log('找到已选择的课文:', selectedCourse);
+      
+      // 检查是否有文章ID
+      if (selectedCourse.article._id) {
+        // 从云数据库获取最新的课文数据
+        this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
+      } else if (selectedCourse.article.article_id) {
+        // 如果有article_id字段，使用它查询
+        this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
+      } else {
+        // 没有可用的ID，标记为未选择课文
+        console.log('课文数据无有效ID');
+        this.setData({
+          hasSelectedCourse: false,
+          selectedCourse: null,
+          courseLoading: false
+        });
+      }
+    } else {
+      console.log('未找到已选择的课文');
+      this.setData({
+        hasSelectedCourse: false,
+        selectedCourse: null,
+        courseLoading: false
+      });
+    }
+  },
+  
+  // 通过_id从云数据库获取课文数据
+  fetchArticleFromCloud: function(articleId, selectedCourse) {
+    console.log('尝试通过_id获取课文:', articleId);
+    const db = wx.cloud.database();
+    
+    db.collection('articles').doc(articleId).get()
+      .then(res => {
+        if (res.data) {
+          console.log('成功获取到课文数据:', res.data);
+          
+          // 更新课文信息
+          const updatedSelectedCourse = {
+            article: res.data,
+            grade: `${res.data.grade}${res.data.semester}`
+          };
+          
+          // 更新本地存储
+          wx.setStorageSync('selectedCourse', updatedSelectedCourse);
+          
+          // 更新页面数据
+          this.setData({
+            hasSelectedCourse: true,
+            selectedCourse: updatedSelectedCourse,
+            currentGrade: updatedSelectedCourse.grade,
+            currentLesson: res.data.title,
+            courseLoading: false
+          });
+        } else {
+          console.log('未找到课文数据，尝试通过article_id查询');
+          // 尝试通过article_id查询
+          if (selectedCourse.article.article_id) {
+            this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
+          } else {
+            // 使用本地缓存数据
+            this.useLocalCourseData(selectedCourse);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('获取课文详情失败:', err);
+        
+        // 尝试通过article_id查询
+        if (selectedCourse.article.article_id) {
+          this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
+        } else {
+          // 查询失败，使用本地缓存数据
+          this.useLocalCourseData(selectedCourse);
+        }
+      });
+  },
+  
+  // 通过article_id从云数据库获取课文数据
+  fetchArticleByArticleId: function(articleId, selectedCourse) {
+    console.log('尝试通过article_id获取课文:', articleId);
+    const db = wx.cloud.database();
+    
+    db.collection('articles')
+      .where({
+        article_id: articleId.toString()
+      })
+      .get()
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          console.log('成功通过article_id获取到课文数据:', res.data[0]);
+          
+          // 获取到课文数据
+          const articleData = res.data[0];
+          
+          // 更新课文信息
+          const updatedSelectedCourse = {
+            article: articleData,
+            grade: `${articleData.grade}${articleData.semester}`
+          };
+          
+          // 更新本地存储
+          wx.setStorageSync('selectedCourse', updatedSelectedCourse);
+          
+          // 更新页面数据
+          this.setData({
+            hasSelectedCourse: true,
+            selectedCourse: updatedSelectedCourse,
+            currentGrade: updatedSelectedCourse.grade,
+            currentLesson: articleData.title,
+            courseLoading: false
+          });
+        } else {
+          console.log('通过article_id未找到课文，使用本地缓存数据');
+          // 查询失败，使用本地缓存数据
+          this.useLocalCourseData(selectedCourse);
+        }
+      })
+      .catch(err => {
+        console.error('通过文章ID获取课文失败:', err);
+        // 查询失败，使用本地缓存数据
+        this.useLocalCourseData(selectedCourse);
+      });
+  },
+  
+  // 使用本地缓存的课文数据
+  useLocalCourseData: function(selectedCourse) {
+    console.log('使用本地缓存的课文数据:', selectedCourse);
+    
+    this.setData({
+      hasSelectedCourse: true,
+      selectedCourse: selectedCourse,
+      currentGrade: selectedCourse.grade || this.data.currentGrade,
+      currentLesson: selectedCourse.article.title || this.data.currentLesson,
+      courseLoading: false
+    });
   },
 
   // 获取问候语
@@ -121,7 +277,20 @@ Page({
 
   // 获取最近学习的文章
   getLastStudy: function () {
-    // 模拟的最近学习数据
+    // 从本地存储获取最近学习的记录
+    try {
+      const lastStudyRecord = wx.getStorageSync('lastStudyRecord');
+      if (lastStudyRecord) {
+        this.setData({
+          lastStudy: lastStudyRecord
+        });
+        return;
+      }
+    } catch (e) {
+      console.error('获取学习记录失败:', e);
+    }
+    
+    // 如果没有本地记录，使用模拟数据
     const mockLastStudy = {
       article: {
         _id: 'art001',
@@ -144,6 +313,35 @@ Page({
 
   // 获取随机名句
   getRandomFamousQuote: function () {
+    // 从云数据库获取名句数据
+    const db = wx.cloud.database();
+    
+    // 尝试从名句集合获取随机名句
+    db.collection('famous_quotes')
+      .aggregate()
+      .sample({
+        size: 1
+      })
+      .end()
+      .then(res => {
+        if (res.list && res.list.length > 0) {
+          this.setData({
+            famousQuote: res.list[0]
+          });
+        } else {
+          // 如果没有名句集合或数据，使用模拟数据
+          this.useLocalQuoteData();
+        }
+      })
+      .catch(err => {
+        console.error('获取名句失败:', err);
+        // 使用模拟数据
+        this.useLocalQuoteData();
+      });
+  },
+  
+  // 使用本地模拟的名句数据
+  useLocalQuoteData: function() {
     // 模拟的名句数据
     const mockQuotes = [
       {
@@ -200,7 +398,14 @@ Page({
   // 更换课程
   changeCourse: function() {
     wx.navigateTo({
-      url: '/miniprogram/pages/course/list'
+      url: '/pages/course/select/select?fromHome=true'
+    });
+  },
+  
+  // 开始学习（新增方法，用于未选择课文时跳转到课文选择页）
+  startLearning: function() {
+    wx.navigateTo({
+      url: '/pages/course/select/select?fromHome=true'
     });
   },
 
@@ -213,34 +418,134 @@ Page({
 
   // 前往逐句解析
   goToSentenceAnalysis: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/analysis/index'
-    });
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=analysis`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
+  },
+
+  // 前往全文翻译
+  goToFullTranslation: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=translation`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
   },
 
   // 前往背景知识
   goToBackground: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/background/index'
-    });
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=background`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
   },
 
   // 前往随堂练习
   goToExercise: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/exercise/index'
-    });
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=exercise`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
   },
 
   // 前往AI互动
   goToAIInteraction: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/ai/index'
-    });
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=qa`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
   },
 
   // 前往背诵页面
   goToRecitation: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/miniprogram/pages/article/recite'
     });
@@ -248,6 +553,14 @@ Page({
 
   // 听/背课文
   goToListenArticle: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/miniprogram/pages/article/listen'
     });
@@ -255,6 +568,14 @@ Page({
 
   // 课文跟读
   goToReadAloud: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/miniprogram/pages/article/read'
     });
@@ -262,6 +583,14 @@ Page({
 
   // 译文·鉴赏
   goToAppreciation: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/miniprogram/pages/article/appreciation'
     });
@@ -269,6 +598,14 @@ Page({
 
   // 背注释
   goToAnnotation: function() {
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/miniprogram/pages/article/annotation'
     });
@@ -305,7 +642,7 @@ Page({
   // 前往课文选择页
   goToArticleList: function () {
     wx.navigateTo({
-      url: '/miniprogram/pages/article/list'
+      url: '/pages/course/select/select'
     })
   },
 
@@ -354,197 +691,152 @@ Page({
   collectQuote: function (e) {
     e.stopPropagation();
     wx.showToast({
-      title: '收藏成功',
+      title: '已收藏',
       icon: 'success',
-      duration: 1500
+      duration: 1000
     });
   },
 
-  // 跳转到名句详情
+  // 前往名句详情
   goToQuoteDetail: function () {
-    if (!this.data.famousQuote) return
-    
     wx.navigateTo({
-      url: `/miniprogram/pages/article/quote?id=${this.data.famousQuote._id}`
-    })
+      url: `/miniprogram/pages/article/quote-detail?id=${this.data.famousQuote._id}`
+    });
   },
 
-  // 前往文章详情
-  goToArticleDetail: function (e) {
-    const id = e.currentTarget.dataset.id
-    wx.navigateTo({
-      url: `/miniprogram/pages/article/detail?id=${id}`
-    })
-  },
-
-  // 去推广领取页面
+  // 前往领取推广福利
   goToPromotion: function () {
-    // 复制推广码
     wx.setClipboardData({
-      data: 'WENYANYUEDU',
-      success: () => {
-        wx.showModal({
+      data: 'WENYAN2023',
+      success: function () {
+        wx.showToast({
           title: '推广码已复制',
-          content: '请前往公众号"文言悦读"，发送推广码领取学习资料',
-          showCancel: false
-        })
+          icon: 'success'
+        });
       }
-    })
-  },
-
-  // 用户分享
-  onShareAppMessage: function () {
-    return {
-      title: '文言悦读 - 让文言文学习更轻松',
-      path: '/miniprogram/pages/index/index',
-      imageUrl: '/miniprogram/images/share.jpg'
-    }
-  },
-
-  // 分享到朋友圈
-  onShareTimeline: function () {
-    return {
-      title: '文言悦读 - 让文言文学习更轻松',
-      query: '',
-      imageUrl: '/miniprogram/images/share.jpg'
-    }
-  },
-
-  // 全文翻译
-  goToFullTranslation: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/translation/index'
     });
   },
   
-  // 作者介绍
+  // 前往作者介绍页面
   goToAuthorInfo: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/author/index'
-    });
-  },
-  
-  // 随堂练习
-  goToExercise: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/exercise/index'
-    });
-  },
-  
-  // AI互动
-  goToAIInteraction: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/ai/index'
-    });
-  },
-
-  // 切换虚实词类型
-  changeWordType: function() {
-    wx.showActionSheet({
-      itemList: ['中考必背虚实词', '高考必背虚实词'],
-      success: (res) => {
-        if (res.tapIndex >= 0) {
-          const wordType = res.tapIndex === 0 ? '中考' : '高考';
-          const wordTypeName = res.tapIndex === 0 ? '中考必背虚实词' : '高考必背虚实词';
-          this.setData({
-            currentWordType: wordType,
-            currentWordTypeName: wordTypeName
-          });
-          wx.showToast({
-            title: '课程已切换',
-            icon: 'success',
-            duration: 1500
-          });
-        }
-      }
-    });
+    if (!this.data.hasSelectedCourse) {
+      wx.showToast({
+        title: '请先选择课文',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 获取当前选择的课文ID
+    const articleId = this.data.selectedCourse?.article?._id;
+    if (articleId) {
+      wx.navigateTo({
+        url: `/pages/article/detail/detail?id=${articleId}&tab=author`
+      });
+    } else {
+      wx.showToast({
+        title: '课文信息有误',
+        icon: 'none'
+      });
+    }
   },
 
+  // 关闭公告
   closeNotice() {
     this.setData({ noticeClosed: true });
     wx.setStorageSync('noticeClosed', true);
   },
 
+  // 点击公告
   onNoticeTap(e) {
     const url = e.currentTarget.dataset.url;
     if (url) {
-      if (url.startsWith('http')) {
-        wx.navigateTo({ url: '/pages/webview/index?url=' + encodeURIComponent(url) });
-      } else {
-        wx.navigateTo({ url });
-      }
+      wx.navigateTo({
+        url: `/miniprogram/pages/webview/index?url=${encodeURIComponent(url)}`
+      });
     }
   },
 
+  // 启动公告循环
   startNoticeLoop() {
-    if (!this.data.noticeList.length) return;
+    if (this.data.noticeList.length === 0) return;
     this.showCurrentNotice();
   },
 
+  // 显示当前公告
   showCurrentNotice() {
-    // 静止显示，3秒后判断是否需要滚动
     this.setData({
-      marqueeState: 'pause',
-      marqueeTranslateX: 0,
-      marqueeDuration: 0
-    });
-    clearTimeout(this.data.marqueeTimer);
-    this.data.marqueeTimer = setTimeout(() => {
+      currentNotice: this.data.noticeList[this.data.currentNoticeIndex]
+    }, () => {
       this.checkAndScroll();
-    }, 3000);
+    });
   },
 
+  // 检查并滚动公告
   checkAndScroll() {
-    wx.createSelectorQuery().select('.marquee-wrap').boundingClientRect(wrapRect => {
-      wx.createSelectorQuery().select('.marquee-content').boundingClientRect(contentRect => {
-        if (wrapRect && contentRect && contentRect.width > wrapRect.width) {
-          // 需要滚动
-          // 计算需要滚动的距离，只需要将最后一个字显示出来
-          // 因为文字右侧已有padding，所以只需滚动到内容宽度减去容器宽度即可
-          const distance = contentRect.width - wrapRect.width + 1; // 加上右边距确保最后字符完全显示
-          const duration = Math.max(2, distance / 40); // 合适的滚动速度
-          
-          this.setData({
-            marqueeState: 'scroll',
-            marqueeDuration: duration,
-            marqueeTranslateX: -distance // 只滚动到最后一个字符完全显示
-          });
-          
-          clearTimeout(this.data.marqueeTimer);
-          this.data.marqueeTimer = setTimeout(() => {
-            // 滚动结束后等待2秒
-            this.nextNotice();
-          }, duration * 1000 + 2000);  // 滚动结束后多等待2秒
-        } else {
-          // 不需要滚动，3秒后切换下一条
-          clearTimeout(this.data.marqueeTimer);
-          this.data.marqueeTimer = setTimeout(() => {
-            this.nextNotice();
-          }, 3000);  // 让用户有更多时间阅读
-        }
-      }).exec();
-    }).exec();
+    // 获取公告内容宽度
+    const query = wx.createSelectorQuery();
+    query.select('.notice-content').boundingClientRect();
+    query.select('.notice-bar').boundingClientRect();
+
+    query.exec(res => {
+      if (!res[0] || !res[1]) return;
+      
+      const contentWidth = res[0].width;
+      const containerWidth = res[1].width - 60; // 减去图标和间距的宽度
+      
+      if (contentWidth > containerWidth) {
+        // 计算滚动时间和距离
+        const duration = contentWidth / 50; // 50rpx/s的速度
+        const distance = -contentWidth - 20; // 额外的20rpx确保完全滚出
+        
+        this.setData({
+          marqueeState: 'scroll',
+          marqueeDuration: duration,
+          marqueeTranslateX: distance
+        });
+        
+        // 滚动结束后，重置并滚动下一条
+        this.data.marqueeTimer = setTimeout(() => {
+          this.nextNotice();
+        }, duration * 1000 + 1000); // 多等待1秒，确保完全滚动完
+      } else {
+        // 内容不需要滚动，3秒后切换到下一条
+        this.data.marqueeTimer = setTimeout(() => {
+          this.nextNotice();
+        }, 3000);
+      }
+    });
   },
 
+  // 切换到下一条公告
   nextNotice() {
-    // 如果只有一条公告，则继续显示当前公告
-    if (this.data.noticeList.length <= 1) {
-      this.showCurrentNotice();
-      return;
+    if (this.data.marqueeTimer) {
+      clearTimeout(this.data.marqueeTimer);
+      this.data.marqueeTimer = null;
     }
     
-    // 否则切换到下一条公告
     let nextIndex = this.data.currentNoticeIndex + 1;
-    if (nextIndex >= this.data.noticeList.length) nextIndex = 0;
+    if (nextIndex >= this.data.noticeList.length) {
+      nextIndex = 0;
+    }
+    
     this.setData({
       currentNoticeIndex: nextIndex,
-      currentNotice: this.data.noticeList[nextIndex]
+      marqueeState: 'pause',
+      marqueeTranslateX: 0
     }, () => {
-      this.showCurrentNotice();
+      setTimeout(() => {
+        this.showCurrentNotice();
+      }, 100);
     });
   },
 
+  // 页面卸载时清除定时器
   onUnload() {
-    clearTimeout(this.data.marqueeTimer);
-  },
+    if (this.data.marqueeTimer) {
+      clearTimeout(this.data.marqueeTimer);
+      this.data.marqueeTimer = null;
+    }
+  }
 }) 

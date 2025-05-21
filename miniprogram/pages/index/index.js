@@ -264,7 +264,7 @@ Page({
       // 模拟用户数据
       const mockUserInfo = {
         nickname: '文言同学',
-        avatarUrl: '/miniprogram/images/default-avatar.png'
+        avatarUrl: '/images/default-avatar.png'
       };
       
       this.setData({
@@ -412,7 +412,7 @@ Page({
   // 前往课文讲解
   goToArticleExplain: function() {
     wx.navigateTo({
-      url: '/miniprogram/pages/article/explain'
+      url: '/pages/article/explain'
     });
   },
 
@@ -547,7 +547,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: '/miniprogram/pages/article/recite'
+      url: '/pages/article/recite'
     });
   },
 
@@ -562,7 +562,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: '/miniprogram/pages/article/listen'
+      url: '/pages/article/listen'
     });
   },
 
@@ -577,7 +577,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: '/miniprogram/pages/article/read'
+      url: '/pages/article/read'
     });
   },
 
@@ -592,7 +592,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: '/miniprogram/pages/article/appreciation'
+      url: '/pages/article/appreciation'
     });
   },
 
@@ -607,7 +607,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: '/miniprogram/pages/article/annotation'
+      url: '/pages/article/annotation'
     });
   },
 

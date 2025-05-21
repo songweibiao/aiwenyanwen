@@ -4,9 +4,9 @@
     "ignore": [],
     "include": []
   },
-  "miniprogramRoot": "./miniprogram",
+  "miniprogramRoot": "miniprogram/",
   "compileType": "miniprogram",
-  "projectname": "文言悦读",
+  "projectname": "AI学文言文",
   "setting": {
     "useCompilerPlugins": [
       "sass"

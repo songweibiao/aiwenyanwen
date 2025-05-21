@@ -27,15 +27,9 @@
   - 凌晨(0:00-4:59)："夜深了，[用户昵称]！文言文学习不要熬夜哦"
 - **展示方式**：顶部横幅，显示欢迎语和用户头像
 
-#### 2.1.2 继续学习区域
-- **功能描述**：显示用户最近学习的内容，方便快速进入
-- **展示内容**：
-  - 最近学习的1篇文章（标题、学习进度百分比）
-  - 上次离开的具体位置（如第几句解析）
-  - 学习时间记录
-- **操作方式**：点击直接跳转到上次学习位置
 
-#### 2.1.3 课文精讲区域
+
+#### 2.1.2 随堂同步学
 - **功能描述**：学习课文的主要入口，点击后进入课文选择页
 
 #### 2.1.4 虚词实词背诵区域
@@ -100,20 +94,18 @@
   - 学习状态标记（未开始/学习中/已完成）
   - 收藏状态（已收藏/未收藏）
 
-##### 2.2.2.2 解析功能
-##### 2.2.2.2.1 全文翻译
-- **功能描述**：提供整篇文章的现代汉语翻译
+##### 2.2.2 全文翻译
+- **功能描述**：提供整篇文章的现代汉语翻译，调用大模型生成，一次生成存储到数据库，后续其他用户共用该内容。
 - **翻译内容**：
   - AI生成全文翻译
 - **展示方式**：
   - 可与原文并排显示
   - 可显示/隐藏
 
-
-##### 2.2.2.2.2 逐句解析
-- **功能描述**：提供文章逐句详细讲解
-- **解析内容**：
-  - 句子原文（带注音标注）
+##### 2.2.3 逐句解析
+- **功能描述**：调用大模型，对原文全文进行按句拆解，然后再调用大模型针对每句内容进行解析。大模型第一次生成的内容存储到数据库，后续其他用户共用该内容。
+- **解析内容分为6部分**：
+  - 句子原文拼音标注
   - 断句标注
   - 句子翻译
   - 关键词解释（古今异义词、通假字等标注）
@@ -123,69 +115,27 @@
   - 上一句/下一句导航
   - 点击单个字/词显示详解
 
-##### 2.2.2.2.3 背景知识
-- **功能描述**：提供文章创作背景及相关知识
-- **内容构成**：
+##### 2.2.4 背景知识
+- **功能描述**：提供文章创作背景及相关知识，调用大模型生成，一次生成存储到数据库，后续其他用户共用该内容。
+- **内容分为4部分**：
   - 作者生平简介
   - 创作背景介绍
   - 历史时代背景
   - 文章主旨思想
 
-##### 2.2.2.2.4 练习巩固
-- **功能描述**：通过调用AI大模型基于当前课文生成针对性练习题
-- **题型设置**：
-  - 文言文断句题
-  - 虚词用法辨析
-  - 实词含义选择
-  - 句子翻译题
-  - 内容理解题
-  - 文言现象识别题
-- **出题规则**
-  - 从以上类型中随机出5道题目
+##### 2.2.5 练习巩固
+- **功能描述**：通过调用AI大模型基于当前课文生成3-5道针对性选择题，需保存用户的做题记录。用户可选择重新做题，重新做题则清空用户之前的做题记录。
 
-##### 2.2.2.2.5 提问拓展
-- **功能描述**：用户可针对课文提出任何问题获取解答
+
+##### 2.2.6 提问拓展
+- **功能描述**：用户可针对课文提出任何问题，调用AI大模型进行解答，需保存聊天记录到用户个人账号。
 - **问答方式**：
-  - 自由提问输入
-- **回答特点**：
-  - AI智能解答
-  - 多角度分析
-  - 举一反三拓展
-- **互动设计**：
-  - 问题推荐
-  - 问答历史记录
+  - 提供由大模型生成的3个候选问题，用户也可以自由提问输入
+
 
 ### 2.2 练习页
 
-#### 2.2.1 每日答题
-- **功能描述**：提供每日文言文练习题，培养学习习惯
-- **内容设置**：
-  - 每日5-10道题目
-  - 题型多样（选择、填空、翻译等）
-  - 针对用户当前所选年级，调用AI大模型出题。
-- **功能特点**：
-  - 打卡记录
-  - 错题解析
-  - 正确率统计
-
-#### 2.2.2 专项突破
-- **功能描述**：针对文言文不同知识点的专项训练
-- **专项类别**：
-  - 实词辨析训练
-  - 虚词用法训练
-  - 句式结构训练
-  - 翻译技巧训练
-  - 文言现象识别训练
-  - 古今异义词训练
-- **练习模式**：
-  - 基础巩固模式
-  - 强化提升模式
-  - 考点突破模式
-- **功能特点**：
-  - 专项知识点讲解
-  - 梯度难度设置
-  - 针对性练习推荐
-  - 弱项分析与推荐
+该功能暂不开发。页面显示空白即可。
 
 
 ### 2.3 AI助手页
@@ -305,17 +255,27 @@
 }
 ```
 
-### 5. user_exercise_records（用户练习记录）
+### 5. user_exercise_records（用户课文练习记录）
 ```javascript
 {
   _id: "记录ID",
   user_id: "关联用户ID",
-  exercise_id: "练习题ID",
-  is_correct: "是否正确答题", // boolean
-  user_answer: "用户回答",
-  practice_time: "练习时间",
-  exercise_type: "练习类型", // 每日练习/课文练习/专项练习
-  article_id: "关联文章ID" // 如果是课文练习
+  article_id: "关联文章ID",
+  exercise_batch_id: "练习批次ID", // 标识同一次生成的练习题批次
+  exercises: [
+    {
+      exercise_id: "练习题ID",
+      question: "题目内容",
+      options: ["选项A", "选项B", "选项C", "选项D"],
+      answer: "正确答案",
+      user_answer: "用户回答",
+      is_correct: "是否回答正确" // boolean
+    }
+  ],
+  total_score: "总分",
+  finish_time: "完成时间",
+  created_at: "创建时间",
+  updated_at: "更新时间"
 }
 ```
 
@@ -324,7 +284,12 @@
 {
   _id: "记录ID",
   user_id: "关联用户ID",
+  article_id: "关联文章ID",
   exercise_id: "练习题ID",
+  question: "题目内容",
+  options: ["选项A", "选项B", "选项C", "选项D"],
+  answer: "正确答案",
+  user_answers: ["用户错误回答1", "用户错误回答2"], // 记录用户的错误回答历史
   wrong_times: "错误次数",
   last_practice_time: "最后练习时间",
   is_mastered: "是否已掌握" // boolean
@@ -343,13 +308,16 @@
   grade_level: "适用年级段", // 小学/初中/高中/课外
   content: "原文内容",
   translation: "全文翻译",
-  is_processed: "AI内容是否已生成", // boolean
+  is_translation_generated: "翻译是否已生成", // boolean
+  is_sentences_parsed: "是否已进行逐句解析", // boolean 
+  is_background_generated: "背景知识是否已生成", // boolean
   author_intro: "作者简介",
   creation_background: "创作背景",
   historical_background: "历史背景",
   main_idea: "文章主旨",
   publish_status: "发布状态", // 已发布/未发布
   display_order: "显示顺序",
+  view_count: "浏览次数", // 记录热度
   created_at: "创建时间",
   updated_at: "更新时间"
 }
@@ -362,11 +330,14 @@
   article_id: "关联文章ID",
   sentence_index: "句子索引", // 第几句
   original_text: "原句内容",
-  phonetic_notation: "注音标注", // 拼音/注音
+  phonetic_notation: "拼音标注",
   punctuated_text: "断句标注",
   translation: "句子翻译",
+  key_words_explanation: "关键词解释", // 古今异义词、通假字等标注
   sentence_structure: "语法结构分析",
-  rhetorical_analysis: "修辞手法分析"
+  rhetorical_analysis: "修辞手法分析",
+  created_at: "创建时间",
+  updated_at: "更新时间"
 }
 ```
 
@@ -399,7 +370,8 @@
     }
   ],
   difficulty: "难度等级", // 1-5
-  usage_frequency: "使用频率" // 高/中/低
+  usage_frequency: "使用频率", // 高/中/低
+  memorized_count: "被背诵次数" // 记录热度
 }
 ```
 
@@ -417,56 +389,65 @@
   writing_technique: "写作手法",
   application_scenarios: "应用场景",
   grade_level: "适用年级", // 小学/初中/高中
-  display_order: "显示顺序"
+  display_order: "显示顺序",
+  view_count: "浏览次数" // 记录热度
 }
 ```
 
-### 6. exercises（练习题库）
+### 6. article_exercises（课文练习题）
 ```javascript
 {
-  _id: "练习题ID",
-  question: "题目内容",
-  options: ["选项A", "选项B", "选项C", "选项D"], // 选择题选项
-  answer: "正确答案",
-  analysis: "解析",
-  type: "题型", // 单选/多选/填空/翻译
-  subtype: "子类型", // 断句/虚词/实词/翻译/理解/文言现象
-  difficulty: "难度", // 1-5
-  grade_level: "适用年级", // 小学/初中/高中
-  article_id: "关联文章ID", // 如果是特定课文题目
-  knowledge_point: "知识点" // 对应的知识点标签
-}
-```
-
-### 7. daily_exercises（每日练习）
-```javascript
-{
-  _id: "每日练习ID",
-  date: "日期", // YYYY-MM-DD
-  grade_level: "年级段", // 小学/初中/高中
-  exercise_ids: ["练习题ID1", "练习题ID2", "练习题ID3"], // 关联练习题
+  _id: "练习批次ID",
+  article_id: "关联文章ID",
+  exercises: [
+    {
+      exercise_id: "练习题ID",
+      question: "题目内容",
+      options: ["选项A", "选项B", "选项C", "选项D"],
+      answer: "正确答案",
+      analysis: "解析"
+    }
+  ],
+  generation_time: "生成时间",
+  is_active: "是否启用", // boolean，用于管理多批次题目
   created_at: "创建时间"
 }
 ```
 
-### 8. specialized_exercises（专项练习）
+### 7. suggested_questions（推荐问题）
 ```javascript
 {
-  _id: "专项练习ID",
-  title: "专项名称",
-  description: "描述",
-  category: "专项类别", // 实词/虚词/句式/翻译/文言现象/古今异义词
-  level: "练习模式", // 基础/强化/考点
-  exercise_ids: ["练习题ID1", "练习题ID2"], // 关联练习题
-  knowledge_intro: "知识点讲解",
-  grade_level: "适用年级", // 小学/初中/高中
-  display_order: "显示顺序"
+  _id: "推荐问题ID",
+  article_id: "关联文章ID",
+  questions: ["问题1", "问题2", "问题3"],
+  generation_time: "生成时间",
+  is_active: "是否启用", // boolean，用于管理多批次问题
+  created_at: "创建时间"
 }
 ```
 
 ## 3.3、AI助手相关集合
 
-### 1. ai_chat_records（AI对话记录）
+### 1. article_chat_records（课文问答记录）
+```javascript
+{
+  _id: "对话记录ID",
+  user_id: "关联用户ID",
+  article_id: "关联文章ID",
+  session_id: "会话ID", // 同一次对话的多条消息共用session_id
+  messages: [
+    {
+      role: "发送者角色", // user/assistant
+      content: "消息内容",
+      timestamp: "时间戳"
+    }
+  ],
+  created_at: "创建时间",
+  updated_at: "更新时间"
+}
+```
+
+### 2. ai_assistant_chat_records（AI助手对话记录）
 ```javascript
 {
   _id: "对话记录ID",
@@ -479,17 +460,16 @@
       timestamp: "时间戳"
     }
   ],
-  article_id: "关联文章ID", // 如果是基于特定文章的提问
   created_at: "创建时间",
   updated_at: "更新时间"
 }
 ```
 
-### 2. ai_prompt_templates（AI提示模板）
+### 3. ai_prompt_templates（AI提示模板）
 ```javascript
 {
   _id: "模板ID",
-  prompt_type: "提示类型", // 翻译/解析/出题/回答
+  prompt_type: "提示类型", // 翻译/解析/出题/回答/推荐问题
   template: "提示模板",
   parameters: ["参数1", "参数2"], // 模板中的参数
   created_at: "创建时间",
@@ -527,6 +507,21 @@
 }
 ```
 
+### 3. payment_records（支付记录）
+```javascript
+{
+  _id: "支付记录ID",
+  user_id: "关联用户ID",
+  plan_id: "会员计划ID",
+  payment_amount: "支付金额",
+  payment_time: "支付时间",
+  payment_method: "支付方式", // 微信支付等
+  transaction_id: "交易ID",
+  status: "支付状态", // 成功/失败/处理中
+  created_at: "创建时间"
+}
+```
+
 ## 3.5、系统配置集合
 
 ### 1. app_configs（应用配置）
@@ -551,6 +546,20 @@
 }
 ```
 
+### 3. user_feedback（用户反馈）
+```javascript
+{
+  _id: "反馈ID",
+  user_id: "关联用户ID",
+  feedback_type: "反馈类型", // 功能建议/内容错误/使用问题
+  content: "反馈内容",
+  contact_info: "联系方式",
+  status: "处理状态", // 未处理/已处理/已回复
+  admin_comment: "管理员评论",
+  created_at: "创建时间",
+  updated_at: "更新时间"
+}
+```
 
 ## 四、技术实现要点
 
@@ -564,13 +573,25 @@
   - 云数据库：存储用户数据和课文内容
   - 云函数：处理AI请求
 - AI内容生成策略
-  - 首次访问文章时生成AI内容并永久存储
-  - 非实时生成，减少API调用成本
+  - 首次用户访问文章时生成AI内容（翻译、逐句解析、背景知识）并永久存储到数据库
+  - 其他用户访问同一篇文章时直接使用已生成内容，不再重复调用AI接口
+  - 使用标记字段（is_translation_generated, is_sentences_parsed, is_background_generated）跟踪内容生成状态
+  - 练习题每次用户点击"重新生成"时才调用AI接口，并保存到数据库
+  - 用户提问直接实时调用AI接口，并保存聊天记录
+  - 所有AI生成内容进行异步处理，避免用户等待时间过长
 
-### 4.3 用户体验重点
+### 4.3 AI接口调用优化
+- 批量生成策略：后台预先生成热门文章的内容
+- 缓存机制：对频繁访问的AI内容进行缓存
+- 失败重试机制：AI接口调用失败时自动重试
+- 内容质量监控：对AI生成内容进行质量评估，低质量内容自动标记待人工审核
+
+### 4.4 用户体验重点
 - 加载速度优先（首屏加载<3秒）
 - 简洁清晰的信息展示
 - 核心学习流程顺畅（无复杂操作）
+- AI内容生成过程中显示加载状态，提供用户反馈
+- 离线访问支持：已加载内容可在无网络环境下查看
 
 
 # 五、开发计划

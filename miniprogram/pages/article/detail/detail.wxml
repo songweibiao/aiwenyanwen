@@ -35,23 +35,23 @@
       </view>
       
       <!-- 原文内容 -->
-      <view class="ancient-text">{{article.full_content}}</view>
+      <view class="ancient-text-container {{isContentCollapsed && showToggleButton ? 'collapsed' : showToggleButton ? (isAutoExpand ? 'auto' : 'expanded') : ''}}">
+        <!-- 底部滚动提示 -->
+        <view wx:if="{{showScrollTip && !isAutoExpand}}" class="scroll-tip-bottom">可上下滑动查看更多</view>
+        <scroll-view scroll-y="{{!isContentCollapsed && showToggleButton && !isAutoExpand}}" bindscroll="onAncientScroll" style="height:100%;">
+          <view class="ancient-text">{{article.full_content}}</view>
+        </scroll-view>
+        <!-- 底部渐变遮罩 -->
+        <view wx:if="{{(isContentCollapsed && showToggleButton) || (!isContentCollapsed && showBottomMask && !isAutoExpand)}}" class="ancient-bottom-mask"></view>
       </view>
       
-      <!-- 课文信息 -->
-      <view class="lesson-info">
-        <view class="info-item">
-          <text class="info-label">年级：</text>
-        <text class="info-value">{{article.grade}}{{article.semester}}</text>
-        </view>
-        <view class="info-item lesson-number">
-        <text class="info-value">{{article.semester}}</text>
-        </view>
-      <view class="info-status in-progress">
-        学习中
+      <!-- 展开/收起按钮 -->
+      <view class="toggle-content-button" bindtap="toggleContent" wx:if="{{showToggleButton}}">
+        <view class="toggle-button-text">{{isContentCollapsed ? '展开全文' : '收起全文'}}</view>
+        <view class="toggle-button-icon {{isContentCollapsed ? 'collapsed' : ''}}"></view>
       </view>
-    </view>
-
+      </view>
+      
     <!-- 功能选项卡 -->
     <view class="tab-container">
       <view class="tab-item {{currentTab === 'translation' ? 'active' : ''}}" bindtap="switchTab" data-tab="translation">

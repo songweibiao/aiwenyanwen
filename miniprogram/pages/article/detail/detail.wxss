@@ -255,18 +255,17 @@ page {
   opacity: 0.7;
 }
 
-/* 原文区域 */
+/* 原文区域弱化样式 */
 .original-section {
   padding: 0;
   border-radius: 0;
-  background-color: var(--card-color);
+  background-color: var(--bg-color); /* 与页面背景一致 */
   margin-bottom: 0;
-  border: 0;
-  border-bottom: 1rpx solid var(--border-color);
-  box-shadow: 0 6rpx 16rpx rgba(107, 68, 35, 0.1);
-  background-image: url('https://example.com/scroll_paper.png');
-  background-size: cover;
+  border: none;
+  box-shadow: none;
+  background-image: none;
   width: 100%;
+  position: relative;
 }
 
 /* 标题区域 */
@@ -1033,14 +1032,18 @@ page {
 
 /* 这里是新的样式，保留 */
 .ancient-text {
-  padding: 30rpx;
-  font-size: 34rpx;
+  font-size: 32rpx;
   line-height: 1.8;
-  color: var(--text-color);
+  color: var(--primary-dark);
+  padding: 18rpx 20rpx 18rpx 20rpx;
   text-align: justify;
-  font-family: "FangSong", "仿宋", serif;
+  font-family: "STKaiti", "华文楷体", serif;
   letter-spacing: 2rpx;
+  margin: 0;
   white-space: pre-wrap;
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 
 /* 分享按钮 */
@@ -1068,4 +1071,190 @@ page {
   color: #FFFFFF;
   font-size: 28rpx;
   font-weight: bold;
+}
+
+/* 古文原文容器 */
+.ancient-text-container {
+  position: relative;
+}
+
+.ancient-text-container.collapsed {
+  max-height: 600rpx;
+  height: 600rpx;
+  overflow: visible;
+  position: relative;
+}
+
+.ancient-text-container.expanded {
+  max-height: 800rpx;
+  height: 800rpx;
+  overflow: visible;
+}
+
+.ancient-text-container scroll-view {
+  height: 100%;
+  background: transparent;
+}
+
+/* 底部滚动提示 */
+.scroll-tip-bottom {
+  position: absolute;
+  bottom: 70rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: rgba(255,255,255);
+  color: #b3a48a;
+  font-size: 24rpx;
+  padding: 10rpx 32rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  opacity: 0.99;
+  pointer-events: none;
+  animation: fade-in-out 2.5s linear;
+}
+
+@keyframes fade-in-out {
+  0% { opacity: 0; }
+  10% { opacity: 0.95; }
+  90% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+/* 底部渐变遮罩样式 */
+.ancient-bottom-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60rpx;
+  background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(248,244,227,0.95) 100%);
+  pointer-events: none;
+  z-index: 9;
+}
+
+/* 优化滚动条样式（兼容微信小程序） */
+.ancient-text-container.expanded::-webkit-scrollbar {
+  width: 8rpx;
+  background: rgba(0,0,0,0.05);
+}
+.ancient-text-container.expanded::-webkit-scrollbar-thumb {
+  background: rgba(139,110,79,0.2);
+  border-radius: 8rpx;
+}
+
+/* 加载占位符 */
+.ancient-text-container.placeholder {
+  max-height: 600rpx; /* 与收起状态高度一致 */
+  background-color: var(--card-color);
+}
+
+.loading-placeholder {
+  width: 100%;
+  height: 600rpx;
+  background: linear-gradient(90deg, rgba(248, 244, 227, 0.5) 25%, rgba(255, 249, 230, 0.8) 50%, rgba(248, 244, 227, 0.5) 75%);
+  background-size: 200% 100%;
+  animation: loading-shine 1.5s infinite;
+}
+
+@keyframes loading-shine {
+  0% { background-position: -100% 0; }
+  100% { background-position: 100% 0; }
+}
+
+/* 展开/收起按钮弱化 */
+.toggle-content-button {
+  width: 100%;
+  height: 60rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  border-top: 1rpx solid #f0ede6;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.toggle-button-text {
+  font-size: 26rpx;
+  color: #b3a48a;
+  padding: 0 12rpx;
+  line-height: 26rpx;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle-button-icon {
+  width: 20rpx;
+  height: 20rpx;
+  border-right: 2rpx solid #b3a48a;
+  border-bottom: 2rpx solid #b3a48a;
+  transform: rotate(-135deg);
+  margin-top: 15rpx;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+  top: -2rpx;
+  transition: transform 0.3s, top 0.3s;
+}
+
+.toggle-button-icon.collapsed {
+  margin-top: -15rpx;
+  transform: rotate(45deg);
+  top: 2rpx;
+}
+
+/* 滚动提示样式 */
+.scroll-tip {
+  position: absolute;
+  top: 12rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.92);
+  color: #b3a48a;
+  font-size: 24rpx;
+  padding: 6rpx 24rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  z-index: 10;
+  opacity: 0.95;
+  pointer-events: none;
+  animation: fade-in-out 2.5s linear;
+}
+
+@keyframes fade-in-out {
+  0% { opacity: 0; }
+  10% { opacity: 0.95; }
+  90% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+.ancient-text-container.auto {
+  max-height: none;
+  height: auto;
+  overflow: visible;
+}
+
+.ancient-text-container,
+.ancient-text-container.auto,
+.ancient-text-container.expanded,
+.ancient-text-container.collapsed,
+.ancient-text-container:active,
+.ancient-text-container:hover {
+  background: transparent !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ancient-text-container scroll-view,
+.ancient-text-container scroll-view:active,
+.ancient-text-container scroll-view:hover {
+  background: transparent !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ancient-text,
+.ancient-text:active,
+.ancient-text:hover {
+  background: transparent !important;
+  -webkit-tap-highlight-color: transparent;
 } 

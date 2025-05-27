@@ -36,6 +36,18 @@ Page({
 
     // 动画相关
     animationData: {},
+    
+    // 原文展开/收起状态 - 默认为收起状态
+    isContentCollapsed: true,
+    // 是否显示展开/收起按钮
+    showToggleButton: false,
+    // 原文内容是否已准备好显示（用于控制初始加载时的显示逻辑）
+    contentReady: false,
+    // 滚动提示和底部遮罩
+    showScrollTip: false,
+    showBottomMask: false,
+    // 展开后是否自适应高度
+    isAutoExpand: false,
   },
 
   onLoad: function (options) {
@@ -67,6 +79,11 @@ Page({
     
     // 设置导航栏按钮
     this.setNavBarButton();
+    
+    // 页面显示时检查文本高度
+    if (this.data.article) {
+      this.checkTextHeight();
+    }
   },
   
   // 设置导航栏按钮
@@ -219,7 +236,11 @@ Page({
     // 获取到课文数据
     this.setData({
       article: articleData,
-      loading: false
+      loading: false,
+      // 先将内容设置为可见，以便后续测量高度
+      contentReady: true,
+      // 默认不显示展开/收起按钮，等待高度检测后再决定
+      showToggleButton: false
     });
     
     // 设置导航栏标题
@@ -228,6 +249,12 @@ Page({
         title: articleData.title
       });
     }
+    
+    // 在数据加载后，等待视图渲染完成，再检查文本高度
+    // 使用足够长的延迟确保视图已完全渲染
+    setTimeout(() => {
+      this.checkTextHeight();
+    }, 300);
     
     // 如果有逐句解析，加载逐句解析数据
     if (articleData.sentences && articleData.sentences.length > 0) {
@@ -749,5 +776,141 @@ Page({
   onUnload: function() {
     // 保存学习记录
     this.saveLearningRecord();
-  }
+  },
+  
+  // 切换原文展开/收起状态
+  toggleContent: function() {
+    const nextCollapsed = !this.data.isContentCollapsed;
+    // 收起时直接切换
+    if (nextCollapsed) {
+      this.setData({
+        isContentCollapsed: true,
+        isAutoExpand: false,
+        showBottomMask: false,
+        showScrollTip: false
+      });
+      return;
+    }
+    // 展开时，先测量内容高度再决定用auto还是expanded
+    // 保持收起状态，测量后再切换
+    setTimeout(() => {
+      const query = wx.createSelectorQuery();
+      query.select('.ancient-text').boundingClientRect();
+      query.exec(res => {
+        if (res && res[0]) {
+          const textHeight = res[0].height;
+          // rpx转px的辅助函数
+          const rpxToPx = function(rpx) {
+            return rpx / 750 * wx.getSystemInfoSync().windowWidth;
+          };
+          // 600rpx和800rpx转px
+          const collapsedHeightPx = rpxToPx(600);
+          const maxHeightPx = rpxToPx(800);
+          
+          // 情况1：内容不超过600rpx（不应该显示展开按钮，但如果已经显示，展开后自适应显示）
+          if (textHeight <= collapsedHeightPx) {
+            this.setData({
+              isContentCollapsed: false,
+              isAutoExpand: true,
+              showScrollTip: false,
+              showBottomMask: false
+            });
+            return;
+          }
+          
+          // 情况2：内容超过600rpx但不超过800rpx（展开后自适应显示）
+          if (textHeight <= maxHeightPx) {
+            this.setData({
+              isContentCollapsed: false,
+              isAutoExpand: true,
+              showScrollTip: false,
+              showBottomMask: false
+            });
+            return;
+          }
+          
+          // 情况3：内容超过800rpx（展开后固定800rpx高度，支持滚动）
+          this.setData({
+            isContentCollapsed: false,
+            isAutoExpand: false,
+            showScrollTip: true,
+            showBottomMask: true
+          });
+          setTimeout(() => {
+            this.setData({ showScrollTip: false });
+          }, 2500);
+        }
+      });
+    }, 100);
+  },
+  
+  // 检查文本高度是否超出阈值，决定是否显示展开/收起按钮
+  checkTextHeight: function() {
+    console.log('开始检查文本高度...');
+    
+    // 将rpx转为px的辅助函数
+    const rpxToPx = function(rpx) {
+      return rpx / 750 * wx.getSystemInfoSync().windowWidth;
+    };
+    
+    // 设置的收起状态高度阈值，应与CSS中的max-height对应
+    const collapsedHeight = 600; // rpx单位
+    const collapsedHeightPx = rpxToPx(collapsedHeight);
+    
+    // 使用选择器获取文本元素
+    const query = wx.createSelectorQuery();
+    query.select('.ancient-text').boundingClientRect();
+    query.exec(res => {
+      console.log('文本元素查询结果:', res);
+      
+      if (res && res[0]) {
+        // 文本实际高度
+        const textHeight = res[0].height;
+        console.log('文本高度:', textHeight, 'px, 收起阈值:', collapsedHeightPx, 'px');
+        
+        // 只有当文本高度超过阈值时，才显示展开/收起按钮
+        const shouldShowToggleButton = textHeight > collapsedHeightPx;
+        
+        this.setData({
+          showToggleButton: shouldShowToggleButton,
+          // 如果需要显示按钮，则默认为收起状态
+          isContentCollapsed: shouldShowToggleButton
+        });
+        
+        console.log('展开/收起按钮状态:', shouldShowToggleButton ? '显示' : '隐藏');
+      } else {
+        console.log('未能获取文本元素高度，稍后重试');
+        // 如果没有获取到元素，稍后重试
+        setTimeout(() => {
+          this.checkTextHeight();
+        }, 500);
+      }
+    });
+  },
+  
+  // 屏幕尺寸变化时触发
+  onResize: function() {
+    // 屏幕尺寸变化时重新检查文本高度
+    if (this.data.article) {
+      this.checkTextHeight();
+    }
+  },
+  
+  // 监听原文区域滚动
+  onAncientScroll: function(e) {
+    // 只在展开状态且不是自适应高度时处理
+    if (!this.data.showToggleButton || this.data.isContentCollapsed || this.data.isAutoExpand) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = e.detail;
+    // 距底部20px以内算到底
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+      if (this.data.showBottomMask) {
+        this.setData({ showBottomMask: false });
+      }
+    } else {
+      if (!this.data.showBottomMask) {
+        this.setData({ showBottomMask: true });
+      }
+    }
+  },
 });

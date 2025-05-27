@@ -9,21 +9,14 @@ const request = {
    * @param {Object} data 请求参数
    */
   cloud: (name, data = {}) => {
-    wx.showLoading({
-      title: '加载中',
-      mask: true
-    })
-    
     return new Promise((resolve, reject) => {
       wx.cloud.callFunction({
         name,
         data,
         success: res => {
-          wx.hideLoading()
           resolve(res.result)
         },
         fail: err => {
-          wx.hideLoading()
           wx.showToast({
             title: '请求失败',
             icon: 'none'

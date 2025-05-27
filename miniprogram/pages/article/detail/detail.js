@@ -1,5 +1,9 @@
 // 课文详情页面 - 中国传统风格优化版
 const app = getApp();
+// 引入AI服务
+const { aiService } = require('../../../utils/ai');
+// 引入OpenAI兼容API服务
+const { articleAIService } = require('../../../utils/openai');
 
 Page({
   data: {
@@ -48,6 +52,9 @@ Page({
     showBottomMask: false,
     // 展开后是否自适应高度
     isAutoExpand: false,
+    
+    // AI处理状态
+    aiProcessing: false
   },
 
   onLoad: function (options) {
@@ -433,415 +440,845 @@ Page({
   },
   
   // 切换标签页
-  switchTab: function (e) {
+  switchTab: function(e) {
     const tab = e.currentTarget.dataset.tab;
     
-    // 创建切换动画
-    const animation = wx.createAnimation({
-      duration: 400,
-      timingFunction: 'ease',
-    });
-    
-    animation.opacity(0).step();
+    if (this.data.currentTab === tab) return;
     
     this.setData({
-      animationData: animation.export()
+      currentTab: tab
     });
     
-    // 延迟切换内容，实现过渡效果
-    setTimeout(() => {
-      this.setData({
-        currentTab: tab
-      });
-      
-      // 记录学习进度
-      this.updateLearningProgress(tab);
-      
-      // 恢复透明度
-      animation.opacity(1).step();
-      this.setData({
-        animationData: animation.export()
-      });
-    }, 200);
-  },
-  
-  // 更新学习进度
-  updateLearningProgress: function (tab) {
-    // 如果之前是"未开始"状态，切换为"学习中"状态
-    if (this.data.learnStatus === '未开始') {
-      this.setData({
-        learnStatus: '学习中'
-      });
-    }
+    // 根据选项卡加载相应内容
+    this.loadTabContent(tab);
     
-    // 如果是练习巩固页面，并且之前做过练习且成绩为100分，更新为"已完成"
-    if (tab === 'exercise' && this.data.showExerciseResult && this.data.exerciseScore === 100) {
-      this.setData({
-        learnStatus: '已完成'
-      });
-    }
-    
-    // 保存学习记录到本地
+    // 保存学习记录
     this.saveLearningRecord();
-    
-    // 在实际应用中，这里应该向服务器发送请求，更新学习进度
-    // 在MVP版本中，我们仅更新本地状态
   },
   
-  // 处理收藏/取消收藏
-  toggleCollect: function () {
-    const newState = !this.data.isCollected;
+  // 加载选项卡内容
+  loadTabContent: function(tab) {
+    const article = this.data.article;
+    if (!article) return;
+    
+    switch (tab) {
+      case 'translation':
+        this.loadTranslation();
+        break;
+      case 'author':
+        this.loadAuthorInfo();
+        break;
+      case 'analysis':
+        this.loadSentenceAnalysis();
+        break;
+      case 'background':
+        this.loadBackgroundInfo();
+        break;
+      case 'exercise':
+        this.loadExercises();
+        break;
+      case 'qa':
+        this.loadQA();
+        break;
+    }
+  },
+  
+  // 加载翻译内容
+  loadTranslation: function() {
+    const article = this.data.article;
+    
+    // 如果已有翻译，直接显示
+    if (article.translation) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 调用OpenAI兼容API获取翻译
+    articleAIService.getTranslation(article.full_content)
+      .then(translation => {
+        // 更新文章翻译
+        this.setData({
+          'article.translation': translation,
+          aiProcessing: false
+        });
+        
+        // 缓存翻译结果到本地
+        this.cacheArticleData({
+          translation: translation
+        });
+      })
+      .catch(err => {
+        console.error('获取翻译失败', err);
+        wx.showToast({
+          title: '获取翻译失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 加载作者信息
+  loadAuthorInfo: function() {
+    const article = this.data.article;
+    
+    // 如果已有作者介绍，直接显示
+    if (article.author_intro) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 调用OpenAI兼容API获取作者信息
+    articleAIService.getAuthorInfo(article.author, article.dynasty, article.title)
+      .then(authorInfo => {
+        console.log('获取作者信息成功', authorInfo);
+        
+        // 作者信息解析逻辑增强
+        let authorIntro = '';
+        
+        try {
+          // 尝试按照常见格式解析内容
+          const sections = authorInfo.split(/(?:^|\n)(?:生平简介|文学成就|历史地位|创作背景)[：:]/i);
+          
+          if (sections.length >= 2) {
+            // 合并所有有效内容
+            let combinedContent = '';
+            
+            for (let i = 1; i < sections.length; i++) {
+              let content = sections[i].trim();
+              
+              // 清理每个部分可能包含的下一个标题
+              content = content.split(/\n(?:生平简介|文学成就|历史地位|创作背景)[：:]/i)[0].trim();
+              
+              if (content) {
+                combinedContent += (combinedContent ? '\n\n' : '') + content;
+              }
+            }
+            
+            authorIntro = combinedContent;
+          } else {
+            // 如果没有找到明确的章节分隔，直接使用全部内容
+            authorIntro = authorInfo;
+          }
+        } catch (e) {
+          console.error('解析作者信息出错', e);
+          // 出错时直接使用原始内容
+          authorIntro = authorInfo;
+        }
+        
+        // 确保作者介绍不为空
+        if (!authorIntro) {
+          authorIntro = authorInfo;
+        }
+        
+        // 更新作者介绍
+        this.setData({
+          'article.author_intro': authorIntro,
+          aiProcessing: false
+        });
+        
+        // 缓存作者信息到本地
+        this.cacheArticleData({
+          author_intro: authorIntro
+        });
+      })
+      .catch(err => {
+        console.error('获取作者信息失败', err);
+        wx.showToast({
+          title: '获取作者信息失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 加载逐句解析
+  loadSentenceAnalysis: function() {
+    const article = this.data.article;
+    
+    // 如果已有句子解析，直接显示
+    if (this.data.sentences && this.data.sentences.length > 0) {
+      return;
+    }
+    
+    // 分割文章为句子
+    const sentences = this.splitArticleIntoSentences(article.full_content);
+    
+    // 初始化句子数组
+    const sentenceObjects = sentences.map(sentence => ({
+      original_text: sentence,
+      phonetic_notation: '',
+      punctuated_text: '',
+      translation: '',
+      key_words_explanation: '',
+      sentence_structure: '',
+      rhetorical_analysis: ''
+    }));
     
     this.setData({
-      isCollected: newState
+      sentences: sentenceObjects,
+      currentSentenceIndex: 0
     });
     
-    // 保存收藏状态
-    this.saveLearningRecord();
-    
-    // 在实际应用中，这里应该向服务器发送请求，更新收藏状态
-    wx.showToast({
-      title: newState ? '已收藏' : '已取消收藏',
-      icon: 'success',
-      duration: 1500
-    });
+    // 加载第一句的详细解析
+    this.loadSentenceDetail(0);
   },
   
-  // 逐句解析 - 上一句
-  prevSentence: function () {
+  // 分割文章为句子
+  splitArticleIntoSentences: function(content) {
+    // 简单的按。！？；分割
+    // 在实际应用中，可能需要更复杂的分割逻辑
+    const sentences = content
+      .replace(/([。！？；])/g, '$1|')
+      .split('|')
+      .filter(s => s.trim() !== '');
+    
+    return sentences;
+  },
+  
+  // 加载句子详细解析
+  loadSentenceDetail: function(index) {
+    if (index < 0 || index >= this.data.sentences.length) return;
+    
+    const sentence = this.data.sentences[index];
+    
+    // 如果已有解析，直接返回
+    if (sentence.phonetic_notation && sentence.translation) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 获取上下文
+    let context = '';
+    if (index > 0) {
+      context += this.data.sentences[index - 1].original_text + '。';
+    }
+    if (index < this.data.sentences.length - 1) {
+      context += this.data.sentences[index + 1].original_text + '。';
+    }
+    
+    // 调用OpenAI兼容API获取句子解析
+    articleAIService.getSentenceAnalysis(sentence.original_text, context)
+      .then(analysisResult => {
+        console.log('获取句子解析成功', analysisResult);
+        
+        // 解析结果
+        const lines = analysisResult.split('\n');
+        let phonetic = '';
+        let punctuated = '';
+        let translation = '';
+        let keywords = '';
+        let structure = '';
+        let rhetoric = '';
+        
+        // 更灵活的解析逻辑，支持多种格式
+        let currentSection = '';
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          
+          // 跳过空行和分隔符
+          if (line === '' || line === '---') continue;
+          
+          // 检测段落标题
+          if (line.includes('拼音标注') || line.match(/^拼音.*[:：]/)) {
+            currentSection = 'phonetic';
+            const content = line.replace(/拼音标注[:：]/, '').replace(/^拼音.*[:：]/, '').trim();
+            if (content) phonetic = content;
+            continue;
+          } else if (line.includes('断句标注') || line.match(/^断句.*[:：]/)) {
+            currentSection = 'punctuated';
+            const content = line.replace(/断句标注[:：]/, '').replace(/^断句.*[:：]/, '').trim();
+            if (content) punctuated = content;
+            continue;
+          } else if (line.includes('现代汉语翻译') || line.match(/^翻译.*[:：]/) || line.match(/^现代.*[:：]/)) {
+            currentSection = 'translation';
+            const content = line.replace(/现代汉语翻译[:：]/, '').replace(/^翻译.*[:：]/, '').replace(/^现代.*[:：]/, '').trim();
+            if (content) translation = content;
+            continue;
+          } else if (line.includes('关键词解析') || line.match(/^关键.*[:：]/)) {
+            currentSection = 'keywords';
+            const content = line.replace(/关键词解析[:：]/, '').replace(/^关键.*[:：]/, '').trim();
+            if (content) keywords = content;
+            continue;
+          } else if (line.includes('语法结构分析') || line.match(/^语法.*[:：]/) || line.match(/^结构.*[:：]/)) {
+            currentSection = 'structure';
+            const content = line.replace(/语法结构分析[:：]/, '').replace(/^语法.*[:：]/, '').replace(/^结构.*[:：]/, '').trim();
+            if (content) structure = content;
+            continue;
+          } else if (line.includes('修辞手法分析') || line.match(/^修辞.*[:：]/)) {
+            currentSection = 'rhetoric';
+            const content = line.replace(/修辞手法分析[:：]/, '').replace(/^修辞.*[:：]/, '').trim();
+            if (content) rhetoric = content;
+            continue;
+          }
+          
+          // 根据当前段落类型添加内容
+          if (currentSection === 'phonetic') {
+            phonetic += (phonetic ? '\n' : '') + line;
+          } else if (currentSection === 'punctuated') {
+            punctuated += (punctuated ? '\n' : '') + line;
+          } else if (currentSection === 'translation') {
+            translation += (translation ? '\n' : '') + line;
+          } else if (currentSection === 'keywords') {
+            keywords += (keywords ? '\n' : '') + line;
+          } else if (currentSection === 'structure') {
+            structure += (structure ? '\n' : '') + line;
+          } else if (currentSection === 'rhetoric') {
+            rhetoric += (rhetoric ? '\n' : '') + line;
+          }
+        }
+        
+        // 如果没有成功解析出结构化内容，则整体作为翻译
+        if (!phonetic && !punctuated && !translation && !keywords && !structure && !rhetoric) {
+          translation = analysisResult;
+        }
+        
+        // 更新句子解析
+        const sentences = this.data.sentences;
+        sentences[index].phonetic_notation = phonetic;
+        sentences[index].punctuated_text = punctuated;
+        sentences[index].translation = translation;
+        sentences[index].key_words_explanation = keywords;
+        sentences[index].sentence_structure = structure;
+        sentences[index].rhetorical_analysis = rhetoric;
+        
+        this.setData({
+          sentences: sentences,
+          aiProcessing: false
+        });
+        
+        // 缓存句子解析到本地
+        this.cacheSentenceAnalysis(index, sentences[index]);
+      })
+      .catch(err => {
+        console.error('获取句子解析失败', err);
+        wx.showToast({
+          title: '获取句子解析失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 上一句
+  prevSentence: function() {
     if (this.data.currentSentenceIndex > 0) {
-      // 创建切换动画
-      const animation = wx.createAnimation({
-        duration: 300,
-        timingFunction: 'ease',
-      });
-      
-      animation.opacity(0).translateX(50).step();
-      
+      const newIndex = this.data.currentSentenceIndex - 1;
       this.setData({
-        animationData: animation.export()
+        currentSentenceIndex: newIndex
       });
       
-      // 延迟切换内容，实现过渡效果
-      setTimeout(() => {
-        this.setData({
-          currentSentenceIndex: this.data.currentSentenceIndex - 1
-        });
-        
-        // 恢复位置和透明度
-        animation.opacity(1).translateX(0).step();
-        this.setData({
-          animationData: animation.export()
-        });
-      }, 150);
+      // 加载句子详细解析
+      this.loadSentenceDetail(newIndex);
     }
   },
   
-  // 逐句解析 - 下一句
-  nextSentence: function () {
+  // 下一句
+  nextSentence: function() {
     if (this.data.currentSentenceIndex < this.data.sentences.length - 1) {
-      // 创建切换动画
-      const animation = wx.createAnimation({
-        duration: 300,
-        timingFunction: 'ease',
-      });
-      
-      animation.opacity(0).translateX(-50).step();
-      
+      const newIndex = this.data.currentSentenceIndex + 1;
       this.setData({
-        animationData: animation.export()
+        currentSentenceIndex: newIndex
       });
       
-      // 延迟切换内容，实现过渡效果
-      setTimeout(() => {
-        this.setData({
-          currentSentenceIndex: this.data.currentSentenceIndex + 1
-        });
-        
-        // 恢复位置和透明度
-        animation.opacity(1).translateX(0).step();
-        this.setData({
-          animationData: animation.export()
-        });
-      }, 150);
+      // 加载句子详细解析
+      this.loadSentenceDetail(newIndex);
     }
   },
   
-  // 练习巩固 - 选择答案
-  selectAnswer: function (e) {
-    const { index, option } = e.currentTarget.dataset;
+  // 加载背景知识
+  loadBackgroundInfo: function() {
+    const article = this.data.article;
+    
+    // 如果已有背景知识，直接显示
+    if (article.creation_background && article.historical_background && article.main_idea) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 调用OpenAI兼容API获取背景知识
+    articleAIService.getBackground(article.title, article.author, article.dynasty, article.full_content)
+      .then(backgroundInfo => {
+        console.log('获取背景知识成功', backgroundInfo);
+        
+        // 解析背景知识
+        let creationBg = '';
+        let historicalBg = '';
+        let mainIdea = '';
+        let literaryValue = '';
+        
+        try {
+          // 尝试按照格式解析内容
+          const sections = backgroundInfo.split(/(?:^|\n)(?:创作背景|历史背景|主旨思想|文学价值)[：:]/i);
+          
+          if (sections.length >= 2) {
+            // 提取各部分内容
+            creationBg = sections[1].trim();
+            if (sections.length >= 3) historicalBg = sections[2].trim();
+            if (sections.length >= 4) mainIdea = sections[3].trim();
+            if (sections.length >= 5) literaryValue = sections[4].trim();
+            
+            // 清理每个部分可能包含的下一个标题
+            creationBg = creationBg.split(/\n(?:历史背景|主旨思想|文学价值)[：:]/i)[0].trim();
+            if (historicalBg) historicalBg = historicalBg.split(/\n(?:主旨思想|文学价值)[：:]/i)[0].trim();
+            if (mainIdea) mainIdea = mainIdea.split(/\n(?:文学价值)[：:]/i)[0].trim();
+          } else {
+            // 如果不符合预期格式，尝试其他解析方法
+            const lines = backgroundInfo.split('\n');
+            let currentSection = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              
+              // 跳过空行和分隔符
+              if (line === '' || line === '---') continue;
+              
+              // 检测段落标题
+              if (line.match(/创作背景/i)) {
+                currentSection = 'creation';
+                continue;
+              } else if (line.match(/历史背景/i)) {
+                currentSection = 'history';
+                continue;
+              } else if (line.match(/主旨思想/i)) {
+                currentSection = 'idea';
+                continue;
+              } else if (line.match(/文学价值/i)) {
+                currentSection = 'value';
+                continue;
+              }
+              
+              // 根据当前段落类型添加内容
+              if (currentSection === 'creation') {
+                creationBg += (creationBg ? '\n' : '') + line;
+              } else if (currentSection === 'history') {
+                historicalBg += (historicalBg ? '\n' : '') + line;
+              } else if (currentSection === 'idea') {
+                mainIdea += (mainIdea ? '\n' : '') + line;
+              } else if (currentSection === 'value') {
+                literaryValue += (literaryValue ? '\n' : '') + line;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('解析背景知识出错', e);
+        }
+        
+        // 如果没有成功解析出结构化内容，则整体作为创作背景
+        if (!creationBg && !historicalBg && !mainIdea && !literaryValue) {
+          creationBg = backgroundInfo;
+        }
+        
+        // 更新背景知识
+        this.setData({
+          'article.creation_background': creationBg,
+          'article.historical_background': historicalBg,
+          'article.main_idea': mainIdea,
+          'article.literary_value': literaryValue,
+          aiProcessing: false
+        });
+        
+        // 缓存背景知识到本地
+        this.cacheArticleData({
+          creation_background: creationBg,
+          historical_background: historicalBg,
+          main_idea: mainIdea,
+          literary_value: literaryValue
+        });
+      })
+      .catch(err => {
+        console.error('获取背景知识失败', err);
+        wx.showToast({
+          title: '获取背景知识失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 加载练习题
+  loadExercises: function() {
+    const article = this.data.article;
+    
+    // 如果已有练习题，直接显示
+    if (this.data.exercises && this.data.exercises.length > 0) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 确定适用年级
+    let level = 'junior'; // 默认初中
+    if (article.education_stage === 'primary') {
+      level = 'primary';
+    } else if (article.education_stage === 'senior') {
+      level = 'senior';
+    }
+    
+    // 调用OpenAI兼容API生成练习题
+    articleAIService.generateExercises(article.full_content, level, 5)
+      .then(exercisesResult => {
+        // 解析练习题
+        const exercises = this.parseExercises(exercisesResult);
+        
+        // 更新练习题
+        this.setData({
+          exercises: exercises,
+          userAnswers: new Array(exercises.length).fill(''),
+          showExerciseResult: false,
+          exerciseScore: 0,
+          aiProcessing: false
+        });
+        
+        // 缓存练习题到本地
+        this.cacheExercises(exercises);
+      })
+      .catch(err => {
+        console.error('生成练习题失败', err);
+        wx.showToast({
+          title: '生成练习题失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 解析练习题
+  parseExercises: function(exercisesText) {
+    const exercises = [];
+    
+    // 按题目分割
+    const questionBlocks = exercisesText.split(/题目\d+：/).filter(block => block.trim() !== '');
+    
+    for (let i = 0; i < questionBlocks.length; i++) {
+      const block = questionBlocks[i];
+      const lines = block.split('\n').filter(line => line.trim() !== '');
+      
+      if (lines.length < 6) continue; // 跳过格式不正确的题目
+      
+      const question = lines[0].trim();
+      const options = [];
+      let answer = '';
+      let analysis = '';
+      
+      // 解析选项
+      for (let j = 1; j <= 4; j++) {
+        if (j < lines.length) {
+          const optionLine = lines[j].trim();
+          // 移除选项标记（如A. B. C. D.）
+          const option = optionLine.replace(/^[A-D]\.\s*/, '').trim();
+          options.push(option);
+        }
+      }
+      
+      // 解析答案和解析
+      for (let j = 5; j < lines.length; j++) {
+        const line = lines[j].trim();
+        if (line.startsWith('正确答案：')) {
+          answer = line.replace('正确答案：', '').trim();
+          // 如果答案是选项字母，转换为选项内容
+          if (['A', 'B', 'C', 'D'].includes(answer)) {
+            const index = answer.charCodeAt(0) - 65; // A->0, B->1, C->2, D->3
+            if (index >= 0 && index < options.length) {
+              answer = options[index];
+            }
+          }
+        } else if (line.startsWith('解析：')) {
+          analysis = line.replace('解析：', '').trim();
+          // 收集多行解析
+          for (let k = j + 1; k < lines.length; k++) {
+            analysis += '\n' + lines[k].trim();
+          }
+          break;
+        }
+      }
+      
+      exercises.push({
+        exercise_id: `ex_${Date.now()}_${i}`,
+        question: question,
+        options: options,
+        answer: answer,
+        analysis: analysis
+      });
+    }
+    
+    return exercises;
+  },
+  
+  // 选择答案
+  selectAnswer: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const option = e.currentTarget.dataset.option;
+    
+    // 更新用户答案
     const userAnswers = this.data.userAnswers;
     userAnswers[index] = option;
     
     this.setData({
       userAnswers: userAnswers
     });
+  },
+  
+  // 提交答案
+  submitExercise: function() {
+    const exercises = this.data.exercises;
+    const userAnswers = this.data.userAnswers;
     
-    // 播放选择音效
-    this.playSelectionSound();
-  },
-  
-  // 播放选择音效
-  playSelectionSound: function() {
-    const innerAudioContext = wx.createInnerAudioContext();
-    innerAudioContext.src = 'https://example.com/selection_sound.mp3'; // 选择音效文件
-    innerAudioContext.play();
-  },
-  
-  // 练习巩固 - 提交答案
-  submitExercise: function () {
     // 检查是否所有题目都已作答
-    if (this.data.userAnswers.some(answer => !answer)) {
+    const unanswered = userAnswers.findIndex(answer => answer === '');
+    if (unanswered !== -1) {
       wx.showToast({
-        title: '请完成所有题目',
-        icon: 'none',
-        duration: 1500
+        title: `第${unanswered + 1}题未作答`,
+        icon: 'none'
       });
       return;
     }
     
     // 计算得分
-    let score = 0;
-    this.data.exercises.forEach((exercise, index) => {
-      if (exercise.answer === this.data.userAnswers[index]) {
-        score++;
+    let correctCount = 0;
+    for (let i = 0; i < exercises.length; i++) {
+      if (userAnswers[i] === exercises[i].answer) {
+        correctCount++;
       }
-    });
+    }
     
-    const totalScore = Math.round((score / this.data.exercises.length) * 100);
+    const score = Math.round((correctCount / exercises.length) * 100);
     
-    // 创建结果展示动画
-    const animation = wx.createAnimation({
-      duration: 600,
-      timingFunction: 'ease',
-    });
-    
-    animation.opacity(0).scale(0.8).step();
-    
+    // 显示结果
     this.setData({
-      animationData: animation.export()
+      showExerciseResult: true,
+      exerciseScore: score
     });
-    
-    // 延迟显示结果，实现过渡效果
-    setTimeout(() => {
-      this.setData({
-        showExerciseResult: true,
-        exerciseScore: totalScore
-      });
-      
-      // 如果得分100分，更新学习状态为"已完成"
-      if (totalScore === 100) {
-        this.setData({
-          learnStatus: '已完成'
-        });
-        // 保存学习记录
-        this.saveLearningRecord();
-      }
-      
-      // 恢复动画
-      animation.opacity(1).scale(1).step();
-      this.setData({
-        animationData: animation.export()
-      });
-    }, 300);
   },
   
-  // 练习巩固 - 重新练习
-  resetExercise: function () {
+  // 重置练习
+  resetExercise: function() {
     this.setData({
       userAnswers: new Array(this.data.exercises.length).fill(''),
-      showExerciseResult: false
+      showExerciseResult: false,
+      exerciseScore: 0
     });
   },
   
-  // 提问拓展 - 输入问题
-  inputQuestion: function (e) {
+  // 加载问答功能
+  loadQA: function() {
+    const article = this.data.article;
+    
+    // 如果已有推荐问题，直接显示
+    if (this.data.suggestedQuestions && this.data.suggestedQuestions.length > 0) {
+      return;
+    }
+    
+    this.setData({ aiProcessing: true });
+    
+    // 调用OpenAI兼容API获取推荐问题
+    articleAIService.getSuggestedQuestions(article.title, article.author, article.dynasty, article.full_content)
+      .then(questions => {
+        // 更新推荐问题
+        this.setData({
+          suggestedQuestions: questions,
+          aiProcessing: false
+        });
+      })
+      .catch(err => {
+        console.error('获取推荐问题失败', err);
+        wx.showToast({
+          title: '获取推荐问题失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 提问
+  askQuestion: function(e) {
+    // 获取问题内容（可能来自输入框或推荐问题）
+    let question = '';
+    
+    if (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.question) {
+      // 点击推荐问题
+      question = e.currentTarget.dataset.question;
+    } else {
+      // 输入框提交
+      question = this.data.userQuestion;
+      if (!question || question.trim() === '') {
+        wx.showToast({
+          title: '请输入问题',
+          icon: 'none'
+        });
+        return;
+      }
+    }
+    
+    const article = this.data.article;
+    
+    // 添加用户问题到消息列表
+    const qaMessages = this.data.qaMessages.concat([{
+      role: 'user',
+      content: question,
+      timestamp: Date.now()
+    }]);
+    
+    this.setData({
+      qaMessages: qaMessages,
+      userQuestion: '',
+      aiProcessing: true
+    });
+    
+    // 调用OpenAI兼容API回答问题
+    articleAIService.answerQuestion(
+      question,
+      article.title,
+      article.author,
+      article.dynasty,
+      article.full_content
+    )
+      .then(answer => {
+        // 添加助手回答到消息列表
+        const newMessages = this.data.qaMessages.concat([{
+          role: 'assistant',
+          content: answer,
+          timestamp: Date.now()
+        }]);
+        
+        this.setData({
+          qaMessages: newMessages,
+          aiProcessing: false
+        });
+      })
+      .catch(err => {
+        console.error('回答问题失败', err);
+        wx.showToast({
+          title: '回答问题失败',
+          icon: 'none'
+        });
+        this.setData({ aiProcessing: false });
+      });
+  },
+  
+  // 输入问题
+  inputQuestion: function(e) {
     this.setData({
       userQuestion: e.detail.value
     });
   },
   
-  // 提问拓展 - 选择推荐问题
-  selectSuggestedQuestion: function (e) {
+  // 点击推荐问题
+  tapSuggestedQuestion: function(e) {
     const question = e.currentTarget.dataset.question;
-    this.setData({
-      userQuestion: question
+    this.askQuestion({
+      currentTarget: {
+        dataset: {
+          question: question
+        }
+      }
     });
-    this.askQuestion();
   },
   
-  // 提问拓展 - 提交问题
-  askQuestion: function () {
-    if (!this.data.userQuestion.trim()) {
-      wx.showToast({
-        title: '请输入问题',
-        icon: 'none',
-        duration: 1500
-      });
-      return;
-    }
+  // 缓存文章数据到本地
+  cacheArticleData: function(data) {
+    const articleId = this.data.articleId;
+    if (!articleId) return;
     
-    // 将用户问题添加到消息列表
-    const qaMessages = this.data.qaMessages;
-    qaMessages.push({
-      role: 'user',
-      content: this.data.userQuestion,
-      timestamp: new Date().getTime()
-    });
-    
-    this.setData({
-      qaMessages: qaMessages,
-      userQuestion: ''
-    });
-    
-    // 显示AI正在输入的提示
-    wx.showLoading({
-      title: '正在思考...',
-      mask: true
-    });
-    
-    // 模拟AI回答
-    setTimeout(() => {
-      wx.hideLoading();
+    try {
+      const cacheKey = `article_cache_${articleId}`;
+      let cachedData = wx.getStorageSync(cacheKey) || {};
       
-      let response = '';
-      if (qaMessages[qaMessages.length - 1].content.includes('背景')) {
-        response = `《${this.data.article.title}》的写作背景与${this.data.article.author}所处的${this.data.article.dynasty}时期的社会背景和个人经历密切相关。这篇作品反映了当时的文化思潮和作者的思想情感。`;
-      } else if (qaMessages[qaMessages.length - 1].content.includes('生平')) {
-        response = `${this.data.article.author}是${this.data.article.dynasty}时期的著名文学家，其一生经历了丰富的政治和文学活动，作品风格鲜明，思想深刻，对中国文学产生了深远的影响。`;
-      } else if (qaMessages[qaMessages.length - 1].content.includes('地位')) {
-        response = `《${this.data.article.title}》在${this.data.article.dynasty}文学史上具有重要地位，它代表了当时文学的一种典型风格，展现了作者独特的艺术才华和思想境界，对后世产生了深远影响。`;
-      } else if (qaMessages[qaMessages.length - 1].content.includes('特色') || qaMessages[qaMessages.length - 1].content.includes('内涵')) {
-        response = `《${this.data.article.title}》在艺术表现上善用修辞手法，语言精炼生动；在思想内涵上体现了作者对人生、社会的深刻思考，表达了追求理想、热爱生活的情感。`;
-      } else {
-        response = `这是一个很好的问题。《${this.data.article.title}》作为${this.data.article.dynasty}时期${this.data.article.author}的代表作，不仅文词优美，而且思想内容丰富。通过深入分析可以发现作者独特的艺术风格和思想观念，体现了那个时代的文化特征。`;
+      // 合并新数据
+      cachedData = { ...cachedData, ...data };
+      
+      wx.setStorageSync(cacheKey, cachedData);
+    } catch (e) {
+      console.error('缓存文章数据失败', e);
+    }
+  },
+  
+  // 缓存句子解析到本地
+  cacheSentenceAnalysis: function(index, sentenceData) {
+    const articleId = this.data.articleId;
+    if (!articleId) return;
+    
+    try {
+      const cacheKey = `article_sentences_${articleId}`;
+      let cachedSentences = wx.getStorageSync(cacheKey) || [];
+      
+      // 确保数组长度足够
+      while (cachedSentences.length <= index) {
+        cachedSentences.push({});
       }
       
-      qaMessages.push({
-        role: 'assistant',
-        content: response,
-        timestamp: new Date().getTime()
-      });
+      // 更新指定索引的句子数据
+      cachedSentences[index] = sentenceData;
       
-      this.setData({
-        qaMessages: qaMessages
-      });
-      
-      // 滚动到最新消息
-      this.scrollToBottom();
-    }, 1500);
-  },
-  
-  // 滚动到对话底部
-  scrollToBottom: function() {
-    setTimeout(() => {
-      wx.createSelectorQuery()
-        .select('.messages-container')
-        .node()
-        .exec((res) => {
-          if (res[0] && res[0].node) {
-            res[0].node.scrollTop = res[0].node.scrollHeight;
-          }
-        });
-    }, 100);
-  },
-  
-  // 返回上一页
-  goBack: function () {
-    // 保存学习记录
-    this.saveLearningRecord();
-    
-    wx.navigateBack();
-  },
-  
-  // 分享按钮点击处理
-  onShareTap: function() {
-    wx.showShareMenu({
-      withShareTicket: true,
-      menus: ['shareAppMessage', 'shareTimeline']
-    });
-  },
-  
-  // 用户点击右上角分享或使用分享按钮
-  onShareAppMessage: function () {
-    const article = this.data.article || {};
-    return {
-      title: article.title || '文言文学习',
-      path: `/pages/article/detail/detail?id=${this.data.articleId}`,
-      imageUrl: 'https://example.com/share_cover.png' // 分享封面图
-    };
-  },
-  
-  // 页面卸载时触发
-  onUnload: function() {
-    // 保存学习记录
-    this.saveLearningRecord();
-  },
-  
-  // 切换原文展开/收起状态
-  toggleContent: function() {
-    const nextCollapsed = !this.data.isContentCollapsed;
-    // 收起时直接切换
-    if (nextCollapsed) {
-      this.setData({
-        isContentCollapsed: true,
-        isAutoExpand: false,
-        showBottomMask: false,
-        showScrollTip: false
-      });
-      return;
+      wx.setStorageSync(cacheKey, cachedSentences);
+    } catch (e) {
+      console.error('缓存句子解析失败', e);
     }
-    // 展开时，先测量内容高度再决定用auto还是expanded
-    // 保持收起状态，测量后再切换
-    setTimeout(() => {
-      const query = wx.createSelectorQuery();
-      query.select('.ancient-text').boundingClientRect();
-      query.exec(res => {
-        if (res && res[0]) {
-          const textHeight = res[0].height;
-          // rpx转px的辅助函数
-          const rpxToPx = function(rpx) {
-            return rpx / 750 * wx.getSystemInfoSync().windowWidth;
-          };
-          // 600rpx和800rpx转px
-          const collapsedHeightPx = rpxToPx(600);
-          const maxHeightPx = rpxToPx(800);
-          
-          // 情况1：内容不超过600rpx（不应该显示展开按钮，但如果已经显示，展开后自适应显示）
-          if (textHeight <= collapsedHeightPx) {
-            this.setData({
-              isContentCollapsed: false,
-              isAutoExpand: true,
-              showScrollTip: false,
-              showBottomMask: false
-            });
-            return;
-          }
-          
-          // 情况2：内容超过600rpx但不超过800rpx（展开后自适应显示）
-          if (textHeight <= maxHeightPx) {
-            this.setData({
-              isContentCollapsed: false,
-              isAutoExpand: true,
-              showScrollTip: false,
-              showBottomMask: false
-            });
-            return;
-          }
-          
-          // 情况3：内容超过800rpx（展开后固定800rpx高度，支持滚动）
-          this.setData({
-            isContentCollapsed: false,
-            isAutoExpand: false,
-            showScrollTip: true,
-            showBottomMask: true
-          });
-          setTimeout(() => {
-            this.setData({ showScrollTip: false });
-          }, 2500);
-        }
-      });
-    }, 100);
+  },
+  
+  // 缓存练习题到本地
+  cacheExercises: function(exercises) {
+    const articleId = this.data.articleId;
+    if (!articleId) return;
+    
+    try {
+      const cacheKey = `article_exercises_${articleId}`;
+      wx.setStorageSync(cacheKey, exercises);
+    } catch (e) {
+      console.error('缓存练习题失败', e);
+    }
+  },
+  
+  // 从本地缓存加载数据
+  loadFromCache: function() {
+    const articleId = this.data.articleId;
+    if (!articleId) return false;
+    
+    try {
+      // 加载文章缓存数据
+      const cacheKey = `article_cache_${articleId}`;
+      const cachedData = wx.getStorageSync(cacheKey);
+      
+      if (cachedData) {
+        // 更新文章数据
+        const article = this.data.article || {};
+        this.setData({
+          article: { ...article, ...cachedData }
+        });
+      }
+      
+      // 加载句子解析缓存
+      const sentencesCacheKey = `article_sentences_${articleId}`;
+      const cachedSentences = wx.getStorageSync(sentencesCacheKey);
+      
+      if (cachedSentences && cachedSentences.length > 0) {
+        this.setData({
+          sentences: cachedSentences,
+          currentSentenceIndex: 0
+        });
+      }
+      
+      // 加载练习题缓存
+      const exercisesCacheKey = `article_exercises_${articleId}`;
+      const cachedExercises = wx.getStorageSync(exercisesCacheKey);
+      
+      if (cachedExercises && cachedExercises.length > 0) {
+        this.setData({
+          exercises: cachedExercises,
+          userAnswers: new Array(cachedExercises.length).fill(''),
+          showExerciseResult: false
+        });
+      }
+      
+      return true;
+    } catch (e) {
+      console.error('从缓存加载数据失败', e);
+      return false;
+    }
   },
   
   // 检查文本高度是否超出阈值，决定是否显示展开/收起按钮

@@ -405,15 +405,21 @@ page {
   background-image: url('https://example.com/card_texture.png');
   background-size: cover;
   border: 1rpx solid var(--border-color);
+  margin: 20rpx 0;
+  padding: 20rpx;
+  font-size: 32rpx;
+  color: var(--text-color);
+  line-height: 1.6;
 }
 
 .modern-text {
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
   font-size: 30rpx;
-  line-height: 1.8;
   color: var(--text-color);
-  text-align: justify;
-  text-indent: 2em;
-  font-family: "SimSun", "宋体", serif;
+  display: block;
+  padding: 0 20rpx;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 逐句解析 */
@@ -507,6 +513,9 @@ page {
   line-height: 1.8;
   color: var(--text-color);
   padding-left: 20rpx;
+  word-wrap: break-word;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .section-content.original {
@@ -537,6 +546,7 @@ page {
 /* 背景知识 */
 .background-content {
   padding: 20rpx;
+  overflow: visible;
 }
 
 .background-section {
@@ -549,6 +559,8 @@ page {
   box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
   background-image: url('https://example.com/card_texture.png');
   background-size: cover;
+  overflow: visible;
+  min-height: 100rpx;
 }
 
 .background-section:last-child {
@@ -814,6 +826,9 @@ page {
   font-size: 30rpx;
   line-height: 1.6;
   position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .user-message .message-content {
@@ -979,6 +994,8 @@ page {
   background-image: url('https://example.com/card_texture.png');
   background-size: cover;
   border: 1rpx solid var(--border-color);
+  overflow: visible;
+  min-height: 400rpx;
 }
 
 .author-header {
@@ -1028,6 +1045,9 @@ page {
   text-align: justify;
   text-indent: 2em;
   font-family: "SimSun", "宋体", serif;
+  word-wrap: break-word;
+  white-space: normal;
+  word-break: break-all;
 }
 
 /* 这里是新的样式，保留 */
@@ -1257,4 +1277,79 @@ page {
 .ancient-text:hover {
   background: transparent !important;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* AI处理状态指示器 */
+.ai-loading-container {
+  display: none;
+}
+
+/* AI处理状态指示器 - 区域内显示 */
+.section-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 12rpx;
+}
+
+.section-loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid rgba(139, 110, 79, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: section-spin 1s infinite linear;
+}
+
+.section-loading-text {
+  color: var(--primary-color);
+  font-size: 28rpx;
+  margin-top: 16rpx;
+  font-family: "STKaiti", "华文楷体", serif;
+}
+
+@keyframes section-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 确保文本正确换行显示 */
+.section-content, .message-content, .author-bio, .modern-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* 文章标题区域 */
+.title-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30rpx 30rpx;
+  margin: 0;
+  border-bottom: 1rpx solid var(--border-color);
+  position: relative;
+}
+
+.article-title {
+  font-size: 42rpx;
+  font-weight: bold;
+  color: var(--primary-dark);
+  font-family: "STKaiti", "华文楷体", serif;
+  letter-spacing: 4rpx;
+  text-shadow: 2rpx 2rpx 4rpx rgba(107, 68, 35, 0.1);
+  padding: 0;
+  margin: 0;
+  border-bottom: 0;
+  text-align: center;
+  width: 100%;
 } 

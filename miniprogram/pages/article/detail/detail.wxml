@@ -85,8 +85,13 @@
       <!-- 翻译 -->
       <view class="content-section" wx:if="{{currentTab === 'translation'}}">
         <view class="translation-content">
-          <view class="translation-section">
-          <text class="modern-text">{{article.translation}}</text>
+          <!-- 翻译加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && !article.translation}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
+          </view>
+          <view class="translation-section" wx:else>
+            <text class="modern-text" decode="{{true}}">{{article.translation}}</text>
           </view>
         </view>
       </view>
@@ -94,7 +99,12 @@
       <!-- 作者介绍 -->
       <view class="content-section" wx:if="{{currentTab === 'author'}}">
         <view class="author-content">
-          <view class="author-section">
+          <!-- 作者介绍加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && !article.author_intro}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
+          </view>
+          <view class="author-section" wx:else>
             <view class="author-header">
               <view class="author-avatar"></view>
               <view class="author-title">
@@ -102,7 +112,7 @@
                 <text class="author-dynasty">{{article.dynasty}}</text>
               </view>
             </view>
-            <view class="author-bio">{{article.author_intro}}</view>
+            <text class="author-bio" decode="{{true}}">{{article.author_intro}}</text>
           </view>
         </view>
       </view>
@@ -120,7 +130,12 @@
             </view>
           </view>
 
-          <view class="sentence-card">
+          <!-- 句子解析加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && (!sentences[currentSentenceIndex].phonetic_notation || !sentences[currentSentenceIndex].translation)}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
+          </view>
+          <view class="sentence-card" wx:else>
             <view class="sentence-section">
               <view class="section-title">原文</view>
               <view class="section-content original">{{sentences[currentSentenceIndex].original_text}}</view>
@@ -128,32 +143,32 @@
             
             <view class="sentence-section">
               <view class="section-title">拼音</view>
-              <view class="section-content pinyin">{{sentences[currentSentenceIndex].phonetic_notation}}</view>
+              <text class="section-content pinyin" decode="{{true}}">{{sentences[currentSentenceIndex].phonetic_notation}}</text>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">断句</view>
-              <view class="section-content punctuated">{{sentences[currentSentenceIndex].punctuated_text}}</view>
+              <text class="section-content punctuated" decode="{{true}}">{{sentences[currentSentenceIndex].punctuated_text}}</text>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">翻译</view>
-              <view class="section-content translation">{{sentences[currentSentenceIndex].translation}}</view>
+              <text class="section-content translation" decode="{{true}}">{{sentences[currentSentenceIndex].translation}}</text>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">关键词解释</view>
-              <view class="section-content keywords">{{sentences[currentSentenceIndex].key_words_explanation}}</view>
+              <text class="section-content keywords" decode="{{true}}">{{sentences[currentSentenceIndex].key_words_explanation}}</text>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">语法结构</view>
-              <view class="section-content structure">{{sentences[currentSentenceIndex].sentence_structure}}</view>
+              <text class="section-content structure" decode="{{true}}">{{sentences[currentSentenceIndex].sentence_structure}}</text>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">修辞手法</view>
-              <view class="section-content rhetoric">{{sentences[currentSentenceIndex].rhetorical_analysis}}</view>
+              <text class="section-content rhetoric" decode="{{true}}">{{sentences[currentSentenceIndex].rhetorical_analysis}}</text>
             </view>
           </view>
         </view>
@@ -162,27 +177,39 @@
       <!-- 背景知识 -->
       <view class="content-section" wx:if="{{currentTab === 'background'}}">
         <view class="background-content">
-          <view class="background-section">
-            <view class="section-title">创作背景介绍</view>
-            <view class="section-content">{{article.creation_background}}</view>
+          <!-- 背景知识加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && !article.creation_background}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
           </view>
-          
-          <view class="background-section">
-            <view class="section-title">历史时代背景</view>
-            <view class="section-content">{{article.historical_background}}</view>
-          </view>
-          
-          <view class="background-section">
-            <view class="section-title">文章主旨思想</view>
-            <view class="section-content">{{article.main_idea}}</view>
-          </view>
+          <block wx:else>
+            <view class="background-section">
+              <view class="section-title">创作背景介绍</view>
+              <text class="section-content" decode="{{true}}">{{article.creation_background}}</text>
+            </view>
+            
+            <view class="background-section">
+              <view class="section-title">历史时代背景</view>
+              <text class="section-content" decode="{{true}}">{{article.historical_background}}</text>
+            </view>
+            
+            <view class="background-section">
+              <view class="section-title">文章主旨思想</view>
+              <text class="section-content" decode="{{true}}">{{article.main_idea}}</text>
+            </view>
+          </block>
         </view>
       </view>
 
       <!-- 练习巩固 -->
       <view class="content-section" wx:if="{{currentTab === 'exercise'}}">
         <view class="exercise-content">
-          <view class="exercise-result" wx:if="{{showExerciseResult}}">
+          <!-- 练习题加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && (!exercises || exercises.length === 0)}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
+          </view>
+          <view class="exercise-result" wx:elif="{{showExerciseResult}}">
             <view class="result-card">
               <view class="result-title">测试结果</view>
               <view class="result-score">{{exerciseScore}}</view>
@@ -225,48 +252,56 @@
       <!-- 提问拓展 -->
       <view class="content-section" wx:if="{{currentTab === 'qa'}}">
         <view class="qa-content">
-          <view class="messages-container">
-            <view class="welcome-message" wx:if="{{qaMessages.length === 0}}">
-              <view class="assistant-message">
-                <view class="message-content">
-                  你好！我是你的文言文学习助手。关于《{{article.title}}》，你有什么想问的吗？
+          <!-- 提问加载中 -->
+          <view class="section-loading" wx:if="{{aiProcessing && qaMessages.length > 0}}">
+            <view class="section-loading-spinner"></view>
+            <text class="section-loading-text">AI思考中...</text>
+          </view>
+          <block wx:else>
+            <view class="messages-container">
+              <view class="welcome-message" wx:if="{{qaMessages.length === 0}}">
+                <view class="assistant-message">
+                  <view class="message-content">
+                    你好！我是你的文言文学习助手。关于《{{article.title}}》，你有什么想问的吗？
+                  </view>
+                  <view class="message-time">文言文学习助手</view>
                 </view>
-                <view class="message-time">文言文学习助手</view>
+              </view>
+              
+              <view class="message-list" wx:else>
+                <view class="message-item {{item.role === 'user' ? 'user-message' : 'assistant-message'}}" 
+                      wx:for="{{qaMessages}}" 
+                      wx:key="timestamp">
+                  <text class="message-content" decode="{{true}}">{{item.content}}</text>
+                  <view class="message-time">{{item.role === 'user' ? '我' : '文言文学习助手'}}</view>
+                </view>
               </view>
             </view>
-            
-            <view class="message-list" wx:else>
-              <view class="message-item {{item.role === 'user' ? 'user-message' : 'assistant-message'}}" 
-                    wx:for="{{qaMessages}}" 
-                    wx:key="timestamp">
-                <view class="message-content">{{item.content}}</view>
-                <view class="message-time">{{item.role === 'user' ? '我' : '文言文学习助手'}}</view>
+           
+            <view class="suggested-questions" wx:if="{{qaMessages.length === 0}}">
+              <view class="suggestion-title">推荐问题：</view>
+              <view class="suggestion-list">
+                <view class="suggestion-item" 
+                      wx:for="{{suggestedQuestions}}" 
+                      wx:key="*this" 
+                      bindtap="tapSuggestedQuestion" 
+                      data-question="{{item}}">
+                  <text>{{item}}</text>
+                </view>
               </view>
             </view>
-          </view>
-          
-          <view class="suggested-questions" wx:if="{{qaMessages.length === 0}}">
-            <view class="suggestion-title">推荐问题：</view>
-            <view class="suggestion-list">
-              <view class="suggestion-item" 
-                    wx:for="{{suggestedQuestions}}" 
-                    wx:key="*this" 
-                    bindtap="selectSuggestedQuestion" 
-                    data-question="{{item}}">
-                {{item}}
+           
+            <view class="input-container">
+              <input class="question-input" 
+                     placeholder="输入你的问题..." 
+                     value="{{userQuestion}}" 
+                     bindinput="inputQuestion" 
+                     confirm-type="send" />
+              <view class="send-button" bindtap="askQuestion">
+                <text>提问</text>
               </view>
             </view>
-          </view>
-          
-          <view class="input-container">
-            <input class="question-input" 
-                   placeholder="输入你的问题" 
-                   value="{{userQuestion}}" 
-                   bindinput="inputQuestion" 
-                   confirm-type="send"
-                   bindconfirm="askQuestion" />
-            <view class="send-button" bindtap="askQuestion">发送</view>
-          </view>
+          </block>
         </view>
       </view>
     </view>

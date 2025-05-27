@@ -1,0 +1,13 @@
+{
+  "envId": "yuanyanhui-4glyxpn30578ebfc",
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "aiService",
+      "timeout": 60,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "handler": "index.main"
+    }
+  ]
+}

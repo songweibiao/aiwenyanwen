@@ -27,7 +27,7 @@ function chatCompletion(messages, options = {}) {
       messages: messages,
       model: OPENAI_CONFIG.MODEL,
       temperature: options.temperature || 0.7,
-      max_tokens: options.max_tokens || 2000,
+      max_tokens: options.max_tokens || 4000,
       top_p: options.top_p || 1,
       frequency_penalty: options.frequency_penalty || 0,
       presence_penalty: options.presence_penalty || 0
@@ -72,20 +72,17 @@ const ARTICLE_PROMPTS = {
 
 你是一个文言文教学专家，请对以下文言文句子进行详细解析。
 要求：
-1. 提供完整的拼音标注
-2. 进行断句标注
-3. 翻译成现代汉语
+1. 提供完整的拼音标注，需输出拼音及声调，不要输出其他内容。举例：jiě luò sān qiū yè，néng kāi èr yuè huā。
+2. 进行断句标注，使用/作为断句符号。举例：子曰：“学而/时习之，不亦/说乎？
+3. 根据用户年级水平，翻译成现代汉语
 4. 解释句中的关键字词（古今异义词、通假字、特殊用法等）
 5. 分析句子语法结构
-6. 分析修辞手法（如果有）
+6. 分析修辞手法
 
 注意：请使用纯文本回答，避免使用Markdown格式。需要换行时请使用正常的换行符，确保文本格式正确显示。
 
 句子：
 {content}
-
-上下文（可选）：
-{context}
 
 请按照以下格式回答：
 拼音标注：
@@ -142,7 +139,6 @@ const ARTICLE_PROMPTS = {
 创作背景：
 历史背景：
 主旨思想：
-文学价值：
 `,
 
   // 练习题生成提示词
@@ -253,7 +249,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages)
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('获取翻译失败', error)
@@ -279,7 +275,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages)
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('获取句子解析失败', error)
@@ -307,7 +303,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages, { max_tokens: 3000 })
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('获取作者信息失败', error)
@@ -337,7 +333,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages, { max_tokens: 3000 })
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('获取背景知识失败', error)
@@ -365,7 +361,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages, { max_tokens: 3000 })
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('生成练习题失败', error)
@@ -397,7 +393,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages)
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       return result
     } catch (error) {
       console.error('回答问题失败', error)
@@ -427,7 +423,7 @@ const articleAIService = {
     ]
     
     try {
-      const result = await chatCompletion(messages)
+      const result = await chatCompletion(messages, { max_tokens: 4000 })
       // 将结果按行分割成数组
       return result.split('\n').filter(q => q.trim() !== '').slice(0, 5)
     } catch (error) {

@@ -54,7 +54,10 @@ Page({
     isAutoExpand: false,
     
     // AI处理状态
-    aiProcessing: false
+    aiProcessing: false,
+    
+    // 自动加载状态
+    autoLoad: false
   },
 
   onLoad: function (options) {
@@ -62,7 +65,9 @@ Page({
     
     if (options.id) {
       this.setData({
-        articleId: options.id
+        articleId: options.id,
+        // 如果传入了auto参数，设置为自动加载状态
+        autoLoad: options.auto === 'true'
       });
       this.fetchArticleDetail(options.id);
     }
@@ -240,7 +245,12 @@ Page({
   processArticleData: function(articleData) {
     console.log('处理课文数据:', articleData);
     
-    // 获取到课文数据
+    // 优先使用full_content，它是保留了原始排版的全文
+    if (!articleData.full_content && articleData.content) {
+      articleData.full_content = articleData.content;
+    }
+    
+    // 设置文章数据
     this.setData({
       article: articleData,
       loading: false,
@@ -263,16 +273,27 @@ Page({
       this.checkTextHeight();
     }, 300);
     
-    // 如果有逐句解析，加载逐句解析数据
-    if (articleData.sentences && articleData.sentences.length > 0) {
-      console.log('使用课文自带的逐句解析数据');
-      this.setData({
-        sentences: articleData.sentences
-      });
-    } else {
-      console.log('生成简单的句子划分');
-      // 没有逐句解析数据，生成简单的句子划分
-      this.generateSimpleSentences(articleData.content || articleData.full_content || '');
+    // 尝试从缓存加载数据
+    const cacheResult = this.loadFromCache();
+    let hasSentenceCache = false;
+    
+    if (cacheResult && cacheResult.hasCompleteSentenceCache) {
+      hasSentenceCache = true;
+    }
+    
+    // 如果没有从缓存加载句子数据，处理文章中的句子数据
+    if (!hasSentenceCache) {
+      // 如果有逐句解析，加载逐句解析数据
+      if (articleData.sentences && articleData.sentences.length > 0) {
+        console.log('使用课文自带的逐句解析数据');
+        this.setData({
+          sentences: articleData.sentences
+        });
+      } else {
+        console.log('生成简单的句子划分');
+        // 没有逐句解析数据，生成简单的句子划分
+        this.generateSimpleSentences(articleData.content || articleData.full_content || '');
+      }
     }
     
     // 如果有练习数据，加载练习数据
@@ -296,6 +317,15 @@ Page({
     
     // 更新最近学习记录
     this.updateLastStudyRecord(articleData);
+    
+    // 根据autoLoad状态决定是否自动加载内容
+    if (this.data.autoLoad) {
+      console.log('自动加载当前标签页内容:', this.data.currentTab);
+      // 延迟一点时间再加载，确保界面渲染完成
+      setTimeout(() => {
+        this.loadTabContent(this.data.currentTab);
+      }, 200);
+    }
   },
   
   // 更新最近学习记录
@@ -446,7 +476,9 @@ Page({
     if (this.data.currentTab === tab) return;
     
     this.setData({
-      currentTab: tab
+      currentTab: tab,
+      // 手动切换标签页时，确保不是自动加载模式
+      autoLoad: false
     });
     
     // 根据选项卡加载相应内容
@@ -481,14 +513,21 @@ Page({
         this.loadQA();
         break;
     }
+    
+    // 内容加载请求发起后，重置autoLoad状态，防止重复加载
+    if (this.data.autoLoad) {
+      this.setData({
+        autoLoad: false
+      });
+    }
   },
   
   // 加载翻译内容
   loadTranslation: function() {
     const article = this.data.article;
     
-    // 如果已有翻译，直接显示
-    if (article.translation) {
+    // 如果已有翻译且不是自动加载模式，直接显示
+    if (article.translation && !this.data.autoLoad) {
       return;
     }
     
@@ -522,13 +561,13 @@ Page({
   loadAuthorInfo: function() {
     const article = this.data.article;
     
-    // 如果已有作者介绍，直接显示
-    if (article.author_intro) {
+    // 如果已有作者介绍且不是自动加载模式，直接显示
+    if (article.author_intro && !this.data.autoLoad) {
       return;
     }
     
     this.setData({ aiProcessing: true });
-    
+      
     // 调用OpenAI兼容API获取作者信息
     articleAIService.getAuthorInfo(article.author, article.dynasty, article.title)
       .then(authorInfo => {
@@ -547,7 +586,7 @@ Page({
             
             for (let i = 1; i < sections.length; i++) {
               let content = sections[i].trim();
-              
+      
               // 清理每个部分可能包含的下一个标题
               content = content.split(/\n(?:生平简介|文学成就|历史地位|创作背景)[：:]/i)[0].trim();
               
@@ -573,7 +612,7 @@ Page({
         }
         
         // 更新作者介绍
-        this.setData({
+      this.setData({
           'article.author_intro': authorIntro,
           aiProcessing: false
         });
@@ -597,8 +636,28 @@ Page({
   loadSentenceAnalysis: function() {
     const article = this.data.article;
     
-    // 如果已有句子解析，直接显示
+    // 检查是否已有句子解析，且内容完整
+    let hasSentenceContent = false;
+    if (this.data.sentences && this.data.sentences.length > 0 && !this.data.autoLoad) {
+      // 检查第一句是否已有完整内容（拼音和翻译）
+      if (this.data.sentences[0].phonetic_notation && 
+          this.data.sentences[0].translation) {
+        hasSentenceContent = true;
+      }
+    }
+    
+    // 如果已有完整句子解析，直接显示
+    if (hasSentenceContent) {
+      return;
+    }
+    
+    // 如果已经有sentences数组但内容不完整，直接加载第一句详细解析
     if (this.data.sentences && this.data.sentences.length > 0) {
+      console.log('句子数组已存在但内容不完整，加载详细解析...');
+      this.setData({
+        currentSentenceIndex: 0
+      });
+      this.loadSentenceDetail(0);
       return;
     }
     
@@ -643,11 +702,16 @@ Page({
     
     const sentence = this.data.sentences[index];
     
-    // 如果已有解析，直接返回
-    if (sentence.phonetic_notation && sentence.translation) {
+    // 如果已有解析且不是自动加载模式，直接返回
+    if (sentence.phonetic_notation && 
+        sentence.translation && 
+        sentence.key_words_explanation && 
+        !this.data.autoLoad) {
+      console.log('已有完整句子解析，无需重新加载');
       return;
     }
     
+    console.log('开始加载句子详细解析，索引:', index);
     this.setData({ aiProcessing: true });
     
     // 获取上下文
@@ -678,7 +742,7 @@ Page({
         
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i].trim();
-          
+    
           // 跳过空行和分隔符
           if (line === '' || line === '---') continue;
           
@@ -738,18 +802,18 @@ Page({
         
         // 更新句子解析
         const sentences = this.data.sentences;
-        sentences[index].phonetic_notation = phonetic;
-        sentences[index].punctuated_text = punctuated;
-        sentences[index].translation = translation;
-        sentences[index].key_words_explanation = keywords;
-        sentences[index].sentence_structure = structure;
-        sentences[index].rhetorical_analysis = rhetoric;
-        
+        sentences[index].phonetic_notation = phonetic || sentences[index].phonetic_notation || '（无拼音标注）';
+        sentences[index].punctuated_text = punctuated || sentences[index].punctuated_text || '（无断句标注）';
+        sentences[index].translation = translation || sentences[index].translation || '（无翻译）';
+        sentences[index].key_words_explanation = keywords || sentences[index].key_words_explanation || '（无关键词解释）';
+        sentences[index].sentence_structure = structure || sentences[index].sentence_structure || '（无语法结构分析）';
+        sentences[index].rhetorical_analysis = rhetoric || sentences[index].rhetorical_analysis || '（无修辞手法分析）';
+    
         this.setData({
           sentences: sentences,
           aiProcessing: false
         });
-        
+    
         // 缓存句子解析到本地
         this.cacheSentenceAnalysis(index, sentences[index]);
       })
@@ -793,8 +857,8 @@ Page({
   loadBackgroundInfo: function() {
     const article = this.data.article;
     
-    // 如果已有背景知识，直接显示
-    if (article.creation_background && article.historical_background && article.main_idea) {
+    // 如果已有背景知识且不是自动加载模式，直接显示
+    if (article.creation_background && article.historical_background && article.main_idea && !this.data.autoLoad) {
       return;
     }
     
@@ -904,8 +968,8 @@ Page({
   loadExercises: function() {
     const article = this.data.article;
     
-    // 如果已有练习题，直接显示
-    if (this.data.exercises && this.data.exercises.length > 0) {
+    // 如果已有练习题且不是自动加载模式，直接显示
+    if (this.data.exercises && this.data.exercises.length > 0 && !this.data.autoLoad) {
       return;
     }
     
@@ -926,14 +990,14 @@ Page({
         const exercises = this.parseExercises(exercisesResult);
         
         // 更新练习题
-        this.setData({
+      this.setData({
           exercises: exercises,
           userAnswers: new Array(exercises.length).fill(''),
           showExerciseResult: false,
           exerciseScore: 0,
           aiProcessing: false
-        });
-        
+      });
+      
         // 缓存练习题到本地
         this.cacheExercises(exercises);
       })
@@ -1068,8 +1132,8 @@ Page({
   loadQA: function() {
     const article = this.data.article;
     
-    // 如果已有推荐问题，直接显示
-    if (this.data.suggestedQuestions && this.data.suggestedQuestions.length > 0) {
+    // 如果已有推荐问题且不是自动加载模式，直接显示
+    if (this.data.suggestedQuestions && this.data.suggestedQuestions.length > 0 && !this.data.autoLoad) {
       return;
     }
     
@@ -1079,10 +1143,10 @@ Page({
     articleAIService.getSuggestedQuestions(article.title, article.author, article.dynasty, article.full_content)
       .then(questions => {
         // 更新推荐问题
-        this.setData({
+    this.setData({
           suggestedQuestions: questions,
           aiProcessing: false
-        });
+    });
       })
       .catch(err => {
         console.error('获取推荐问题失败', err);
@@ -1255,11 +1319,21 @@ Page({
       const sentencesCacheKey = `article_sentences_${articleId}`;
       const cachedSentences = wx.getStorageSync(sentencesCacheKey);
       
+      let hasCompleteSentenceCache = false;
       if (cachedSentences && cachedSentences.length > 0) {
+        // 检查缓存中的第一句是否有完整内容
+        if (cachedSentences[0].phonetic_notation && 
+            cachedSentences[0].translation) {
+          hasCompleteSentenceCache = true;
+        }
+        
         this.setData({
           sentences: cachedSentences,
           currentSentenceIndex: 0
         });
+        
+        console.log('从缓存加载句子数据:', 
+                   hasCompleteSentenceCache ? '完整内容' : '部分内容');
       }
       
       // 加载练习题缓存
@@ -1274,7 +1348,10 @@ Page({
         });
       }
       
-      return true;
+      return {
+        hasData: !!cachedData,
+        hasCompleteSentenceCache: hasCompleteSentenceCache
+      };
     } catch (e) {
       console.error('从缓存加载数据失败', e);
       return false;
@@ -1348,6 +1425,36 @@ Page({
       if (!this.data.showBottomMask) {
         this.setData({ showBottomMask: true });
       }
+    }
+  },
+  
+  // 展开/收起全文
+  toggleContent: function() {
+    console.log('切换全文展开/收起状态');
+    
+    // 切换展开/收起状态
+    this.setData({
+      isContentCollapsed: !this.data.isContentCollapsed,
+      // 展开时显示滚动提示
+      showScrollTip: !this.data.isContentCollapsed,
+      // 展开时默认显示底部遮罩
+      showBottomMask: !this.data.isContentCollapsed
+    });
+    
+    // 展开时滚动到顶部
+    if (!this.data.isContentCollapsed) {
+      // 等待渲染完成后滚动
+      setTimeout(() => {
+        wx.createSelectorQuery()
+          .select('.ancient-text-container scroll-view')
+          .node()
+          .exec((res) => {
+            if (res && res[0] && res[0].node) {
+              const scrollView = res[0].node;
+              scrollView.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          });
+      }, 100);
     }
   },
 });

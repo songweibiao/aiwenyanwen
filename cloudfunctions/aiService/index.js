@@ -44,7 +44,7 @@ async function directCallOpenAI(data) {
         model: model || OPENAI_CONFIG.MODEL,
         messages: messages,
         temperature: temperature || 0.7,
-        max_tokens: max_tokens || 2000,
+        max_tokens: max_tokens || 4000,
         top_p: top_p || 1,
         frequency_penalty: frequency_penalty || 0,
         presence_penalty: presence_penalty || 0
@@ -89,7 +89,7 @@ async function callOpenAIAPI(messages, options = {}) {
         model: OPENAI_CONFIG.MODEL,
         messages: messages,
         temperature: options.temperature || 0.7,
-        max_tokens: options.max_tokens || 2000,
+        max_tokens: options.max_tokens || 4000,
         top_p: options.top_p || 1,
         frequency_penalty: options.frequency_penalty || 0,
         presence_penalty: options.presence_penalty || 0
@@ -162,7 +162,7 @@ async function callAIModel(data) {
     
     // 调用OpenAI兼容API
     const result = await callOpenAIAPI(messages, {
-      max_tokens: type === 'exercise' ? 3000 : 2000
+      max_tokens: 4000
     });
     
     // 根据不同类型处理结果

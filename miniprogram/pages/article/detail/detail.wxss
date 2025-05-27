@@ -512,7 +512,6 @@ page {
   font-size: 30rpx;
   line-height: 1.8;
   color: var(--text-color);
-  padding-left: 20rpx;
   word-wrap: break-word;
   white-space: normal;
   word-break: break-all;
@@ -536,11 +535,7 @@ page {
 }
 
 .section-content.keywords {
-  color: var(--secondary-color);
-  background-color: rgba(200, 62, 62, 0.05);
-  padding: 10rpx 20rpx;
   border-radius: 8rpx;
-  border-left: 4rpx solid var(--secondary-color);
 }
 
 /* 背景知识 */

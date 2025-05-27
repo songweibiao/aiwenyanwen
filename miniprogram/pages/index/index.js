@@ -430,7 +430,7 @@ Page({
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=analysis`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=analysis&auto=true`
       });
     } else {
       wx.showToast({
@@ -454,7 +454,7 @@ Page({
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=translation`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=translation&auto=true`
       });
     } else {
       wx.showToast({
@@ -478,7 +478,7 @@ Page({
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=background`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=background&auto=true`
       });
     } else {
       wx.showToast({
@@ -502,7 +502,7 @@ Page({
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=exercise`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=exercise&auto=true`
       });
     } else {
       wx.showToast({
@@ -526,7 +526,7 @@ Page({
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=qa`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=qa&auto=true`
       });
     } else {
       wx.showToast({

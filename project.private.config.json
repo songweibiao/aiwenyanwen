@@ -1,9 +1,9 @@
 {
-    "libVersion": "development",
+    "libVersion": "3.8.6",
     "projectname": "%E6%96%87%E8%A8%80%E6%82%A6%E8%AF%BB",
     "condition": {},
     "setting": {
-        "urlCheck": true,
+        "urlCheck": false,
         "coverView": true,
         "lazyloadPlaceholderEnable": false,
         "skylineRenderEnable": false,

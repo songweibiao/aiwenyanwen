@@ -1,0 +1,37 @@
+<view class="ai-container">
+  <scroll-view 
+    class="chat-list" 
+    id="chatList" 
+    scroll-y="true" 
+    scroll-with-animation="true" 
+    scroll-into-view="{{toView}}" 
+    show-scrollbar="false">
+    <view class="chat-top-space"></view>
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="chat-item {{item.role}}" id="msg{{item.id}}">
+        <view>
+          <image wx:if="{{item.role === 'assistant'}}" class="avatar" src="/images/laibai-avatar.png" />
+          <view wx:if="{{item.role === 'assistant'}}" class="avatar-label">李白</view>
+          <image wx:if="{{item.role === 'user'}}" class="avatar" src="/images/default-avatar.png" />
+          <view wx:if="{{item.role === 'user'}}" class="avatar-label">我</view>
+        </view>
+        <view class="bubble {{item.content === '李白思考中...' ? 'loading' : ''}}">
+          <view wx:if="{{item.content === '李白思考中...'}}" class="thinking-container">
+            <text>李白思考中</text>
+            <view class="thinking-dot"></view>
+            <view class="thinking-dot"></view>
+            <view class="thinking-dot"></view>
+          </view>
+          <text wx:else class="message-text">{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+    <view class="chat-bottom-space" id="scrollBottom"></view>
+  </scroll-view>
+  <view class="input-bar">
+    <view class="input-wrap">
+      <input class="input" placeholder="请输入你的问题..." value="{{inputValue}}" bindinput="onInput" confirm-type="send" bindconfirm="onSend"/>
+    </view>
+    <button class="send-btn" size="mini" bindtap="onSend" disabled="{{loading}}">发送</button>
+  </view>
+</view>

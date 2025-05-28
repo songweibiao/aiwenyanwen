@@ -418,6 +418,7 @@ const articleAIService = {
 }
 
 module.exports = {
+  OPENAI_CONFIG,
   chatCompletion,
   articleAIService,
   ARTICLE_PROMPTS

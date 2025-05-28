@@ -1251,12 +1251,12 @@ Page({
           s => s && s.phonetic_notation && s.translation
         );
         if (hasCompleteSentenceCache) {
-          this.setData({
-            sentences: cachedSentences,
-            currentSentenceIndex: 0
-          });
+        this.setData({
+          sentences: cachedSentences,
+          currentSentenceIndex: 0
+        });
           console.log('从缓存加载句子数据: 完整内容');
-        }
+      }
       }
       // 加载练习题缓存
       const exercisesCacheKey = `article_exercises_${articleId}`;

@@ -69,7 +69,6 @@ Page({
 
   onLoad: function (options) {
     console.log('Detail page onLoad with options:', options);
-    
     if (options.id) {
       this.setData({
         articleId: options.id,
@@ -78,15 +77,13 @@ Page({
       });
       this.fetchArticleDetail(options.id);
     }
-
-    // 如果URL参数中有tab，则切换到对应选项卡
+    // 只设置currentTab，不在这里直接加载tab内容
     if (options.tab && ['translation', 'analysis', 'author', 'background', 'exercise', 'qa'].includes(options.tab)) {
       console.log('Setting tab to:', options.tab);
       this.setData({
         currentTab: options.tab
       });
     }
-
     // 检查是否有本地学习记录
     this.checkLearningRecord();
   },
@@ -259,7 +256,6 @@ Page({
       wx.setNavigationBarTitle({ title: articleData.title });
     }
     setTimeout(() => { this.checkTextHeight(); }, 300);
-    // 直接每次都分句
     if (articleData.sentences && articleData.sentences.length > 0) {
       console.log('使用课文自带的逐句解析数据');
       this.setData({ sentences: articleData.sentences });
@@ -270,7 +266,8 @@ Page({
     this.generateSuggestedQuestions(articleData);
     this.playLoadAnimation();
     this.updateLastStudyRecord(articleData);
-    if (this.data.autoLoad) {
+    // 只在这里自动加载tab内容，确保数据已准备好
+    if (this.data.autoLoad || this.data.currentTab) {
       console.log('自动加载当前标签页内容:', this.data.currentTab);
       setTimeout(() => { this.loadTabContent(this.data.currentTab); }, 200);
     }

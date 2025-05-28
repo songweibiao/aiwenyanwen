@@ -85,6 +85,7 @@
             <text class="section-loading-text">AI思考中...</text>
           </view>
           <view class="translation-section" wx:else>
+            <view class="section-title">白话文翻译</view>
             <text class="modern-text" decode="{{true}}">{{article.translation}}</text>
           </view>
         </view>

@@ -29,7 +29,14 @@ Page({
     // 当前选择的课文信息
     selectedCourse: null,
     // 课文数据加载状态
-    courseLoading: true
+    courseLoading: true,
+    audioContext: null,
+    audioPlaying: false,
+    audioCurrent: 0,
+    audioDuration: 0,
+    audioSpeed: 1.0,
+    audioSpeedList: [0.75, 1.0, 1.25, 1.5],
+    audioSeeking: false
   },
 
   onLoad: function () {
@@ -152,6 +159,7 @@ Page({
             currentLesson: res.data.title,
             courseLoading: false
           });
+          if (res.data && res.data.audio) { this.initAudioPlayer(); }
         } else {
           console.log('未找到课文数据，尝试通过article_id查询');
           // 尝试通过article_id查询
@@ -210,6 +218,7 @@ Page({
             currentLesson: articleData.title,
             courseLoading: false
           });
+          if (res.data && res.data.audio) { this.initAudioPlayer(); }
         } else {
           console.log('通过article_id未找到课文，使用本地缓存数据');
           // 查询失败，使用本地缓存数据
@@ -838,5 +847,81 @@ Page({
       clearTimeout(this.data.marqueeTimer);
       this.data.marqueeTimer = null;
     }
-  }
+    if (this.data.audioContext) {
+      this.data.audioContext.destroy();
+    }
+  },
+
+  initAudioPlayer: function() {
+    if (this.data.audioContext) {
+      this.data.audioContext.destroy();
+    }
+    const audioUrl = this.data.selectedCourse?.article?.audio;
+    if (!audioUrl) return;
+    const ctx = wx.createInnerAudioContext();
+    ctx.src = audioUrl;
+    ctx.obeyMuteSwitch = false;
+    // 设置音频保持原音调
+    ctx.playbackRate = this.data.audioSpeed || 1.0;
+    ctx.preservesPitch = true; // 保持音调不变
+    
+    ctx.onCanplay(() => {
+      setTimeout(() => {
+        this.setData({ audioDuration: ctx.duration || 0 });
+      }, 200);
+    });
+    ctx.onTimeUpdate(() => {
+      if (!this.data.audioSeeking) {
+        this.setData({ audioCurrent: ctx.currentTime, audioDuration: ctx.duration });
+      }
+    });
+    ctx.onEnded(() => {
+      this.setData({ audioPlaying: false, audioCurrent: 0 });
+    });
+    this.setData({ audioContext: ctx, audioPlaying: false, audioCurrent: 0, audioDuration: 0, audioSpeed: 1.0 });
+  },
+
+  onAudioPlay: function() {
+    if (!this.data.audioContext) return;
+    this.data.audioContext.play();
+    this.setData({ audioPlaying: true });
+  },
+  onAudioPause: function() {
+    if (!this.data.audioContext) return;
+    this.data.audioContext.pause();
+    this.setData({ audioPlaying: false });
+  },
+  onAudioStop: function() {
+    if (!this.data.audioContext) return;
+    this.data.audioContext.stop();
+    this.setData({ audioPlaying: false, audioCurrent: 0 });
+  },
+  onAudioSpeedChange: function(e) {
+    const speed = e.currentTarget.dataset.speed;
+    if (!this.data.audioContext) return;
+    
+    // 设置播放速度并保持音调不变
+    this.data.audioContext.playbackRate = speed;
+    this.data.audioContext.preservesPitch = true; // 保持音调不变
+    
+    this.setData({ audioSpeed: speed });
+    
+    // 如果正在播放，显示提示
+    if (this.data.audioPlaying) {
+      wx.showToast({
+        title: `${speed}x 速度`,
+        icon: 'none',
+        duration: 1000
+      });
+    }
+  },
+  onAudioSliderChange: function(e) {
+    const value = e.detail.value;
+    if (!this.data.audioContext) return;
+    this.setData({ audioSeeking: true });
+    this.data.audioContext.seek(value);
+    setTimeout(() => {
+      this.setData({ audioCurrent: value, audioSeeking: false });
+    }, 200);
+  },
 }) 

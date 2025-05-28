@@ -1,4 +1,5 @@
 <!--index.wxml-->
+<wxs src="../../utils/filters.wxs" module="filters" />
 <view class="container">
   <!-- 公告栏 -->
   <view class="notice-bar" wx:if="{{noticeList.length > 0 && !noticeClosed}}">
@@ -37,6 +38,7 @@
   <view class="study-card card">
     <view class="card-header">
       <view class="card-title">
+        <image class="icon-title" src="/images/icons/classroom.svg" mode="aspectFit"/>
         <text class="title-text">课堂同步学</text>
       </view>
       <view class="grade-indicator" wx:if="{{hasSelectedCourse}}">
@@ -69,8 +71,60 @@
     <!-- 已选择课文时显示课文信息 -->
     <view class="study-content" wx:else>
       <view class="current-lesson">
-        <text class="lesson-title text-bold">{{currentLesson}}</text>
-        <view class="btn btn-secondary btn-sm change-btn" bindtap="changeCourse">更换</view>
+        <view class="lesson-info">
+          <text class="lesson-title text-bold">{{currentLesson}}</text>
+          <view class="lesson-author" wx:if="{{selectedCourse.article.author || selectedCourse.article.dynasty}}">
+            <text>{{selectedCourse.article.dynasty || ''}} · {{selectedCourse.article.author || ''}}</text>
+          </view>
+        </view>
+        <view class="btn btn-secondary btn-xs change-btn" bindtap="changeCourse">
+          <image class="change-icon" src="/images/icons/refresh.svg" mode="aspectFit"></image>
+          <text>更换课程</text>
+        </view>
+      </view>
+
+      <!-- 音频播放器模块 -->
+      <view wx:if="{{selectedCourse.article.audio}}" class="audio-player-card">
+        <view class="audio-header-row">
+          <text class="audio-title">AI播客趣解</text>
+          <view class="audio-speed-group">
+            <block wx:for="{{audioSpeedList}}" wx:key="item">
+              <view class="audio-speed-btn {{audioSpeed==item?'active':''}}" data-speed="{{item}}" bindtap="onAudioSpeedChange">{{item}}x</view>
+            </block>
+          </view>
+        </view>
+        
+        <view class="audio-main">
+          <view class="audio-btn-play {{audioPlaying?'playing':''}}" bindtap="{{audioPlaying?'onAudioPause':'onAudioPlay'}}">
+            <view class="play-icon"></view>
+            <view class="pause-icon"></view>
+          </view>
+          
+          <view class="audio-progress-wrap">
+            <view class="audio-progress-bar">
+              <slider 
+                class="audio-slider" 
+                min="0" 
+                max="{{audioDuration}}" 
+                step="0.1" 
+                value="{{audioCurrent}}" 
+                activeColor="#8B6E4F"
+                backgroundColor="rgba(139, 110, 79, 0.1)"
+                block-size="12"
+                block-color="#8B6E4F"
+                bindchange="onAudioSliderChange"
+              />
+            </view>
+            <view class="audio-time-row">
+              <text class="audio-time-current">{{filters.formatAudioTime(audioCurrent)}}</text>
+              <text class="audio-time-total">{{filters.formatAudioTime(audioDuration)}}</text>
+            </view>
+          </view>
+        </view>
+        
+        <view class="audio-disclaimer">
+          <text>播客内容由AI生成，发音未必准确，请仔细辨别。</text>
+        </view>
       </view>
 
       <view class="divider"></view>
@@ -132,6 +186,7 @@
   <view class="word-card card">
     <view class="card-header">
       <view class="card-title">
+        <image class="icon-title" src="/images/icons/word.svg" mode="aspectFit"/>
         <text class="title-text">虚实词学习</text>
       </view>
       <view class="word-selector" bindtap="changeWordType">
@@ -147,7 +202,10 @@
         <text class="word-type-name text-bold">{{currentWordTypeName}}</text>
         <text class="word-count text-tertiary">{{currentWordType === '中考' ? '共124个' : '共186个'}}</text>
       </view>
-      <view class="btn btn-secondary btn-sm change-btn" bindtap="changeWordType">更换</view>
+      <view class="btn btn-secondary btn-xs change-btn" bindtap="changeWordType">
+        <image class="change-icon" src="/images/icons/refresh.svg" mode="aspectFit"></image>
+        <text>更换课程</text>
+      </view>
     </view>
     
     <view class="word-actions">
@@ -160,6 +218,7 @@
   <view class="quote-card card" wx:if="{{famousQuote}}">
     <view class="card-header">
       <view class="card-title">
+        <image class="icon-title" src="/images/icons/quote.svg" mode="aspectFit"/>
         <text class="title-text">每日名句</text>
       </view>
       <view class="quote-actions">

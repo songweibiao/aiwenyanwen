@@ -1,0 +1,13 @@
+/**
+ * 格式化音频时间（秒转mm:ss）
+ */
+var formatAudioTime = function(seconds) {
+  seconds = Math.floor(seconds || 0);
+  var m = Math.floor(seconds / 60);
+  var s = seconds % 60;
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+};
+
+module.exports = {
+  formatAudioTime: formatAudioTime
+}; 

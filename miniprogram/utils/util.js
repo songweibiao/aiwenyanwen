@@ -146,6 +146,18 @@ const calculateProgress = (completed, total) => {
   return percentage > 100 ? 100 : percentage
 }
 
+/**
+ * 格式化音频时间（秒转mm:ss）
+ * @param {Number} seconds 秒数
+ * @returns {String} 格式化后的时间字符串
+ */
+const formatAudioTime = (seconds) => {
+  seconds = Math.floor(seconds || 0);
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 module.exports = {
   formatTime,
   getGreeting,
@@ -153,5 +165,6 @@ module.exports = {
   timeAgo,
   deepClone,
   truncateText,
-  calculateProgress
+  calculateProgress,
+  formatAudioTime
 } 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 书本 -->
+  <rect x="3" y="6" width="8" height="12" rx="1.5" fill="none" stroke="#8B6E4F" stroke-width="2"/>
+  <rect x="13" y="6" width="8" height="12" rx="1.5" fill="none" stroke="#8B6E4F" stroke-width="2"/>
+  <!-- 讲台 -->
+  <rect x="7" y="18" width="10" height="2" rx="1" fill="#8B6E4F"/>
+  <!-- 书本中线 -->
+  <line x1="12" y1="6" x2="12" y2="18" stroke="#8B6E4F" stroke-width="1.2" stroke-dasharray="2 2"/>
+</svg> 

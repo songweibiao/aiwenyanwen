@@ -78,7 +78,6 @@ page {
   font-size: var(--font-lg);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-md);
   display: flex;
   align-items: center;
 }

@@ -1129,12 +1129,53 @@ page {
   letter-spacing: 1rpx;
 }
 
-.section-content.punctuated {
-  font-size: 32rpx;
-}
-
+/* 关键词解析样式优化 */
 .section-content.keywords {
   border-radius: 8rpx;
+}
+
+.keyword-item {
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx dashed rgba(139, 110, 79, 0.2);
+}
+
+.keyword-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.keyword-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.keyword-number {
+  color: var(--secondary-color);
+  font-weight: bold;
+  font-size: 28rpx;
+  margin-right: 4rpx;
+}
+
+.keyword {
+  font-weight: bold;
+  color: var(--primary-dark);
+  font-size: 30rpx;
+  background-color: rgba(139, 110, 79, 0.08);
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  border-bottom: 2rpx solid var(--primary-color);
+}
+
+.explanation {
+  font-size: 28rpx;
+  color: var(--text-color);
+  line-height: 1.6;
+  margin-top: 8rpx;
+  padding-left: 16rpx;
+  display: block;
 }
 
 /* 背景蒙层样式 */

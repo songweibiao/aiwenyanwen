@@ -143,11 +143,6 @@
             </view>
             
             <view class="sentence-section">
-              <view class="section-title">断句</view>
-              <text class="section-content punctuated" decode="{{true}}">{{sentences[currentSentenceIndex].punctuated_text}}</text>
-            </view>
-            
-            <view class="sentence-section">
               <view class="section-title">翻译</view>
               <text class="section-content translation" decode="{{true}}">{{sentences[currentSentenceIndex].translation}}</text>
             </view>
@@ -157,7 +152,11 @@
               <view class="section-content keywords">
                 <block wx:for="{{sentences[currentSentenceIndex].key_words}}" wx:key="*this" wx:for-item="keyword">
                   <view class="keyword-item">
-                    <text class="keyword">{{keyword.word}}</text>
+                    <!-- 显示带有数字编号的关键词 -->
+                    <view class="keyword-header">
+                      <text class="keyword-number" wx:if="{{keyword.number}}">{{keyword.number}}</text>
+                      <text class="keyword">{{keyword.word}}</text>
+                    </view>
                     <text class="explanation">{{keyword.explanation}}</text>
                   </view>
                 </block>

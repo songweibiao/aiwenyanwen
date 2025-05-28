@@ -349,7 +349,6 @@ Page({
       return {
         sentence_index: index,
         original_text: sentence,
-        punctuated_text: sentence,
         translation: '（暂无翻译）',
         key_words: [],
         grammar_analysis: '（暂无句子结构分析）',
@@ -686,7 +685,6 @@ Page({
     const sentenceObjects = sentences.map(sentence => ({
       original_text: sentence,
       phonetic_notation: '',
-      punctuated_text: '',
       translation: '',
       key_words: [],
       grammar_analysis: '',
@@ -812,25 +810,20 @@ Page({
           
           // 解析结果
           let phonetic = '';
-          let punctuation = '';
           let translation = '';
           let keyWords = [];
           let grammar = '';
           let rhetoric = '';
           
           // 提取各部分内容
-          const phoneticMatch = analysisResult.match(/拼音标注[：:]([\s\S]*?)(?=断句标注[：:]|$)/i);
-          const punctuationMatch = analysisResult.match(/断句标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
+          const phoneticMatch = analysisResult.match(/拼音标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
           const translationMatch = analysisResult.match(/现代汉语翻译[：:]([\s\S]*?)(?=关键词解析[：:]|$)/i);
           const keyWordsMatch = analysisResult.match(/关键词解析[：:]([\s\S]*?)(?=语法结构分析[：:]|$)/i);
           const grammarMatch = analysisResult.match(/语法结构分析[：:]([\s\S]*?)(?=修辞手法分析[：:]|$)/i);
           const rhetoricMatch = analysisResult.match(/修辞手法分析[：:]([\s\S]*?)$/i);
           
           if (phoneticMatch) phonetic = phoneticMatch[1].trim();
-          if (punctuationMatch) punctuation = punctuationMatch[1].trim();
           if (translationMatch) translation = translationMatch[1].trim();
-          
-          // 处理关键词解析
           if (keyWordsMatch) {
             const keyWordsText = keyWordsMatch[1].trim();
             const keyWordLines = keyWordsText.split('\n');
@@ -838,11 +831,21 @@ Page({
             keyWordLines.forEach(line => {
               const trimmedLine = line.trim();
               if (trimmedLine && /^\d+\./.test(trimmedLine)) {
+                // 提取数字编号部分
+                const numberMatch = trimmedLine.match(/^(\d+\.)/);
+                const number = numberMatch ? numberMatch[1] : '';
+                
                 const parts = trimmedLine.split(/[：:]/);
                 if (parts.length >= 2) {
-                  const word = parts[0].replace(/^\d+\./, '').trim();
+                  // 保留数字编号
+                  const word = parts[0].trim(); // 不再移除数字编号
                   const explanation = parts.slice(1).join(':').trim();
-                  keyWords.push({ word, explanation });
+                  keyWords.push({ 
+                    number: number, 
+                    word: word.replace(/^\d+\./, '').trim(), // 仅在存储时移除数字编号
+                    fullWord: word, // 保存完整词条（包含数字编号）
+                    explanation: explanation 
+                  });
                 }
               }
             });
@@ -856,7 +859,6 @@ Page({
           updatedSentences[index] = {
             ...sentence,
             phonetic_notation: phonetic,
-            punctuation: punctuation,
             translation: translation,
             key_words: keyWords,
             grammar_analysis: grammar,

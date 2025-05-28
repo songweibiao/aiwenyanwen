@@ -195,3 +195,52 @@ wenyanwen/
 - author：文章作者
 - dynasty：朝代
 - full_content：课文内容
+
+
+#### article_ai_content 集合
+{
+  "bsonType": "object",
+  "required": ["article_id", "type", "content", "created_at", "updated_at"],
+  "properties": {
+    "article_id": {
+      "bsonType": "string",
+      "description": "课文ID，关联 articles 表的 article_id"
+    },
+    "type": {
+      "bsonType": "string",
+      "enum": [
+        "translate",
+        "sentence_analysis",
+        "author_info",
+        "background",
+        "exercise",
+        "qa",
+        "suggested_questions"
+      ],
+      "description": "AI内容类型"
+    },
+    "content": {
+      "description": "AI生成内容，类型根据type而定",
+      "oneOf": [
+        { "bsonType": "string" },
+        { "bsonType": "array" },
+        { "bsonType": "object" }
+      ]
+    },
+    "extra": {
+      "bsonType": "object",
+      "description": "额外参数（如句子内容、用户问题、年级等上下文信息）",
+      "required": [],
+      "properties": {}
+    },
+    "created_at": {
+      "bsonType": "date",
+      "description": "创建时间"
+    },
+    "updated_at": {
+      "bsonType": "date",
+      "description": "更新时间"
+    }
+  },
+  "additionalProperties": false
+}

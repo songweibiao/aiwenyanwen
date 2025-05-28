@@ -4,6 +4,8 @@ const app = getApp();
 const OPENAI_CONFIG = require('../../../utils/openai').OPENAI_CONFIG;
 // 引入文章提示词
 const { ARTICLE_PROMPTS } = require('../../../utils/openai');
+// 在文件顶部引入云开发数据库
+const db = wx.cloud.database();
 
 Page({
   data: {
@@ -245,73 +247,32 @@ Page({
   // 处理获取到的课文数据
   processArticleData: function(articleData) {
     console.log('处理课文数据:', articleData);
-    
-    // 优先使用full_content，它是保留了原始排版的全文
     if (!articleData.full_content && articleData.content) {
       articleData.full_content = articleData.content;
     }
-    
-    // 设置文章数据
     this.setData({
       article: articleData,
-      // 先将内容设置为可见，以便后续测量高度
       contentReady: true,
-      // 默认不显示展开/收起按钮，等待高度检测后再决定
       showToggleButton: false
     });
-    
-    // 设置导航栏标题
     if (articleData.title) {
-      wx.setNavigationBarTitle({
-        title: articleData.title
-      });
+      wx.setNavigationBarTitle({ title: articleData.title });
     }
-    
-    // 在数据加载后，等待视图渲染完成，再检查文本高度
-    // 使用足够长的延迟确保视图已完全渲染
-    setTimeout(() => {
-      this.checkTextHeight();
-    }, 300);
-    
-    // 尝试从缓存加载数据
-    const cacheResult = this.loadFromCache();
-    let hasSentenceCache = false;
-    
-    if (cacheResult && cacheResult.hasCompleteSentenceCache) {
-      hasSentenceCache = true;
+    setTimeout(() => { this.checkTextHeight(); }, 300);
+    // 直接每次都分句
+    if (articleData.sentences && articleData.sentences.length > 0) {
+      console.log('使用课文自带的逐句解析数据');
+      this.setData({ sentences: articleData.sentences });
+    } else {
+      console.log('生成简单的句子划分');
+      this.generateSimpleSentences(articleData.content || articleData.full_content || '');
     }
-    
-    // 如果没有从缓存加载句子数据，处理文章中的句子数据
-    if (!hasSentenceCache) {
-      // 如果有逐句解析，加载逐句解析数据
-      if (articleData.sentences && articleData.sentences.length > 0) {
-        console.log('使用课文自带的逐句解析数据');
-        this.setData({
-          sentences: articleData.sentences
-        });
-      } else {
-        console.log('生成简单的句子划分');
-        // 没有逐句解析数据，生成简单的句子划分
-        this.generateSimpleSentences(articleData.content || articleData.full_content || '');
-      }
-    }
-    
-    // 生成推荐问题
     this.generateSuggestedQuestions(articleData);
-    
-    // 播放加载完成动效
     this.playLoadAnimation();
-    
-    // 更新最近学习记录
     this.updateLastStudyRecord(articleData);
-    
-    // 根据autoLoad状态决定是否自动加载内容
     if (this.data.autoLoad) {
       console.log('自动加载当前标签页内容:', this.data.currentTab);
-      // 延迟一点时间再加载，确保界面渲染完成
-      setTimeout(() => {
-        this.loadTabContent(this.data.currentTab);
-      }, 200);
+      setTimeout(() => { this.loadTabContent(this.data.currentTab); }, 200);
     }
   },
   
@@ -456,74 +417,62 @@ Page({
   // 加载翻译内容
   loadTranslation: function() {
     const article = this.data.article;
-    
-    // 如果已有翻译且不是自动加载模式，直接显示
-    if (article.translation && !this.data.autoLoad) {
-      return;
-    }
-    
+    const article_id = article.article_id;
+    const type = 'translate';
     this.setData({ aiProcessing: true });
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.TRANSLATE, { content: article.full_content });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个专业的文言文翻译专家，请提供准确、流畅的现代汉语翻译。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    // 先查数据库
+    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        // 数据库已有，直接显示
+        this.setData({
+          'article.translation': res.data[0].content,
+          aiProcessing: false
+        });
+        this.cacheArticleData({ translation: res.data[0].content });
+        return;
       }
-    ];
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages,
-        max_tokens: 4000
-      },
-      success: (res) => {
-        let translation = '';
-        try {
-          translation = res.data.choices[0].message.content.trim();
-          
-          // 更新文章翻译
-          this.setData({
-            'article.translation': translation,
-            aiProcessing: false
-          });
-          
-          // 缓存翻译结果到本地
-          this.cacheArticleData({
-            translation: translation
-          });
-        } catch (e) {
-          console.error('解析翻译结果失败', e);
-          wx.showToast({
-            title: '翻译结果解析失败',
-            icon: 'none'
-          });
+      // 数据库无，调用AI
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.TRANSLATE, { content: article.full_content });
+      const apiMessages = [
+        { role: 'system', content: '你是一个专业的文言文翻译专家，请提供准确、流畅的现代汉语翻译。请使用纯文本回复，不要使用Markdown格式。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages, max_tokens: 4000 },
+        success: (res) => {
+          let translation = '';
+          try {
+            translation = res.data.choices[0].message.content.trim();
+            this.setData({ 'article.translation': translation, aiProcessing: false });
+            this.cacheArticleData({ translation });
+            // 存入数据库
+            db.collection('article_ai_content').add({
+              data: {
+                article_id,
+                type,
+                content: translation,
+                created_at: new Date(),
+                updated_at: new Date()
+              }
+            });
+          } catch (e) {
+            console.error('解析翻译结果失败', e);
+            wx.showToast({ title: '翻译结果解析失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
+          }
+        },
+        fail: (err) => {
+          console.error('获取翻译失败', err);
+          wx.showToast({ title: '获取翻译失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取翻译失败', err);
-        wx.showToast({
-          title: '获取翻译失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
@@ -543,114 +492,54 @@ Page({
   // 加载作者信息
   loadAuthorInfo: function() {
     const article = this.data.article;
-    
-    // 如果已有作者介绍且不是自动加载模式，直接显示
-    if (article.author_intro && !this.data.autoLoad) {
-      return;
-    }
-    
+    const article_id = article.article_id;
+    const type = 'author_info';
     this.setData({ aiProcessing: true });
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.AUTHOR_INFO, { 
-      author: article.author, 
-      dynasty: article.dynasty 
-    });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个中国古代文学专家，请提供作者的简要介绍。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        this.setData({ 'article.author_intro': res.data[0].content, aiProcessing: false });
+        this.cacheArticleData({ author_intro: res.data[0].content });
+        return;
       }
-    ];
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const authorInfo = res.data.choices[0].message.content.trim();
-          console.log('获取作者信息成功', authorInfo);
-          
-          // 作者信息解析逻辑增强
-          let authorIntro = '';
-          
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.AUTHOR_INFO, { author: article.author, dynasty: article.dynasty });
+      const apiMessages = [
+        { role: 'system', content: '你是一个中国古代文学专家，请提供作者的简要介绍。请使用纯文本回复，不要使用Markdown格式。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
+        success: (res) => {
           try {
-            // 尝试按照常见格式解析内容
-            const sections = authorInfo.split(/(?:^|\n)(?:生平简介|文学成就|历史地位|创作背景)[：:]/i);
-            
-            if (sections.length >= 2) {
-              // 合并所有有效内容
-              let combinedContent = '';
-              
-              for (let i = 1; i < sections.length; i++) {
-                let content = sections[i].trim();
-        
-                // 清理每个部分可能包含的下一个标题
-                content = content.split(/\n(?:生平简介|文学成就|历史地位|创作背景)[：:]/i)[0].trim();
-                
-                if (content) {
-                  combinedContent += (combinedContent ? '\n\n' : '') + content;
-                }
+            const authorInfo = res.data.choices[0].message.content.trim();
+            this.setData({ 'article.author_intro': authorInfo, aiProcessing: false });
+            this.cacheArticleData({ author_intro: authorInfo });
+            db.collection('article_ai_content').add({
+              data: {
+                article_id,
+                type,
+                content: authorInfo,
+                created_at: new Date(),
+                updated_at: new Date()
               }
-              
-              authorIntro = combinedContent;
-            } else {
-              // 如果没有找到明确的章节分隔，直接使用全部内容
-              authorIntro = authorInfo;
-            }
+            });
           } catch (e) {
-            console.error('解析作者信息出错', e);
-            // 出错时直接使用原始内容
-            authorIntro = authorInfo;
+            console.error('解析作者信息失败', e);
+            wx.showToast({ title: '作者信息解析失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
           }
-          
-          // 确保作者介绍不为空
-          if (!authorIntro) {
-            authorIntro = authorInfo;
-          }
-          
-          // 更新作者介绍
-          this.setData({
-            'article.author_intro': authorIntro,
-            aiProcessing: false
-          });
-          
-          // 缓存作者信息到本地
-          this.cacheArticleData({
-            author_intro: authorIntro
-          });
-        } catch (e) {
-          console.error('解析作者信息失败', e);
-          wx.showToast({
-            title: '作者信息解析失败',
-            icon: 'none'
-          });
+        },
+        fail: (err) => {
+          console.error('获取作者信息失败', err);
+          wx.showToast({ title: '获取作者信息失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取作者信息失败', err);
-        wx.showToast({
-          title: '获取作者信息失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
@@ -694,8 +583,6 @@ Page({
       sentences: sentenceObjects,
       currentSentenceIndex: 0
     });
-    // 整体缓存所有分句
-    this.cacheSentenceArray(sentenceObjects);
     // 加载第一句的详细解析
     this.loadSentenceDetail(0);
   },
@@ -767,128 +654,114 @@ Page({
     if (!sentences || index >= sentences.length) return;
     
     const sentence = sentences[index];
-    
-    // 如果句子已经有解析且不是自动加载模式，直接返回
-    if (sentence.phonetic_notation && sentence.translation && !this.data.autoLoad) {
-      return;
-    }
-    
+    const article = this.data.article;
+    const article_id = article.article_id;
+    const type = 'sentence_analysis';
     this.setData({ aiProcessing: true });
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SENTENCE_ANALYSIS, { 
-      content: sentence.original_text
-    });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个文言文教学专家，请对文言文句子进行详细解析。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    // 查库，extra为当前句子内容
+    db.collection('article_ai_content').where({ article_id, type, 'extra.sentence': sentence.original_text }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        const dbData = res.data[0];
+        const updatedSentences = [...sentences];
+        updatedSentences[index] = {
+          ...sentence,
+          phonetic_notation: dbData.content.phonetic_notation || '',
+          translation: dbData.content.translation || '',
+          key_words: dbData.content.key_words || [],
+          grammar_analysis: dbData.content.grammar_analysis || '',
+          rhetorical_analysis: dbData.content.rhetorical_analysis || ''
+        };
+        this.setData({ sentences: updatedSentences, aiProcessing: false });
+        this.cacheSentenceAnalysis(index, updatedSentences[index]);
+        return;
       }
-    ];
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const analysisResult = res.data.choices[0].message.content.trim();
-          
-          // 解析结果
-          let phonetic = '';
-          let translation = '';
-          let keyWords = [];
-          let grammar = '';
-          let rhetoric = '';
-          
-          // 提取各部分内容
-          const phoneticMatch = analysisResult.match(/拼音标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
-          const translationMatch = analysisResult.match(/现代汉语翻译[：:]([\s\S]*?)(?=关键词解析[：:]|$)/i);
-          const keyWordsMatch = analysisResult.match(/关键词解析[：:]([\s\S]*?)(?=语法结构分析[：:]|$)/i);
-          const grammarMatch = analysisResult.match(/语法结构分析[：:]([\s\S]*?)(?=修辞手法分析[：:]|$)/i);
-          const rhetoricMatch = analysisResult.match(/修辞手法分析[：:]([\s\S]*?)$/i);
-          
-          if (phoneticMatch) phonetic = phoneticMatch[1].trim();
-          if (translationMatch) translation = translationMatch[1].trim();
-          if (keyWordsMatch) {
-            const keyWordsText = keyWordsMatch[1].trim();
-            const keyWordLines = keyWordsText.split('\n');
-            
-            keyWordLines.forEach(line => {
-              const trimmedLine = line.trim();
-              if (trimmedLine && /^\d+\./.test(trimmedLine)) {
-                // 提取数字编号部分
-                const numberMatch = trimmedLine.match(/^(\d+\.)/);
-                const number = numberMatch ? numberMatch[1] : '';
-                
-                const parts = trimmedLine.split(/[：:]/);
-                if (parts.length >= 2) {
-                  // 保留数字编号
-                  const word = parts[0].trim(); // 不再移除数字编号
-                  const explanation = parts.slice(1).join(':').trim();
-                  keyWords.push({ 
-                    number: number, 
-                    word: word.replace(/^\d+\./, '').trim(), // 仅在存储时移除数字编号
-                    fullWord: word, // 保存完整词条（包含数字编号）
-                    explanation: explanation 
-                  });
+      // 数据库无，调用AI
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SENTENCE_ANALYSIS, { content: sentence.original_text });
+      const apiMessages = [
+        { role: 'system', content: '你是一个文言文教学专家，请对文言文句子进行详细解析。请使用纯文本回复，不要使用Markdown格式。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
+        success: (res) => {
+          try {
+            const analysisResult = res.data.choices[0].message.content.trim();
+            // 解析结果（与原有逻辑一致）
+            let phonetic = '';
+            let translation = '';
+            let keyWords = [];
+            let grammar = '';
+            let rhetoric = '';
+            const phoneticMatch = analysisResult.match(/拼音标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
+            const translationMatch = analysisResult.match(/现代汉语翻译[：:]([\s\S]*?)(?=关键词解析[：:]|$)/i);
+            const keyWordsMatch = analysisResult.match(/关键词解析[：:]([\s\S]*?)(?=语法结构分析[：:]|$)/i);
+            const grammarMatch = analysisResult.match(/语法结构分析[：:]([\s\S]*?)(?=修辞手法分析[：:]|$)/i);
+            const rhetoricMatch = analysisResult.match(/修辞手法分析[：:]([\s\S]*?)$/i);
+            if (phoneticMatch) phonetic = phoneticMatch[1].trim();
+            if (translationMatch) translation = translationMatch[1].trim();
+            if (keyWordsMatch) {
+              const keyWordsText = keyWordsMatch[1].trim();
+              const keyWordLines = keyWordsText.split('\n');
+              keyWordLines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine && /^\d+\./.test(trimmedLine)) {
+                  const numberMatch = trimmedLine.match(/^(\d+\.)/);
+                  const number = numberMatch ? numberMatch[1] : '';
+                  const parts = trimmedLine.split(/[：:]/);
+                  if (parts.length >= 2) {
+                    const word = parts[0].trim();
+                    const explanation = parts.slice(1).join(':').trim();
+                    keyWords.push({ number: number, word: word.replace(/^\d+\./, '').trim(), fullWord: word, explanation: explanation });
+                  }
                 }
+              });
+            }
+            if (grammarMatch) grammar = grammarMatch[1].trim();
+            if (rhetoricMatch) rhetoric = rhetoricMatch[1].trim();
+            const updatedSentences = [...sentences];
+            updatedSentences[index] = {
+              ...sentence,
+              phonetic_notation: phonetic,
+              translation: translation,
+              key_words: keyWords,
+              grammar_analysis: grammar,
+              rhetorical_analysis: rhetoric
+            };
+            this.setData({ sentences: updatedSentences, aiProcessing: false });
+            this.cacheSentenceAnalysis(index, updatedSentences[index]);
+            // 存入数据库，content为结构化对象，extra为句子内容
+            db.collection('article_ai_content').add({
+              data: {
+                article_id,
+                type,
+                content: {
+                  phonetic_notation: phonetic,
+                  translation: translation,
+                  key_words: keyWords,
+                  grammar_analysis: grammar,
+                  rhetorical_analysis: rhetoric
+                },
+                extra: { sentence: sentence.original_text, sentence_index: index },
+                created_at: new Date(),
+                updated_at: new Date()
               }
             });
+          } catch (e) {
+            wx.showToast({ title: '句子解析失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
           }
-          
-          if (grammarMatch) grammar = grammarMatch[1].trim();
-          if (rhetoricMatch) rhetoric = rhetoricMatch[1].trim();
-          
-          // 更新句子解析
-          const updatedSentences = [...sentences];
-          updatedSentences[index] = {
-            ...sentence,
-            phonetic_notation: phonetic,
-            translation: translation,
-            key_words: keyWords,
-            grammar_analysis: grammar,
-            rhetorical_analysis: rhetoric
-          };
-          
-          this.setData({
-            sentences: updatedSentences,
-            aiProcessing: false
-          });
-          
-          // 缓存句子解析到本地
-          this.cacheSentenceAnalysis(index, updatedSentences[index]);
-        } catch (e) {
-          console.error('解析句子详情失败', e);
-          wx.showToast({
-            title: '句子解析失败',
-            icon: 'none'
-          });
+        },
+        fail: (err) => {
+          wx.showToast({ title: '获取句子解析失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取句子解析失败', err);
-        wx.showToast({
-          title: '获取句子解析失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
@@ -921,226 +794,185 @@ Page({
   // 加载背景知识
   loadBackgroundInfo: function() {
     const article = this.data.article;
-    
-    // 如果已有背景知识且不是自动加载模式，直接显示
-    if (article.background_info && !this.data.autoLoad) {
-      return;
-    }
-    
+    const article_id = article.article_id;
+    const type = 'background';
     this.setData({ aiProcessing: true });
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.BACKGROUND, { 
-      title: article.title,
-      author: article.author, 
-      dynasty: article.dynasty,
-      content: article.full_content
-    });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个中国古代文学专家，请提供文章的背景知识介绍。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        const backgroundInfo = res.data[0].content;
+        // 解析三部分
+        let creationBackground = '';
+        let historicalBackground = '';
+        let mainIdea = '';
+        const creationMatch = backgroundInfo.match(/创作背景[：:]([\s\S]*?)(?=历史背景[：:]|$)/i);
+        if (creationMatch) creationBackground = creationMatch[1].trim();
+        const historicalMatch = backgroundInfo.match(/历史背景[：:]([\s\S]*?)(?=主旨思想[：:]|$)/i);
+        if (historicalMatch) historicalBackground = historicalMatch[1].trim();
+        const mainIdeaMatch = backgroundInfo.match(/主旨思想[：:]([\s\S]*?)$/i);
+        if (mainIdeaMatch) mainIdea = mainIdeaMatch[1].trim();
+        this.setData({
+          'article.background_info': backgroundInfo,
+          'article.creation_background': creationBackground || backgroundInfo,
+          'article.historical_background': historicalBackground || '暂无历史背景信息',
+          'article.main_idea': mainIdea || '暂无主旨思想信息',
+          aiProcessing: false
+        });
+        this.cacheArticleData({
+          background_info: backgroundInfo,
+          creation_background: creationBackground || backgroundInfo,
+          historical_background: historicalBackground || '暂无历史背景信息',
+          main_idea: mainIdea || '暂无主旨思想信息'
+        });
+        return;
       }
-    ];
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const backgroundInfo = res.data.choices[0].message.content.trim();
-          
-          // 解析背景知识为三个部分
-          let creationBackground = '';
-          let historicalBackground = '';
-          let mainIdea = '';
-          
-          // 提取创作背景
-          const creationMatch = backgroundInfo.match(/创作背景[：:]([\s\S]*?)(?=历史背景[：:]|$)/i);
-          if (creationMatch) {
-            creationBackground = creationMatch[1].trim();
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.BACKGROUND, { title: article.title, author: article.author, dynasty: article.dynasty, content: article.full_content });
+      const apiMessages = [
+        { role: 'system', content: '你是一个中国古代文学专家，请提供文章的背景知识介绍。请使用纯文本回复，不要使用Markdown格式。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
+        success: (res) => {
+          try {
+            const backgroundInfo = res.data.choices[0].message.content.trim();
+            // 解析三部分
+            let creationBackground = '';
+            let historicalBackground = '';
+            let mainIdea = '';
+            const creationMatch = backgroundInfo.match(/创作背景[：:]([\s\S]*?)(?=历史背景[：:]|$)/i);
+            if (creationMatch) creationBackground = creationMatch[1].trim();
+            const historicalMatch = backgroundInfo.match(/历史背景[：:]([\s\S]*?)(?=主旨思想[：:]|$)/i);
+            if (historicalMatch) historicalBackground = historicalMatch[1].trim();
+            const mainIdeaMatch = backgroundInfo.match(/主旨思想[：:]([\s\S]*?)$/i);
+            if (mainIdeaMatch) mainIdea = mainIdeaMatch[1].trim();
+            this.setData({
+              'article.background_info': backgroundInfo,
+              'article.creation_background': creationBackground || backgroundInfo,
+              'article.historical_background': historicalBackground || '暂无历史背景信息',
+              'article.main_idea': mainIdea || '暂无主旨思想信息',
+              aiProcessing: false
+            });
+            this.cacheArticleData({
+              background_info: backgroundInfo,
+              creation_background: creationBackground || backgroundInfo,
+              historical_background: historicalBackground || '暂无历史背景信息',
+              main_idea: mainIdea || '暂无主旨思想信息'
+            });
+            db.collection('article_ai_content').add({
+              data: {
+                article_id,
+                type,
+                content: backgroundInfo,
+                created_at: new Date(),
+                updated_at: new Date()
+              }
+            });
+          } catch (e) {
+            console.error('解析背景知识失败', e);
+            wx.showToast({ title: '背景知识解析失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
           }
-          
-          // 提取历史背景
-          const historicalMatch = backgroundInfo.match(/历史背景[：:]([\s\S]*?)(?=主旨思想[：:]|$)/i);
-          if (historicalMatch) {
-            historicalBackground = historicalMatch[1].trim();
-          }
-          
-          // 提取主旨思想
-          const mainIdeaMatch = backgroundInfo.match(/主旨思想[：:]([\s\S]*?)$/i);
-          if (mainIdeaMatch) {
-            mainIdea = mainIdeaMatch[1].trim();
-          }
-          
-          // 更新背景知识
-          this.setData({
-            'article.background_info': backgroundInfo,
-            'article.creation_background': creationBackground || backgroundInfo,
-            'article.historical_background': historicalBackground || '暂无历史背景信息',
-            'article.main_idea': mainIdea || '暂无主旨思想信息',
-            aiProcessing: false
-          });
-          
-          // 缓存背景知识到本地
-          this.cacheArticleData({
-            background_info: backgroundInfo,
-            creation_background: creationBackground || backgroundInfo,
-            historical_background: historicalBackground || '暂无历史背景信息',
-            main_idea: mainIdea || '暂无主旨思想信息'
-          });
-        } catch (e) {
-          console.error('解析背景知识失败', e);
-          wx.showToast({
-            title: '背景知识解析失败',
-            icon: 'none'
-          });
+        },
+        fail: (err) => {
+          console.error('获取背景知识失败', err);
+          wx.showToast({ title: '获取背景知识失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取背景知识失败', err);
-        wx.showToast({
-          title: '获取背景知识失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
   // 加载练习题
   loadExercises: function() {
     const article = this.data.article;
-    
-    // 如果已有练习题且不是自动加载模式，直接显示
-    if (this.data.exercises && this.data.exercises.length > 0 && !this.data.autoLoad) {
-      return;
-    }
-    
-    this.setData({ 
-      aiProcessing: true,
-      exercises: [],
-      userAnswers: [],
-      showExerciseResult: false,
-      optionClassList: [],
-      currentExerciseIndex: 0
-    });
-    
-    // 获取适合的年级水平
-    const gradeLevel = this.getArticleGradeLevel();
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.EXERCISE, { 
-      content: article.full_content,
-      level: gradeLevel
-    });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个中学文言文教师，请生成适合学生水平的练习题。请使用纯文本回复，不要使用Markdown格式。请以JSON格式返回结果。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    const article_id = article.article_id;
+    const type = 'exercise';
+    this.setData({ aiProcessing: true, exercises: [], userAnswers: [], showExerciseResult: false, optionClassList: [], currentExerciseIndex: 0 });
+    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        const exercises = res.data[0].content;
+        const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
+        this.setData({
+          exercises,
+          userAnswers: new Array(exercises.length).fill(-1),
+          optionClassList,
+          aiProcessing: false
+        });
+        this.cacheArticleData({ exercises });
+        return;
       }
-    ];
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const responseText = res.data.choices[0].message.content.trim();
-          
-          // 尝试解析JSON
-          let exercises = [];
+      // 获取适合的年级水平
+      const gradeLevel = this.getArticleGradeLevel();
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.EXERCISE, { content: article.full_content, level: gradeLevel });
+      const apiMessages = [
+        { role: 'system', content: '你是一个中学文言文教师，请生成适合学生水平的练习题。请使用纯文本回复，不要使用Markdown格式。请以JSON格式返回结果。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
+        success: (res) => {
           try {
-            // 提取JSON部分
-            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-              exercises = JSON.parse(jsonMatch[0]);
-            } else {
-              throw new Error('无法找到有效的JSON数据');
+            const responseText = res.data.choices[0].message.content.trim();
+            let exercises = [];
+            try {
+              const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                exercises = JSON.parse(jsonMatch[0]);
+              } else {
+                throw new Error('无法找到有效的JSON数据');
+              }
+            } catch (jsonError) {
+              const exerciseMatches = responseText.match(/\{"question"[\s\S]*?\}/g);
+              if (exerciseMatches) {
+                exercises = exerciseMatches.map(match => {
+                  try { return JSON.parse(match); } catch (e) { return null; }
+                }).filter(Boolean);
+              }
             }
-          } catch (jsonError) {
-            console.error('JSON解析失败，尝试手动解析', jsonError);
-            
-            // 手动解析练习题
-            const exerciseMatches = responseText.match(/\{"question"[\s\S]*?\}/g);
-            if (exerciseMatches) {
-              exercises = exerciseMatches.map(match => {
-                try {
-                  return JSON.parse(match);
-                } catch (e) {
-                  console.error('解析单个练习题失败', e);
-                  return null;
+            if (exercises && exercises.length > 0) {
+              const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
+              this.setData({
+                exercises,
+                userAnswers: new Array(exercises.length).fill(-1),
+                optionClassList,
+                aiProcessing: false
+              });
+              this.cacheArticleData({ exercises });
+              db.collection('article_ai_content').add({
+                data: {
+                  article_id,
+                  type,
+                  content: exercises,
+                  extra: { level: gradeLevel },
+                  created_at: new Date(),
+                  updated_at: new Date()
                 }
-              }).filter(Boolean);
+              });
+            } else {
+              throw new Error('未能生成有效的练习题');
             }
+          } catch (e) {
+            wx.showToast({ title: '练习题生成失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
           }
-          
-          if (exercises && exercises.length > 0) {
-            // 初始化选项样式列表
-            const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
-            
-            this.setData({
-              exercises: exercises,
-              userAnswers: new Array(exercises.length).fill(-1),
-              optionClassList: optionClassList,
-              aiProcessing: false
-            });
-            
-            // 缓存练习题到本地
-            this.cacheArticleData({
-              exercises: exercises
-            });
-          } else {
-            throw new Error('未能生成有效的练习题');
-          }
-        } catch (e) {
-          console.error('解析练习题失败', e);
-          wx.showToast({
-            title: '练习题生成失败',
-            icon: 'none'
-          });
+        },
+        fail: (err) => {
+          wx.showToast({ title: '获取练习题失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取练习题失败', err);
-        wx.showToast({
-          title: '获取练习题失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
@@ -1163,92 +995,59 @@ Page({
   // 加载问答功能
   loadQA: function() {
     const article = this.data.article;
-    
-    // 如果已有提问拓展且不是自动加载模式，直接显示
-    if (this.data.suggestedQuestions && this.data.suggestedQuestions.length > 0 && !this.data.autoLoad) {
-      return;
-    }
-    
-    this.setData({ 
-      aiProcessing: true,
-      qaMessages: [],
-      suggestedQuestions: []
-    });
-    
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SUGGESTED_QUESTIONS, { 
-      title: article.title,
-      author: article.author,
-      dynasty: article.dynasty,
-      content: article.full_content
-    });
-    
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个文言文学习顾问，请生成适合学生提问的问题。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
+    const article_id = article.article_id;
+    const type = 'suggested_questions';
+    this.setData({ aiProcessing: true, qaMessages: [], suggestedQuestions: [] });
+    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+      if (res.data && res.data.length > 0) {
+        this.setData({
+          suggestedQuestions: res.data[0].content.slice(0, 5),
+          aiProcessing: false
+        });
+        this.cacheArticleData({ suggested_questions: res.data[0].content.slice(0, 5) });
+        return;
       }
-    ];
-    
-    console.log('开始加载推荐问题...');
-    
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const responseText = res.data.choices[0].message.content.trim();
-          console.log('获取推荐问题成功');
-          
-          // 解析推荐问题
-          const questions = responseText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.startsWith('问题') && !line.match(/^\d+[\.\、]/));
-          
-          if (questions && questions.length > 0) {
+      const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SUGGESTED_QUESTIONS, { title: article.title, author: article.author, dynasty: article.dynasty, content: article.full_content });
+      const apiMessages = [
+        { role: 'system', content: '你是一个文言文学习顾问，请生成适合学生提问的问题。请使用纯文本回复，不要使用Markdown格式。' },
+        { role: 'user', content: prompt }
+      ];
+      wx.request({
+        url: OPENAI_CONFIG.API_URL,
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
+        },
+        data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
+        success: (res) => {
+          try {
+            const responseText = res.data.choices[0].message.content.trim();
+            const questions = responseText.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('问题') && !line.match(/^\d+[\.\、]/));
             this.setData({
               suggestedQuestions: questions.slice(0, 5),
               aiProcessing: false
             });
-            
-            // 缓存推荐问题到本地
-            this.cacheArticleData({
-              suggested_questions: questions.slice(0, 5)
+            this.cacheArticleData({ suggested_questions: questions.slice(0, 5) });
+            db.collection('article_ai_content').add({
+              data: {
+                article_id,
+                type,
+                content: questions,
+                created_at: new Date(),
+                updated_at: new Date()
+              }
             });
-          } else {
-            throw new Error('未能生成有效的推荐问题');
+          } catch (e) {
+            wx.showToast({ title: '推荐问题生成失败', icon: 'none' });
+            this.setData({ aiProcessing: false });
           }
-        } catch (e) {
-          console.error('解析推荐问题失败', e);
-          wx.showToast({
-            title: '推荐问题生成失败',
-            icon: 'none'
-          });
+        },
+        fail: (err) => {
+          wx.showToast({ title: '获取推荐问题失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
-      },
-      fail: (err) => {
-        console.error('获取推荐问题失败', err);
-        wx.showToast({
-          title: '获取推荐问题失败',
-          icon: 'none'
-        });
-        this.setData({ aiProcessing: false });
-      }
+      });
     });
   },
   
@@ -1397,40 +1196,17 @@ Page({
     const articleId = this.data.articleId;
     if (!articleId) return false;
     try {
-      // 加载文章缓存数据
       const cacheKey = `article_cache_${articleId}`;
       const cachedData = wx.getStorageSync(cacheKey);
       if (cachedData) {
-        // 更新文章数据
         const article = this.data.article || {};
-        this.setData({
-          article: { ...article, ...cachedData }
-        });
+        this.setData({ article: { ...article, ...cachedData } });
       }
-      // 加载句子解析缓存
-      const sentencesCacheKey = `article_sentences_${articleId}`;
-      const cachedSentences = wx.getStorageSync(sentencesCacheKey);
-      let hasCompleteSentenceCache = false;
-      if (cachedSentences && cachedSentences.length > 0) {
-        // 检查所有句子是否有完整内容
-        hasCompleteSentenceCache = cachedSentences.every(
-          s => s && s.phonetic_notation && s.translation
-        );
-        if (hasCompleteSentenceCache) {
-        this.setData({
-          sentences: cachedSentences,
-          currentSentenceIndex: 0
-        });
-          console.log('从缓存加载句子数据: 完整内容');
-      }
-      }
-      // 加载练习题缓存
+      // 只加载练习题缓存
       const exercisesCacheKey = `article_exercises_${articleId}`;
       const cachedExercises = wx.getStorageSync(exercisesCacheKey);
       if (cachedExercises && cachedExercises.length > 0) {
-        // 初始化选项样式列表
         const optionClassList = cachedExercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
-        
         this.setData({
           exercises: cachedExercises,
           userAnswers: new Array(cachedExercises.length).fill(-1),
@@ -1438,10 +1214,7 @@ Page({
           optionClassList: optionClassList
         });
       }
-      return {
-        hasData: !!cachedData,
-        hasCompleteSentenceCache: hasCompleteSentenceCache
-      };
+      return { hasData: !!cachedData };
     } catch (e) {
       console.error('从缓存加载数据失败', e);
       return false;
@@ -1621,18 +1394,6 @@ Page({
       });
     });
     this.setData({ optionClassList });
-  },
-
-  // 新增整体缓存句子数组的方法
-  cacheSentenceArray: function(sentencesArray) {
-    const articleId = this.data.articleId;
-    if (!articleId) return;
-    try {
-      const cacheKey = `article_sentences_${articleId}`;
-      wx.setStorageSync(cacheKey, sentencesArray);
-    } catch (e) {
-      console.error('整体缓存句子数组失败', e);
-    }
   },
 
   // 选择练习选项

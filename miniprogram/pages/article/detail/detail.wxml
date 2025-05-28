@@ -160,12 +160,19 @@
             
             <view class="sentence-section">
               <view class="section-title">关键词解释</view>
-              <text class="section-content keywords" decode="{{true}}">{{sentences[currentSentenceIndex].key_words_explanation}}</text>
+              <view class="section-content keywords">
+                <block wx:for="{{sentences[currentSentenceIndex].key_words}}" wx:key="*this" wx:for-item="keyword">
+                  <view class="keyword-item">
+                    <text class="keyword">{{keyword.word}}</text>
+                    <text class="explanation">{{keyword.explanation}}</text>
+                  </view>
+                </block>
+              </view>
             </view>
             
             <view class="sentence-section">
               <view class="section-title">语法结构</view>
-              <text class="section-content structure" decode="{{true}}">{{sentences[currentSentenceIndex].sentence_structure}}</text>
+              <text class="section-content structure" decode="{{true}}">{{sentences[currentSentenceIndex].grammar_analysis}}</text>
             </view>
             
             <view class="sentence-section">
@@ -180,25 +187,23 @@
       <view class="content-section" wx:if="{{currentTab === 'background'}}">
         <view class="background-content">
           <!-- 背景知识加载中 -->
-          <view class="section-loading" wx:if="{{aiProcessing && !article.creation_background}}">
+          <view class="section-loading" wx:if="{{aiProcessing && !article.background_info}}">
             <view class="section-loading-spinner"></view>
             <text class="section-loading-text">AI思考中...</text>
           </view>
           <block wx:else>
-          <view class="background-section">
-            <view class="section-title">创作背景介绍</view>
-              <text class="section-content" decode="{{true}}">{{article.creation_background}}</text>
-          </view>
-          
-          <view class="background-section">
-            <view class="section-title">历史时代背景</view>
-              <text class="section-content" decode="{{true}}">{{article.historical_background}}</text>
-          </view>
-          
-          <view class="background-section">
-            <view class="section-title">文章主旨思想</view>
-              <text class="section-content" decode="{{true}}">{{article.main_idea}}</text>
-          </view>
+            <view class="background-section">
+              <view class="section-title">创作背景</view>
+                <text class="section-content" decode="{{true}}">{{article.creation_background}}</text>
+            </view>
+            <view class="background-section">
+              <view class="section-title">历史背景</view>
+                <text class="section-content" decode="{{true}}">{{article.historical_background}}</text>
+            </view>
+            <view class="background-section">
+              <view class="section-title">主旨思想</view>
+                <text class="section-content" decode="{{true}}">{{article.main_idea}}</text>
+            </view>
           </block>
         </view>
       </view>
@@ -214,19 +219,32 @@
         <view class="exercise-section" wx:elif="{{!aiProcessing && !showExerciseResult}}">
           <block wx:if="{{exercises.length > 0}}">
             <view class="exercise-card">
-              <view class="exercise-question">{{currentExerciseIndex + 1}}. {{exercises[currentExerciseIndex].question}}</view>
+              <view class="exercise-header">
+                <view class="exercise-question">{{currentExerciseIndex + 1}}. {{exercises[currentExerciseIndex].question}}</view>
+                <view class="exercise-progress-indicator">{{currentExerciseIndex + 1}}/{{exercises.length}}</view>
+              </view>
               <view class="exercise-options">
                 <block wx:for="{{exercises[currentExerciseIndex].options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
                   <view class="{{optionClassList[currentExerciseIndex][optIdx]}}"
                         bindtap="selectExerciseOption"
                         data-question-index="{{currentExerciseIndex}}"
                         data-option-index="{{optIdx}}">
-                    <text>{{optionLetters[optIdx]}}. {{opt}}</text>
+                    <text class="option-letter">{{optionLetters[optIdx]}}</text>
+                    <text class="option-content">{{opt}}</text>
                     <block wx:if="{{userAnswers[currentExerciseIndex] === optIdx}}">
-                      <text class="option-tag">（已选）</text>
+                      <view class="option-selected-icon"></view>
                     </block>
-          </view>
+                  </view>
                 </block>
+              </view>
+              <!-- 导航按钮 -->
+              <view class="exercise-nav-buttons">
+                <button class="nav-btn prev-btn" bindtap="prevExercise" disabled="{{currentExerciseIndex === 0}}">上一题</button>
+                <button class="nav-btn next-btn" bindtap="nextExercise" disabled="{{currentExerciseIndex === exercises.length - 1}}">下一题</button>
+              </view>
+              <!-- 提交按钮 -->
+              <view class="exercise-submit-bar" wx:if="{{currentExerciseIndex === exercises.length - 1}}">
+                <button class="exercise-submit-btn" bindtap="submitExercises">提交答案</button>
               </view>
             </view>
           </block>
@@ -238,19 +256,25 @@
           </view>
           <block wx:for="{{exercises}}" wx:for-item="ex" wx:for-index="idx" wx:key="idx">
             <view class="exercise-card">
-              <view class="exercise-question">{{idx + 1}}. {{ex.question}}</view>
+              <view class="exercise-header">
+                <view class="exercise-question">{{idx + 1}}. {{ex.question}}</view>
+                <view class="exercise-result-tag {{userAnswers[idx] === ex.answer ? 'correct' : 'wrong'}}">
+                  {{userAnswers[idx] === ex.answer ? '正确' : '错误'}}
+                </view>
+              </view>
               <view class="exercise-options">
                 <block wx:for="{{ex.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
                   <view class="{{optionClassList[idx][optIdx]}}">
-                    <text>{{optionLetters[optIdx]}}. {{opt}}</text>
+                    <text class="option-letter">{{optionLetters[optIdx]}}</text>
+                    <text class="option-content">{{opt}}</text>
                     <block wx:if="{{showExerciseResult}}">
-                      <text class="option-tag tag-user-correct" wx:if="{{optIdx === ex.answer && userAnswers[idx] === optIdx}}">（你的选择，正确）</text>
-                      <text class="option-tag tag-correct" wx:elif="{{optIdx === ex.answer}}">（正确）</text>
-                      <text class="option-tag tag-user" wx:elif="{{userAnswers[idx] === optIdx}}">（你的选择）</text>
+                      <view wx:if="{{optIdx === ex.answer && userAnswers[idx] === optIdx}}" class="option-result-icon correct-selected"></view>
+                      <view wx:elif="{{optIdx === ex.answer}}" class="option-result-icon correct"></view>
+                      <view wx:elif="{{userAnswers[idx] === optIdx}}" class="option-result-icon wrong"></view>
                     </block>
                   </view>
                 </block>
-                </view>
+              </view>
               <view class="exercise-analysis" wx:if="{{showExerciseResult}}">
                 <text class="analysis-title">解析：</text>
                 <text class="analysis-content">{{ex.analysis}}</text>

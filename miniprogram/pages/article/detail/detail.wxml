@@ -37,7 +37,7 @@
       <!-- 原文内容 -->
       <view class="ancient-text-container {{isContentCollapsed && showToggleButton ? 'collapsed' : showToggleButton ? (isAutoExpand ? 'auto' : 'expanded') : ''}}">
         <!-- 底部滚动提示 -->
-        <view wx:if="{{showScrollTip && !isAutoExpand}}" class="scroll-tip-bottom">可上下滑动查看更多</view>
+        <view wx:if="{{showScrollTip && !isContentCollapsed && !isAutoExpand}}" class="scroll-tip-bottom">可上下滑动查看更多</view>
         <scroll-view scroll-y="{{!isContentCollapsed && showToggleButton && !isAutoExpand}}" bindscroll="onAncientScroll" style="height:100%;">
           <view class="ancient-text">{{article.full_content}}</view>
         </scroll-view>
@@ -55,28 +55,28 @@
     <!-- 功能选项卡 -->
     <view class="tab-container">
       <view class="tab-item {{currentTab === 'translation' ? 'active' : ''}}" bindtap="switchTab" data-tab="translation">
-        <image class="tab-icon" src="https://example.com/icon_translation.png" mode="aspectFit"></image>
+        <image class="tab-icon" src="/images/icons/translation.svg" mode="aspectFit"></image>
         <text>全文翻译</text>
       </view>
       <view class="tab-item {{currentTab === 'analysis' ? 'active' : ''}}" bindtap="switchTab" data-tab="analysis">
-        <image class="tab-icon" src="https://example.com/icon_analysis.png" mode="aspectFit"></image>
+        <image class="tab-icon" src="/images/icons/analysis.svg" mode="aspectFit"></image>
         <text>逐句解析</text>
       </view>
       <view class="tab-item {{currentTab === 'author' ? 'active' : ''}}" bindtap="switchTab" data-tab="author">
-        <image class="tab-icon" src="https://example.com/icon_author.png" mode="aspectFit"></image>
+        <image class="tab-icon" src="/images/icons/author.svg" mode="aspectFit"></image>
         <text>作者介绍</text>
       </view>
       <view class="tab-item {{currentTab === 'background' ? 'active' : ''}}" bindtap="switchTab" data-tab="background">
-        <image class="tab-icon" src="https://example.com/icon_background.png" mode="aspectFit"></image>
+        <image class="tab-icon" src="/images/icons/background.svg" mode="aspectFit"></image>
         <text>背景知识</text>
       </view>
       <view class="tab-item {{currentTab === 'exercise' ? 'active' : ''}}" bindtap="switchTab" data-tab="exercise">
-        <image class="tab-icon" src="https://example.com/icon_exercise.png" mode="aspectFit"></image>
+        <image class="tab-icon" src="/images/icons/exercise.svg" mode="aspectFit"></image>
         <text>练习巩固</text>
       </view>
       <view class="tab-item {{currentTab === 'qa' ? 'active' : ''}}" bindtap="switchTab" data-tab="qa">
-        <image class="tab-icon" src="https://example.com/icon_qa.png" mode="aspectFit"></image>
-        <text>提问拓展</text>
+        <image class="tab-icon" src="/images/icons/ai.svg" mode="aspectFit"></image>
+        <text>AI互动</text>
       </view>
     </view>
 
@@ -106,11 +106,8 @@
           </view>
           <view class="author-section" wx:else>
             <view class="author-header">
-              <view class="author-avatar"></view>
-              <view class="author-title">
                 <text class="author-name">{{article.author}}</text>
                 <text class="author-dynasty">{{article.dynasty}}</text>
-              </view>
             </view>
             <text class="author-bio" decode="{{true}}">{{article.author_intro}}</text>
           </view>
@@ -120,11 +117,16 @@
       <!-- 逐句解析 -->
       <view class="content-section" wx:if="{{currentTab === 'analysis'}}">
         <view class="analysis-content">
-          <view class="analysis-navigation">
+          <!-- 简化后的句子导航 -->
+          <view class="navigation-toolbar">
             <view class="nav-button {{currentSentenceIndex === 0 ? 'disabled' : ''}}" bindtap="prevSentence">
               <text>上一句</text>
             </view>
-            <view class="sentence-index">{{currentSentenceIndex + 1}}/{{sentences.length}}</view>
+            
+            <view class="nav-button sentence-list-btn" bindtap="showSentenceList">
+              <text>句子列表 ({{currentSentenceIndex + 1}}/{{sentences.length}})</text>
+            </view>
+            
             <view class="nav-button {{currentSentenceIndex === sentences.length - 1 ? 'disabled' : ''}}" bindtap="nextSentence">
               <text>下一句</text>
             </view>
@@ -203,61 +205,73 @@
 
       <!-- 练习巩固 -->
       <view class="content-section" wx:if="{{currentTab === 'exercise'}}">
-        <view class="exercise-content">
-          <!-- 练习题加载中 -->
-          <view class="section-loading" wx:if="{{aiProcessing && (!exercises || exercises.length === 0)}}">
+        <!-- AI加载动画 -->
+        <view class="section-loading" wx:if="{{aiProcessing}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+          <text class="section-loading-text">AI出题中</text>
+        </view>
+        <!-- 答题前：只显示当前题目 -->
+        <view class="exercise-section" wx:elif="{{!aiProcessing && !showExerciseResult}}">
+          <block wx:if="{{exercises.length > 0}}">
+            <view class="exercise-card">
+              <view class="exercise-question">{{currentExerciseIndex + 1}}. {{exercises[currentExerciseIndex].question}}</view>
+              <view class="exercise-options">
+                <block wx:for="{{exercises[currentExerciseIndex].options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
+                  <view class="{{optionClassList[currentExerciseIndex][optIdx]}}"
+                        bindtap="selectExerciseOption"
+                        data-question-index="{{currentExerciseIndex}}"
+                        data-option-index="{{optIdx}}">
+                    <text>{{optionLetters[optIdx]}}. {{opt}}</text>
+                    <block wx:if="{{userAnswers[currentExerciseIndex] === optIdx}}">
+                      <text class="option-tag">（已选）</text>
+                    </block>
           </view>
-          <view class="exercise-result" wx:elif="{{showExerciseResult}}">
-            <view class="result-card">
-              <view class="result-title">测试结果</view>
-              <view class="result-score">{{exerciseScore}}</view>
-              <view class="result-text">分</view>
-              <view class="result-description">
-                {{exerciseScore >= 80 ? '非常好！你已经掌握了这篇文章的主要内容。' : 
-                  exerciseScore >= 60 ? '不错！再多复习一下可以取得更好的成绩。' : 
-                  '还需要再复习一下哦！加油！'}}
+                </block>
               </view>
-              <view class="result-button" bindtap="resetExercise">再练一次</view>
             </view>
+          </block>
+        </view>
+        <!-- 答题后：显示所有题目、用户选择、正确答案、解析、得分和重新作答按钮 -->
+        <view class="exercise-section" wx:elif="{{!aiProcessing && showExerciseResult}}">
+          <view class="exercise-score-bar">
+            <text>得分：{{exerciseScore}} / {{exercises.length}}</text>
           </view>
-          
-          <view class="exercise-questions" wx:else>
-            <view class="exercise-list">
-              <view class="exercise-item" wx:for="{{exercises}}" wx:key="exercise_id">
-                <view class="question-number">第{{index + 1}}题</view>
-                <view class="question-content">{{item.question}}</view>
-                <view class="options-list">
-                  <view class="option-item {{userAnswers[index] === option ? 'selected' : ''}}" 
-                        wx:for="{{item.options}}" 
-                        wx:for-item="option" 
-                        wx:for-index="optionIndex"
-                        wx:key="*this" 
-                        bindtap="selectAnswer" 
-                        data-index="{{index}}" 
-                        data-option="{{option}}">
-                    <view class="option-marker">{{['A', 'B', 'C', 'D'][optionIndex]}}</view>
-                    <view class="option-text">{{option}}</view>
+          <block wx:for="{{exercises}}" wx:for-item="ex" wx:for-index="idx" wx:key="idx">
+            <view class="exercise-card">
+              <view class="exercise-question">{{idx + 1}}. {{ex.question}}</view>
+              <view class="exercise-options">
+                <block wx:for="{{ex.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
+                  <view class="{{optionClassList[idx][optIdx]}}">
+                    <text>{{optionLetters[optIdx]}}. {{opt}}</text>
+                    <block wx:if="{{showExerciseResult}}">
+                      <text class="option-tag tag-user-correct" wx:if="{{optIdx === ex.answer && userAnswers[idx] === optIdx}}">（你的选择，正确）</text>
+                      <text class="option-tag tag-correct" wx:elif="{{optIdx === ex.answer}}">（正确）</text>
+                      <text class="option-tag tag-user" wx:elif="{{userAnswers[idx] === optIdx}}">（你的选择）</text>
+                    </block>
                   </view>
+                </block>
                 </view>
+              <view class="exercise-analysis" wx:if="{{showExerciseResult}}">
+                <text class="analysis-title">解析：</text>
+                <text class="analysis-content">{{ex.analysis}}</text>
               </view>
             </view>
-            
-            <view class="submit-button" bindtap="submitExercise">提交答案</view>
+          </block>
+          <view class="exercise-reset-bar">
+            <button class="exercise-reset-btn" bindtap="resetExercises">重新答题</button>
           </view>
         </view>
       </view>
 
       <!-- 提问拓展 -->
       <view class="content-section" wx:if="{{currentTab === 'qa'}}">
-        <view class="qa-content">
+        <view class="ai-content">
           <!-- 提问加载中 -->
           <view class="section-loading" wx:if="{{aiProcessing && qaMessages.length > 0}}">
             <view class="section-loading-spinner"></view>
             <text class="section-loading-text">AI思考中...</text>
           </view>
-          <block wx:else>
+          <view wx:else>
           <view class="messages-container">
             <view class="welcome-message" wx:if="{{qaMessages.length === 0}}">
               <view class="assistant-message">
@@ -267,7 +281,6 @@
                 <view class="message-time">文言文学习助手</view>
               </view>
             </view>
-            
             <view class="message-list" wx:else>
               <view class="message-item {{item.role === 'user' ? 'user-message' : 'assistant-message'}}" 
                     wx:for="{{qaMessages}}" 
@@ -277,7 +290,6 @@
               </view>
             </view>
           </view>
-          
           <view class="suggested-questions" wx:if="{{qaMessages.length === 0}}">
             <view class="suggestion-title">推荐问题：</view>
             <view class="suggestion-list">
@@ -290,7 +302,6 @@
               </view>
             </view>
           </view>
-          
           <view class="input-container">
             <input class="question-input" 
                      placeholder="输入你的问题..." 
@@ -301,9 +312,30 @@
                 <text>提问</text>
               </view>
           </view>
-          </block>
+          </view>
         </view>
       </view>
     </view>
   </view>
+
+  <!-- 句子列表弹窗 -->
+  <view class="sentence-list-drawer {{showSentenceListDrawer ? 'show' : ''}}" catchtouchmove="preventTouchMove">
+    <view class="drawer-header">
+      <view class="drawer-title">句子列表</view>
+      <view class="drawer-close" bindtap="closeSentenceList">×</view>
+    </view>
+    <view class="drawer-content">
+      <scroll-view scroll-y class="sentence-list">
+        <view wx:for="{{sentences}}" wx:key="index" 
+              class="sentence-list-item {{currentSentenceIndex === index ? 'current' : ''}}" 
+              bindtap="selectSentenceFromList" data-index="{{index}}">
+          <view class="sentence-number">{{index + 1}}</view>
+          <view class="sentence-text">{{item.original_text}}</view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+  
+  <!-- 背景蒙层，点击关闭句子列表 -->
+  <view class="drawer-mask {{showSentenceListDrawer ? 'show' : ''}}" bindtap="closeSentenceList"></view>
 </view>

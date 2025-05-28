@@ -41,7 +41,6 @@ page {
 .loading-spinner {
   width: 80rpx;
   height: 80rpx;
-  background-image: url('https://example.com/loading_ink.png'); /* 水墨加载动画 */
   background-size: contain;
   animation: ink-spread 2s infinite;
 }
@@ -55,7 +54,6 @@ page {
 .loading-text {
   margin-top: 30rpx;
   color: var(--primary-color);
-  font-family: "FangSong", "仿宋", serif;
 }
 
 /* 课文容器 */
@@ -126,7 +124,6 @@ page {
   color: var(--primary-color);
   text-align: center;
   flex: 1;
-  font-family: "KaiTi", "楷体", serif;
   letter-spacing: 2rpx;
 }
 
@@ -169,8 +166,6 @@ page {
   flex-wrap: wrap;
   background-color: var(--card-color);
   border-bottom: 2rpx solid var(--border-color);
-  background-image: url('https://example.com/rice_paper.png');
-  background-size: cover;
 }
 
 .info-item {
@@ -178,7 +173,6 @@ page {
   font-size: 26rpx;
   display: flex;
   align-items: center;
-  font-family: "SimSun", "宋体", serif;
 }
 
 /* 课文信息区 */
@@ -225,7 +219,6 @@ page {
   color: var(--text-color);
   opacity: 0.65;
   font-weight: normal;
-  font-family: "STKaiti", "华文楷体", serif;
   font-size: 24rpx;
 }
 
@@ -283,8 +276,6 @@ page {
   font-size: 42rpx;
   font-weight: bold;
   color: var(--primary-dark);
-  font-family: "STKaiti", "华文楷体", serif;
-  letter-spacing: 4rpx;
   text-shadow: 2rpx 2rpx 4rpx rgba(107, 68, 35, 0.1);
   padding: 0;
   margin: 0;
@@ -319,78 +310,92 @@ page {
 /* 标签栏 */
 .tab-container {
   display: flex;
-  background-color: var(--card-color);
-  border: 0;
-  border-bottom: 1rpx solid var(--border-color);
-  border-radius: 0;
-  overflow: hidden;
-  box-shadow: 0 -4rpx 16rpx rgba(107, 68, 35, 0.1);
+  background-color: rgb(250, 245, 240);
+  border-top: 2rpx solid rgb(250, 234, 217);
+  border-bottom: 2rpx solid rgb(240, 214, 186);
+  box-shadow: none;
   margin-top: 0;
   width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 96rpx;
 }
 
 .tab-item {
   flex: 1;
-  min-width: 120rpx;
-  height: 94rpx;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  color: var(--text-color);
+  height: 96rpx;
+  padding: 0;
+  background: none;
+  font-size: 24rpx;
+  color: #B8AFA3;
   position: relative;
-  transition: all 0.3s;
-  background-image: url('https://example.com/tab_pattern.png'); /* 古典纹理背景 */
-  background-size: cover;
-  background-position: center;
-  font-family: "KaiTi", "楷体", serif;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .tab-item.active {
-  color: var(--secondary-color);
+  color: #8B6E4F;
   font-weight: bold;
-  background-color: rgba(200, 62, 62, 0.05);
+  background: none;
 }
 
 .tab-item.active:after {
   content: "";
   position: absolute;
   bottom: 0;
-  left: 0;
-  width: 100%;
+  left: 20rpx;
+  right: 20rpx;
   height: 6rpx;
-  background-color: var(--secondary-color);
-  border-radius: 0;
+  background-color: #8B6E4F;
+  border-radius: 6rpx 6rpx 0 0;
 }
 
 .tab-icon {
-  width: 36rpx;
-  height: 36rpx;
-  margin-right: 8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  margin: 0;
+  margin-bottom: 6rpx;
+  display: block;
+}
+
+.tab-item text {
+  font-size: 24rpx;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 /* 内容区域 */
 .content-container {
   flex: 1;
-  padding: 0 0 30rpx;
+  display: flex;
+  flex-direction: column;
   background-color: var(--bg-color);
   width: 100%;
 }
 
 .content-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background-color: var(--card-color);
   border-radius: 0;
   box-shadow: 0 6rpx 16rpx rgba(107, 68, 35, 0.1);
   overflow: hidden;
   border: 0;
   border-bottom: 1rpx solid var(--border-color);
-  background-image: url('https://example.com/scroll_paper.png');
-  background-size: cover;
-  width: 100%;
 }
 
 /* 翻译区域 */
 .translation-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 20rpx;
   width: 100%;
   box-sizing: border-box;
@@ -402,7 +407,7 @@ page {
   border-radius: 12rpx;
   padding: 30rpx;
   box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-  background-image: url('https://example.com/card_texture.png');
+  background-image: none;
   background-size: cover;
   border: 1rpx solid var(--border-color);
   margin: 20rpx 0;
@@ -410,10 +415,10 @@ page {
   font-size: 32rpx;
   color: var(--text-color);
   line-height: 1.6;
+  flex-shrink: 0;
 }
 
 .modern-text {
-  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
   font-size: 30rpx;
   color: var(--text-color);
   display: block;
@@ -431,7 +436,55 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30rpx;
+  margin-bottom: 20rpx;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 15rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.sentence-index-selector {
+  display: flex;
+  align-items: center;
+  background-color: rgba(139, 110, 79, 0.1);
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.current-index {
+  color: var(--secondary-color);
+  font-weight: bold;
+  font-size: 32rpx;
+}
+
+.separator {
+  margin: 0 5rpx;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.total-sentences {
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.dropdown-icon {
+  font-size: 20rpx;
+  margin-left: 10rpx;
+  color: var(--primary-color);
+}
+
+/* 句子导航相关的样式 */
+.navigation-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 15rpx;
+  border: 1rpx solid var(--border-color);
 }
 
 .nav-button {
@@ -455,510 +508,160 @@ page {
   box-shadow: none;
 }
 
-.sentence-index {
-  font-size: 28rpx;
-  color: var(--primary-color);
-  font-family: "STKaiti", "华文楷体", serif;
-  background-color: rgba(139, 110, 79, 0.05);
-  padding: 6rpx 20rpx;
-  border-radius: 20rpx;
-  border: 1rpx solid var(--border-color);
-}
-
-.sentence-card {
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 12rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-  background-image: url('https://example.com/card_texture.png'); /* 卡片纹理背景 */
-  background-size: cover;
-  border: 1rpx solid var(--border-color);
-}
-
-.sentence-section {
-  margin-bottom: 30rpx;
-  padding-bottom: 30rpx;
-  border-bottom: 1rpx dashed var(--border-color);
-  position: relative;
-}
-
-.sentence-section:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: var(--primary-color);
-  margin-bottom: 16rpx;
-  font-family: "STKaiti", "华文楷体", serif;
-  display: flex;
-  align-items: center;
-}
-
-.section-title:before {
-  content: "";
-  display: inline-block;
-  width: 8rpx;
-  height: 28rpx;
-  background-color: var(--secondary-color);
-  margin-right: 12rpx;
-  border-radius: 4rpx;
-}
-
-.section-content {
-  font-size: 30rpx;
-  line-height: 1.8;
-  color: var(--text-color);
-  word-wrap: break-word;
-  white-space: normal;
-  word-break: break-all;
-}
-
-.section-content.original {
-  font-weight: bold;
-  font-family: "FangSong", "仿宋", serif;
-  font-size: 32rpx;
-}
-
-.section-content.pinyin {
-  color: var(--secondary-color);
-  opacity: 0.8;
-  letter-spacing: 1rpx;
-}
-
-.section-content.punctuated {
-  font-family: "FangSong", "仿宋", serif;
-  font-size: 32rpx;
-}
-
-.section-content.keywords {
+.sentence-list-btn {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 10rpx 20rpx;
+  background-color: var(--primary-color);
   border-radius: 8rpx;
-}
-
-/* 背景知识 */
-.background-content {
-  padding: 20rpx;
-  overflow: visible;
-}
-
-.background-section {
-  margin-bottom: 40rpx;
-  position: relative;
-  padding: 30rpx;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 12rpx;
-  border: 1rpx solid var(--border-color);
-  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-  background-image: url('https://example.com/card_texture.png');
-  background-size: cover;
-  overflow: visible;
-  min-height: 100rpx;
-}
-
-.background-section:last-child {
-  margin-bottom: 0;
-}
-
-.background-section:before {
-  content: none;
-}
-
-/* 练习巩固 */
-.exercise-content {
-  padding: 20rpx;
-}
-
-.exercise-result {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40rpx 0;
-}
-
-.result-card {
-  width: 85%;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(107, 68, 35, 0.15);
-  padding: 40rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 1rpx solid var(--border-color);
-  background-image: url('https://example.com/result_bg.png'); /* 结果背景 */
-  background-size: cover;
-  background-position: center;
-}
-
-.result-title {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: var(--primary-color);
-  margin-bottom: 30rpx;
-  font-family: "STKaiti", "华文楷体", serif;
-  letter-spacing: 2rpx;
-  position: relative;
-}
-
-.result-title:after {
-  content: "";
-  position: absolute;
-  bottom: -10rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120%;
-  height: 2rpx;
-  background-color: var(--primary-light);
-}
-
-.result-score {
-  font-size: 84rpx;
-  font-weight: bold;
-  color: var(--secondary-color);
-  font-family: "STKaiti", "华文楷体", serif;
-  text-shadow: 2rpx 2rpx 4rpx rgba(200, 62, 62, 0.2);
-}
-
-.result-text {
-  font-size: 30rpx;
-  color: var(--primary-color);
-  margin-bottom: 20rpx;
-}
-
-.result-description {
-  font-size: 30rpx;
-  color: var(--text-color);
-  margin-bottom: 40rpx;
+  margin: 0 10rpx;
   text-align: center;
-  line-height: 1.6;
-  padding: 0 20rpx;
 }
 
-.result-button {
-  width: 220rpx;
-  height: 70rpx;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 35rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 28rpx;
-  box-shadow: 0 4rpx 8rpx rgba(107, 68, 35, 0.2);
-  transition: all 0.3s;
-  font-family: "STKaiti", "华文楷体", serif;
-}
-
-.result-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 2rpx 4rpx rgba(107, 68, 35, 0.2);
-}
-
-.exercise-list {
-  margin-bottom: 40rpx;
-}
-
-.exercise-item {
-  margin-bottom: 40rpx;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 12rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-  border: 1rpx solid var(--border-color);
-  position: relative;
-  background-image: url('https://example.com/card_texture.png');
-  background-size: cover;
-}
-
-.exercise-item:before {
-  content: none;
-}
-
-.question-number {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: var(--primary-color);
-  margin-bottom: 16rpx;
-  font-family: "STKaiti", "华文楷体", serif;
-  padding-left: 16rpx;
-  border-left: 4rpx solid var(--primary-color);
-}
-
-.question-content {
-  font-size: 32rpx;
-  color: var(--text-color);
-  margin-bottom: 30rpx;
-  line-height: 1.6;
-  padding: 0 16rpx;
-}
-
-.options-list {
-  display: flex;
-  flex-direction: column;
-  padding: 0 16rpx;
-}
-
-.option-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20rpx;
-  padding: 16rpx 20rpx;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 8rpx;
-  border: 1rpx solid var(--border-color);
-  transition: all 0.3s;
-}
-
-.option-item.selected {
-  background-color: var(--primary-color);
-  border-color: var(--primary-dark);
-  box-shadow: 0 2rpx 8rpx rgba(107, 68, 35, 0.15);
-}
-
-.option-marker {
-  min-width: 40rpx;
-  height: 40rpx;
-  background-color: rgba(139, 110, 79, 0.1);
-  color: var(--primary-color);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 26rpx;
-  margin-right: 20rpx;
-  font-family: "STKaiti", "华文楷体", serif;
-  border: 1rpx solid var(--primary-light);
-}
-
-.option-item.selected .option-marker {
+/* 句子列表抽屉 */
+.sentence-list-drawer {
+  position: fixed;
+  top: 0;
+  right: -80%;
+  width: 80%;
+  height: 100%;
   background-color: white;
-  color: var(--primary-color);
-  border-color: white;
-}
-
-.option-text {
-  font-size: 30rpx;
-  color: var(--text-color);
-  flex: 1;
-}
-
-.option-item.selected .option-text {
-  color: white;
-}
-
-.submit-button {
-  width: 100%;
-  height: 80rpx;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 40rpx;
+  box-shadow: -4rpx 0 20rpx rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  transition: right 0.3s ease;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+}
+
+.sentence-list-drawer.show {
+  right: 0;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  background-color: var(--bg-color);
+}
+
+.drawer-title {
   font-size: 32rpx;
   font-weight: bold;
-  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.2);
-  transition: all 0.3s;
-  font-family: "STKaiti", "华文楷体", serif;
-  letter-spacing: 2rpx;
+  color: var(--primary-color);
 }
 
-.submit-button:active {
-  transform: scale(0.98);
-  box-shadow: 0 2rpx 8rpx rgba(107, 68, 35, 0.2);
-}
-
-/* 提问拓展 */
-.qa-content {
-  padding: 20rpx;
-  display: flex;
-  flex-direction: column;
-  height: 800rpx;
-}
-
-.messages-container {
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 20rpx;
-  padding: 20rpx;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 12rpx;
-  border: 1rpx solid var(--border-color);
-  background-image: url('https://example.com/card_texture.png');
-  background-size: cover;
-  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-}
-
-.welcome-message {
-  padding: 20rpx 0;
-}
-
-.message-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.message-item {
-  margin-bottom: 30rpx;
-  max-width: 85%;
-  position: relative;
-}
-
-.user-message {
-  align-self: flex-end;
-}
-
-.assistant-message {
-  align-self: flex-start;
-}
-
-.message-content {
-  padding: 20rpx;
-  border-radius: 12rpx;
-  font-size: 30rpx;
-  line-height: 1.6;
-  position: relative;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.user-message .message-content {
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 12rpx 0 12rpx 12rpx;
-  box-shadow: 2rpx 2rpx 8rpx rgba(107, 68, 35, 0.15);
-}
-
-.assistant-message .message-content {
-  background-color: rgba(255, 255, 255, 0.9);
-  color: var(--text-color);
-  border: 1rpx solid var(--border-color);
-  border-radius: 0 12rpx 12rpx 12rpx;
-  box-shadow: 2rpx 2rpx 8rpx rgba(107, 68, 35, 0.1);
-}
-
-.user-message .message-content:before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -10rpx;
-  width: 0;
-  height: 0;
-  border-left: 10rpx solid var(--primary-color);
-  border-bottom: 10rpx solid transparent;
-}
-
-.assistant-message .message-content:before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -10rpx;
-  width: 0;
-  height: 0;
-  border-right: 10rpx solid white;
-  border-bottom: 10rpx solid transparent;
-}
-
-.message-time {
-  font-size: 24rpx;
+.drawer-close {
+  font-size: 40rpx;
   color: var(--text-color);
   opacity: 0.7;
-  margin-top: 8rpx;
-  text-align: right;
+  padding: 10rpx;
 }
 
-.assistant-message .message-time {
-  text-align: left;
+.drawer-content {
+  flex: 1;
+  overflow: hidden;
 }
 
-.suggested-questions {
-  margin-bottom: 30rpx;
+.sentence-list {
+  height: 100%;
+  padding: 20rpx;
 }
 
-.suggestion-title {
-  font-size: 30rpx;
+.sentence-list-item {
+  display: flex;
+  padding: 20rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  transition: background-color 0.2s;
+}
+
+.sentence-list-item.current {
+  background-color: rgba(139, 110, 79, 0.1);
+  border-left: 6rpx solid var(--primary-color);
+}
+
+.sentence-number {
+  min-width: 40rpx;
+  margin-right: 20rpx;
   color: var(--primary-color);
-  margin-bottom: 16rpx;
-  font-family: "STKaiti", "华文楷体", serif;
   font-weight: bold;
 }
 
-.suggestion-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.suggestion-item {
-  margin-bottom: 16rpx;
-  padding: 16rpx 20rpx;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 8rpx;
-  font-size: 28rpx;
-  color: var(--text-color);
-  border: 1rpx solid var(--border-color);
-  transition: all 0.3s;
-  box-shadow: 0 2rpx 4rpx rgba(107, 68, 35, 0.05);
-  position: relative;
-  padding-left: 40rpx;
-}
-
-.suggestion-item:before {
-  content: "";
-  position: absolute;
-  left: 16rpx;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8rpx;
-  height: 8rpx;
-  background-color: var(--secondary-color);
-  border-radius: 50%;
-}
-
-.suggestion-item:active {
-  background-color: rgba(139, 110, 79, 0.1);
-}
-
-.input-container {
-  display: flex;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 40rpx;
-  padding: 10rpx 20rpx;
-  border: 1rpx solid var(--border-color);
-  box-shadow: 0 2rpx 8rpx rgba(107, 68, 35, 0.1);
-  position: relative;
-}
-
-.question-input {
+.sentence-text {
   flex: 1;
-  height: 70rpx;
-  padding: 0 20rpx;
-  font-size: 30rpx;
-  font-family: "SimSun", "宋体", serif;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85%;
 }
 
-.send-button {
-  min-width: 100rpx;
-  height: 60rpx;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 30rpx;
+/* 索引选择器弹窗 */
+.index-selector-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 28rpx;
-  box-shadow: 0 2rpx 4rpx rgba(107, 68, 35, 0.2);
-  transition: all 0.3s;
-  font-family: "STKaiti", "华文楷体", serif;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s;
 }
 
-.send-button:active {
-  transform: scale(0.95);
-  background-color: var(--primary-dark);
+.index-selector-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.index-selector-content {
+  width: 80%;
+  background-color: white;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+}
+
+.index-selector-title {
+  font-size: 30rpx;
+  color: var(--primary-color);
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.index-slider {
+  margin: 30rpx 0;
+}
+
+.index-selector-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30rpx;
+  border-top: 1rpx solid var(--border-color);
+  padding-top: 20rpx;
+}
+
+.index-selector-cancel, 
+.index-selector-confirm {
+  padding: 15rpx 30rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  text-align: center;
+}
+
+.index-selector-cancel {
+  color: var(--text-color);
+  background-color: #f5f5f5;
+}
+
+.index-selector-confirm {
+  color: white;
+  background-color: var(--primary-color);
 }
 
 /* 作者和朝代信息 */
@@ -986,60 +689,45 @@ page {
   border-radius: 12rpx;
   padding: 30rpx;
   box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
-  background-image: url('https://example.com/card_texture.png');
+  background-image: none;
   background-size: cover;
   border: 1rpx solid var(--border-color);
-  overflow: visible;
-  min-height: 400rpx;
+  margin: 20rpx 0;
+  font-size: 32rpx;
+  color: var(--text-color);
+  line-height: 1.6;
+  flex-shrink: 0;
 }
 
 .author-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 24rpx;
   margin-bottom: 30rpx;
-  padding-bottom: 20rpx;
+  padding-bottom: 10rpx;
   border-bottom: 1rpx dashed var(--border-color);
 }
 
-.author-avatar {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 60rpx;
-  background-color: var(--primary-light);
-  margin-right: 20rpx;
-  background-image: url('https://example.com/author_default.png');
-  background-size: cover;
-  border: 4rpx solid var(--primary-color);
-  box-shadow: 0 4rpx 8rpx rgba(107, 68, 35, 0.2);
-}
-
-.author-title {
-  flex: 1;
-}
-
 .author-name {
-  font-size: 36rpx;
+  font-size: 38rpx;
   font-weight: bold;
   color: var(--primary-dark);
-  display: block;
-  margin-bottom: 10rpx;
-  font-family: "STKaiti", "华文楷体", serif;
 }
 
 .author-dynasty {
   font-size: 28rpx;
   color: var(--primary-color);
-  display: block;
-  font-family: "STKaiti", "华文楷体", serif;
+  margin-left: 12rpx;
 }
 
 .author-bio {
   font-size: 30rpx;
-  line-height: 1.8;
+  line-height: 2.0;
   color: var(--text-color);
   text-align: justify;
   text-indent: 2em;
-  font-family: "SimSun", "宋体", serif;
+  margin-top: 32rpx;
+  margin-bottom: 16rpx;
   word-wrap: break-word;
   white-space: normal;
   word-break: break-all;
@@ -1052,8 +740,6 @@ page {
   color: var(--primary-dark);
   padding: 18rpx 20rpx 18rpx 20rpx;
   text-align: justify;
-  font-family: "STKaiti", "华文楷体", serif;
-  letter-spacing: 2rpx;
   margin: 0;
   white-space: pre-wrap;
   background: none;
@@ -1118,22 +804,21 @@ page {
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
-  background: rgba(255,255,255);
+  background: rgba(255,255,255,0.9);
   color: #b3a48a;
   font-size: 24rpx;
   padding: 10rpx 32rpx;
   border-radius: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
-  opacity: 0.99;
   pointer-events: none;
-  animation: fade-in-out 2.5s linear;
+  animation: fade-in-out 2.5s ease forwards;
 }
 
 @keyframes fade-in-out {
-  0% { opacity: 0; }
-  10% { opacity: 0.95; }
-  90% { opacity: 0.95; }
-  100% { opacity: 0; }
+  0% { opacity: 0; transform: translateX(-50%) translateY(10rpx); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10rpx); }
 }
 
 /* 底部渐变遮罩样式 */
@@ -1304,7 +989,6 @@ page {
   color: var(--primary-color);
   font-size: 28rpx;
   margin-top: 16rpx;
-  font-family: "STKaiti", "华文楷体", serif;
 }
 
 @keyframes section-spin {
@@ -1339,12 +1023,332 @@ page {
   font-size: 42rpx;
   font-weight: bold;
   color: var(--primary-dark);
-  font-family: "STKaiti", "华文楷体", serif;
-  letter-spacing: 4rpx;
   text-shadow: 2rpx 2rpx 4rpx rgba(107, 68, 35, 0.1);
   padding: 0;
   margin: 0;
   border-bottom: 0;
   text-align: center;
   width: 100%;
+}
+
+/* 句子导航相关新样式 */
+.original-preview {
+  margin: 15rpx 0 20rpx;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 15rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.preview-title {
+  font-size: 26rpx;
+  color: var(--primary-color);
+  margin-bottom: 10rpx;
+  font-weight: bold;
+}
+
+.preview-hint {
+  font-size: 22rpx;
+  color: var(--text-color);
+  opacity: 0.6;
+  margin-left: 10rpx;
+  font-weight: normal;
+}
+
+.sentence-chips-container {
+  white-space: nowrap;
+  padding: 5rpx 0 10rpx;
+}
+
+.sentence-chip {
+  display: inline-block;
+  margin-right: 15rpx;
+  background-color: rgba(139, 110, 79, 0.1);
+  padding: 10rpx 20rpx;
+  border-radius: 30rpx;
+  font-size: 26rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.sentence-chip.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.nav-button {
+  padding: 10rpx 30rpx;
+  font-size: 28rpx;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 8rpx;
+  opacity: 0.9;
+  box-shadow: 2rpx 2rpx 8rpx rgba(107, 68, 35, 0.2);
+  transition: all 0.3s;
+}
+
+.nav-button:active {
+  transform: scale(0.95);
+}
+
+.nav-button.disabled {
+  background-color: #CCCCCC;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.sentence-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
+  background-image: none;
+  background-size: cover;
+  border: 1rpx solid var(--border-color);
+}
+
+.sentence-section {
+  margin-bottom: 30rpx;
+  padding-bottom: 30rpx;
+  border-bottom: 1rpx dashed var(--border-color);
+  position: relative;
+}
+
+.sentence-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin-bottom: 16rpx;
+  display: flex;
+  align-items: center;
+}
+
+.section-title:before {
+  content: "";
+  display: inline-block;
+  width: 8rpx;
+  height: 28rpx;
+  background-color: var(--secondary-color);
+  margin-right: 12rpx;
+  border-radius: 4rpx;
+}
+
+.section-content {
+  font-size: 30rpx;
+  line-height: 1.8;
+  color: var(--text-color);
+  word-wrap: break-word;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.section-content.original {
+  font-weight: bold;
+  font-size: 32rpx;
+}
+
+.section-content.pinyin {
+  color: var(--secondary-color);
+  opacity: 0.8;
+  letter-spacing: 1rpx;
+}
+
+.section-content.punctuated {
+  font-size: 32rpx;
+}
+
+.section-content.keywords {
+  border-radius: 8rpx;
+}
+
+/* 背景蒙层样式 */
+.drawer-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-mask.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 背景知识区域样式 */
+.background-content {
+  padding: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+.background-section {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
+  background-image: none;
+  background-size: cover;
+  border: 1rpx solid var(--border-color);
+  margin-bottom: 20rpx;
+}
+.background-section:last-child {
+  margin-bottom: 0;
+}
+
+/* 练习巩固区域样式 */
+.exercise-content {
+  padding: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+.exercise-list, .exercise-result, .exercise-questions {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
+  background-image: none;
+  background-size: cover;
+  border: 1rpx solid var(--border-color);
+  margin-bottom: 20rpx;
+}
+.exercise-list:last-child, .exercise-result:last-child, .exercise-questions:last-child {
+  margin-bottom: 0;
+}
+
+/* 提问拓展区域样式 */
+.ai-content {
+  padding: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+.messages-container, .suggested-questions {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(107, 68, 35, 0.1);
+  background-image: none;
+  background-size: cover;
+  border: 1rpx solid var(--border-color);
+  margin-bottom: 20rpx;
+}
+.messages-container:last-child, .suggested-questions:last-child {
+  margin-bottom: 0;
+}
+.input-container {
+  margin-top: 20rpx;
+}
+
+/* 练习巩固样式优化 */
+.exercise-section {
+  padding: 24rpx 16rpx;
+}
+.exercise-score-bar {
+  margin-bottom: 24rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #2d8cf0;
+  text-align: center;
+}
+.exercise-card {
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+  margin-bottom: 32rpx;
+  padding: 24rpx 20rpx 16rpx 20rpx;
+}
+.exercise-question {
+  font-size: 30rpx;
+  font-weight: 500;
+  margin-bottom: 20rpx;
+}
+.exercise-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+.exercise-option {
+  padding: 18rpx 20rpx;
+  border-radius: 12rpx;
+  background: #f7f8fa;
+  font-size: 28rpx;
+  color: #333;
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+}
+.exercise-option.option-selected {
+  background: #e6f7ff;
+  border-color: #2d8cf0;
+  color: #2d8cf0;
+  font-weight: bold;
+  box-shadow: 0 0 8rpx #2d8cf033;
+  position: relative;
+  z-index: 1;
+}
+.exercise-option.option-correct {
+  background: #e8f5e9;
+  border-color: #52c41a;
+  color: #52c41a;
+  font-weight: bold;
+}
+.exercise-option.option-wrong {
+  background: #fff1f0;
+  border-color: #f5222d;
+  color: #f5222d;
+  font-weight: bold;
+}
+.option-tag {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+.tag-user-correct {
+  color: #52c41a;
+  font-weight: bold;
+}
+.tag-correct {
+  color: #52c41a;
+  font-weight: bold;
+}
+.tag-user {
+  color: #f39c12;
+  font-weight: bold;
+}
+.exercise-analysis {
+  margin-top: 12rpx;
+  background: #f6f7fa;
+  border-left: 6rpx solid #2d8cf0;
+  padding: 16rpx 20rpx;
+  border-radius: 8rpx;
+}
+.analysis-title {
+  font-weight: bold;
+  color: #2d8cf0;
+  margin-right: 8rpx;
+}
+.analysis-content {
+  color: #333;
+}
+.exercise-reset-bar {
+  margin-top: 32rpx;
+  text-align: center;
+}
+.exercise-reset-btn {
+  background: #2d8cf0;
+  color: #fff;
+  font-size: 30rpx;
+  border-radius: 32rpx;
+  padding: 18rpx 60rpx;
+  font-weight: bold;
+  box-shadow: 0 2rpx 8rpx rgba(45,140,240,0.08);
 } 

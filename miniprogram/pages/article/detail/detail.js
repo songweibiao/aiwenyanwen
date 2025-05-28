@@ -23,11 +23,17 @@ Page({
     sentences: [],
     currentSentenceIndex: 0,
     
+    // 句子导航相关
+    showSentenceListDrawer: false,
+    
     // 练习巩固相关
     exercises: [],
     userAnswers: [],
     showExerciseResult: false,
     exerciseScore: 0,
+    optionLetters: ['A', 'B', 'C', 'D'],
+    optionClassList: [],
+    currentExerciseIndex: 0, // 当前题目索引
     
     // 提问拓展相关
     suggestedQuestions: [],
@@ -296,19 +302,6 @@ Page({
       }
     }
     
-    // 如果有练习数据，加载练习数据
-    if (articleData.exercises && articleData.exercises.length > 0) {
-      console.log('使用课文自带的练习数据');
-      this.setData({
-        exercises: articleData.exercises,
-        userAnswers: new Array(articleData.exercises.length).fill('')
-      });
-    } else {
-      console.log('生成简单的练习题');
-      // 没有练习数据，生成简单的练习题
-      this.generateSimpleExercises(articleData);
-    }
-    
     // 生成推荐问题
     this.generateSuggestedQuestions(articleData);
     
@@ -356,12 +349,8 @@ Page({
   // 生成简单的句子划分（当数据库中没有逐句解析数据时）
   generateSimpleSentences: function(content) {
     if (!content) return;
-    
-    // 简单按句号、问号、感叹号分割
-    const sentenceDelimiters = /[。！？]/g;
-    const contentWithMarks = content.replace(sentenceDelimiters, match => match + '|');
-    const sentencesArray = contentWithMarks.split('|').filter(item => item.trim().length > 0);
-    
+    // 统一使用新分句逻辑
+    const sentencesArray = this.splitArticleIntoSentences(content);
     const sentences = sentencesArray.map((sentence, index) => {
       return {
         sentence_index: index,
@@ -373,64 +362,9 @@ Page({
         rhetorical_analysis: '（暂无修辞手法分析）'
       };
     });
-    
     this.setData({
       sentences: sentences
     });
-  },
-  
-  // 生成简单的练习题（当数据库中没有练习数据时）
-  generateSimpleExercises: function(article) {
-    // 根据文章信息生成简单的练习题
-    const exercises = [
-      {
-        exercise_id: '1',
-        question: `《${article.title}》的作者是谁？`,
-        options: [article.author, '司马迁', '李白', '杜甫'],
-        answer: article.author
-      },
-      {
-        exercise_id: '2',
-        question: `《${article.title}》是哪个朝代的作品？`,
-        options: [article.dynasty, '唐朝', '宋朝', '清朝'],
-        answer: article.dynasty
-      },
-      {
-        exercise_id: '3',
-        question: `下列哪一项是《${article.title}》的内容特点？`,
-        options: ['言简意赅', '文采飞扬', '意境深远', '情感真挚'],
-        answer: '情感真挚'
-      }
-    ];
-    
-    // 随机打乱选项的顺序，但保持正确答案
-    exercises.forEach(exercise => {
-      const correctAnswer = exercise.answer;
-      // 确保正确答案在选项中
-      if (!exercise.options.includes(correctAnswer)) {
-        exercise.options[0] = correctAnswer;
-      }
-      
-      // 打乱选项顺序
-      const randomOptions = this.shuffleArray([...exercise.options]);
-      exercise.options = randomOptions;
-      // 更新正确答案的索引
-      exercise.answer = correctAnswer;
-    });
-    
-    this.setData({
-      exercises: exercises,
-      userAnswers: new Array(exercises.length).fill('')
-    });
-  },
-  
-  // 打乱数组顺序
-  shuffleArray: function(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
   },
   
   // 生成推荐问题
@@ -635,7 +569,6 @@ Page({
   // 加载逐句解析
   loadSentenceAnalysis: function() {
     const article = this.data.article;
-    
     // 检查是否已有句子解析，且内容完整
     let hasSentenceContent = false;
     if (this.data.sentences && this.data.sentences.length > 0 && !this.data.autoLoad) {
@@ -645,12 +578,10 @@ Page({
         hasSentenceContent = true;
       }
     }
-    
     // 如果已有完整句子解析，直接显示
     if (hasSentenceContent) {
       return;
     }
-    
     // 如果已经有sentences数组但内容不完整，直接加载第一句详细解析
     if (this.data.sentences && this.data.sentences.length > 0) {
       console.log('句子数组已存在但内容不完整，加载详细解析...');
@@ -660,10 +591,8 @@ Page({
       this.loadSentenceDetail(0);
       return;
     }
-    
     // 分割文章为句子
     const sentences = this.splitArticleIntoSentences(article.full_content);
-    
     // 初始化句子数组
     const sentenceObjects = sentences.map(sentence => ({
       original_text: sentence,
@@ -674,26 +603,75 @@ Page({
       sentence_structure: '',
       rhetorical_analysis: ''
     }));
-    
     this.setData({
       sentences: sentenceObjects,
       currentSentenceIndex: 0
     });
-    
+    // 整体缓存所有分句
+    this.cacheSentenceArray(sentenceObjects);
     // 加载第一句的详细解析
     this.loadSentenceDetail(0);
   },
   
-  // 分割文章为句子
+  // 智能分句，支持引号处理
+  splitArticleIntoSentencesSmart: function(content) {
+    if (!content) return [];
+    const quotePairs = {
+      '“': '”',
+      '‘': '’',
+      '《': '》',
+      '『': '』',
+      '（': '）',
+      '【': '】',
+      '〈': '〉'
+    };
+    const openQuotes = Object.keys(quotePairs);
+    const closeQuotes = Object.values(quotePairs);
+    const result = [];
+    let sentence = '';
+    let inQuote = false;
+    let expectedClose = '';
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      sentence += char;
+      // 进入引号
+      if (!inQuote && openQuotes.includes(char)) {
+        inQuote = true;
+        expectedClose = quotePairs[char];
+        continue;
+      }
+      // 引号内
+      if (inQuote) {
+        if (char === expectedClose) {
+          inQuote = false;
+          expectedClose = '';
+          // 判断下一个字符是否是句号（。！？；），如是则一并加入本句
+          let nextChar = content[i + 1];
+          if (nextChar && /[。！？；]/.test(nextChar)) {
+            sentence += nextChar;
+            i++; // 跳过下一个字符
+          }
+          // 引号闭合后立即分句
+          result.push(sentence.trim());
+          sentence = '';
+        }
+        continue;
+      }
+      // 句外遇到分句标点
+      if (!inQuote && /[。！？；]/.test(char)) {
+        result.push(sentence.trim());
+        sentence = '';
+      }
+    }
+    if (sentence.trim().length > 0) {
+      result.push(sentence.trim());
+    }
+    return result.filter(s => s.trim().length > 0);
+  },
+  
+  // 替换原有分句函数调用
   splitArticleIntoSentences: function(content) {
-    // 简单的按。！？；分割
-    // 在实际应用中，可能需要更复杂的分割逻辑
-    const sentences = content
-      .replace(/([。！？；])/g, '$1|')
-      .split('|')
-      .filter(s => s.trim() !== '');
-    
-    return sentences;
+    return this.splitArticleIntoSentencesSmart(content);
   },
   
   // 加载句子详细解析
@@ -967,165 +945,116 @@ Page({
   // 加载练习题
   loadExercises: function() {
     const article = this.data.article;
-    
-    // 如果已有练习题且不是自动加载模式，直接显示
-    if (this.data.exercises && this.data.exercises.length > 0 && !this.data.autoLoad) {
-      return;
-    }
-    
     this.setData({ aiProcessing: true });
-    
-    // 确定适用年级
-    let level = 'junior'; // 默认初中
-    if (article.education_stage === 'primary') {
-      level = 'primary';
-    } else if (article.education_stage === 'senior') {
-      level = 'senior';
-    }
-    
-    // 调用OpenAI兼容API生成练习题
-    articleAIService.generateExercises(article.full_content, level, 5)
-      .then(exercisesResult => {
-        // 解析练习题
-        const exercises = this.parseExercises(exercisesResult);
-        
-        // 更新练习题
+    const db = wx.cloud.database();
+    // 先查数据库
+    db.collection('article_exercises').where({ article_id: article._id || article.article_id }).get()
+      .then(res => {
+        if (res.data && res.data.length > 0 && res.data[0].exercises && res.data[0].exercises.length > 0) {
+          // 用数据库数据
+          const exercises = res.data[0].exercises.map(q => ({
+            question: q.question,
+            options: q.options,
+            answer: typeof q.answer === 'number' ? q.answer : q.options.indexOf(q.answer),
+            analysis: q.analysis || ''
+          })).slice(0, 3); // 只取3题
       this.setData({
-          exercises: exercises,
-          userAnswers: new Array(exercises.length).fill(''),
+            exercises,
+            userAnswers: new Array(exercises.length).fill(null),
           showExerciseResult: false,
           exerciseScore: 0,
+            currentExerciseIndex: 0,
           aiProcessing: false
+          }, this.updateOptionClassList);
+        } else {
+          // 无数据库数据，调用AI
+          this.generateExercisesByAI(article);
+        }
+      })
+      .catch(() => {
+        // 查询失败也调用AI
+        this.generateExercisesByAI(article);
       });
-      
-        // 缓存练习题到本地
+  },
+  
+  generateExercisesByAI: function(article) {
+    let level = 'junior';
+    if (article.education_stage === 'primary') level = 'primary';
+    else if (article.education_stage === 'senior') level = 'senior';
+    // AI prompt要求返回严格JSON
+    const prompt = `请根据以下文言文内容，生成3道适合${level}学生的选择题，返回严格的JSON数组，每题结构为：{\"question\":\"题干\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"answer\":正确答案下标(0-3),\"analysis\":\"解析\"}，不要有多余文字。内容：${article.full_content}`;
+    articleAIService.generateExercises(prompt, level, 3)
+      .then(result => {
+        let exercises = [];
+        try {
+          // 只保留JSON部分
+          const jsonStart = result.indexOf('[');
+          const jsonEnd = result.lastIndexOf(']') + 1;
+          const jsonStr = result.substring(jsonStart, jsonEnd);
+          exercises = JSON.parse(jsonStr);
+        } catch (e) {
+          wx.showToast({ title: 'AI题目解析失败', icon: 'none' });
+        }
+        if (!Array.isArray(exercises) || exercises.length === 0) {
+          wx.showToast({ title: 'AI未生成题目', icon: 'none' });
+          this.setData({ aiProcessing: false });
+          return;
+        }
+        this.setData({
+          exercises,
+          userAnswers: new Array(exercises.length).fill(null),
+          showExerciseResult: false,
+          exerciseScore: 0,
+          currentExerciseIndex: 0,
+          aiProcessing: false
+        }, this.updateOptionClassList);
         this.cacheExercises(exercises);
       })
-      .catch(err => {
-        console.error('生成练习题失败', err);
-        wx.showToast({
-          title: '生成练习题失败',
-          icon: 'none'
-        });
+      .catch(() => {
+        wx.showToast({ title: 'AI生成题目失败', icon: 'none' });
         this.setData({ aiProcessing: false });
       });
   },
   
-  // 解析练习题
-  parseExercises: function(exercisesText) {
-    const exercises = [];
-    
-    // 按题目分割
-    const questionBlocks = exercisesText.split(/题目\d+：/).filter(block => block.trim() !== '');
-    
-    for (let i = 0; i < questionBlocks.length; i++) {
-      const block = questionBlocks[i];
-      const lines = block.split('\n').filter(line => line.trim() !== '');
-      
-      if (lines.length < 6) continue; // 跳过格式不正确的题目
-      
-      const question = lines[0].trim();
-      const options = [];
-      let answer = '';
-      let analysis = '';
-      
-      // 解析选项
-      for (let j = 1; j <= 4; j++) {
-        if (j < lines.length) {
-          const optionLine = lines[j].trim();
-          // 移除选项标记（如A. B. C. D.）
-          const option = optionLine.replace(/^[A-D]\.\s*/, '').trim();
-          options.push(option);
-        }
-      }
-      
-      // 解析答案和解析
-      for (let j = 5; j < lines.length; j++) {
-        const line = lines[j].trim();
-        if (line.startsWith('正确答案：')) {
-          answer = line.replace('正确答案：', '').trim();
-          // 如果答案是选项字母，转换为选项内容
-          if (['A', 'B', 'C', 'D'].includes(answer)) {
-            const index = answer.charCodeAt(0) - 65; // A->0, B->1, C->2, D->3
-            if (index >= 0 && index < options.length) {
-              answer = options[index];
-            }
-          }
-        } else if (line.startsWith('解析：')) {
-          analysis = line.replace('解析：', '').trim();
-          // 收集多行解析
-          for (let k = j + 1; k < lines.length; k++) {
-            analysis += '\n' + lines[k].trim();
-          }
-          break;
-        }
-      }
-      
-      exercises.push({
-        exercise_id: `ex_${Date.now()}_${i}`,
-        question: question,
-        options: options,
-        answer: answer,
-        analysis: analysis
-      });
-    }
-    
-    return exercises;
-  },
-  
-  // 选择答案
-  selectAnswer: function(e) {
-    const index = e.currentTarget.dataset.index;
-    const option = e.currentTarget.dataset.option;
-    
-    // 更新用户答案
-    const userAnswers = this.data.userAnswers;
-    userAnswers[index] = option;
-    
+  // 用户选择答案
+  selectExerciseOption: function(e) {
+    if (this.data.showExerciseResult) return;
+    const { questionIndex, optionIndex } = e.currentTarget.dataset;
+    if (questionIndex !== this.data.currentExerciseIndex) return;
+    const userAnswers = this.data.userAnswers.slice();
+    userAnswers[questionIndex] = optionIndex;
+    // 如果还有下一题，进入下一题，否则交卷
+    if (questionIndex < this.data.exercises.length - 1) {
     this.setData({
-      userAnswers: userAnswers
-    });
+        userAnswers,
+        currentExerciseIndex: questionIndex + 1
+      }, this.updateOptionClassList);
+    } else {
+      this.setData({ userAnswers }, this.calculateExerciseResult);
+    }
   },
-  
-  // 提交答案
-  submitExercise: function() {
-    const exercises = this.data.exercises;
-    const userAnswers = this.data.userAnswers;
-    
-    // 检查是否所有题目都已作答
-    const unanswered = userAnswers.findIndex(answer => answer === '');
-    if (unanswered !== -1) {
-      wx.showToast({
-        title: `第${unanswered + 1}题未作答`,
-        icon: 'none'
-      });
-      return;
-    }
-    
-    // 计算得分
-    let correctCount = 0;
-    for (let i = 0; i < exercises.length; i++) {
-      if (userAnswers[i] === exercises[i].answer) {
-        correctCount++;
-      }
-    }
-    
-    const score = Math.round((correctCount / exercises.length) * 100);
-    
-    // 显示结果
+
+  // 计算得分并展示解析
+  calculateExerciseResult: function() {
+    const { exercises, userAnswers } = this.data;
+    let score = 0;
+    exercises.forEach((ex, idx) => {
+      if (userAnswers[idx] === ex.answer) score++;
+    });
     this.setData({
       showExerciseResult: true,
       exerciseScore: score
-    });
+    }, this.updateOptionClassList);
   },
   
-  // 重置练习
-  resetExercise: function() {
+  // 重新答题
+  resetExercises: function() {
     this.setData({
-      userAnswers: new Array(this.data.exercises.length).fill(''),
+      userAnswers: new Array(this.data.exercises.length).fill(null),
       showExerciseResult: false,
-      exerciseScore: 0
-    });
+      exerciseScore: 0,
+      currentExerciseIndex: 0
+    }, this.updateOptionClassList);
   },
   
   // 加载问答功能
@@ -1301,12 +1230,10 @@ Page({
   loadFromCache: function() {
     const articleId = this.data.articleId;
     if (!articleId) return false;
-    
     try {
       // 加载文章缓存数据
       const cacheKey = `article_cache_${articleId}`;
       const cachedData = wx.getStorageSync(cacheKey);
-      
       if (cachedData) {
         // 更新文章数据
         const article = this.data.article || {};
@@ -1314,32 +1241,26 @@ Page({
           article: { ...article, ...cachedData }
         });
       }
-      
       // 加载句子解析缓存
       const sentencesCacheKey = `article_sentences_${articleId}`;
       const cachedSentences = wx.getStorageSync(sentencesCacheKey);
-      
       let hasCompleteSentenceCache = false;
       if (cachedSentences && cachedSentences.length > 0) {
-        // 检查缓存中的第一句是否有完整内容
-        if (cachedSentences[0].phonetic_notation && 
-            cachedSentences[0].translation) {
-          hasCompleteSentenceCache = true;
+        // 检查所有句子是否有完整内容
+        hasCompleteSentenceCache = cachedSentences.every(
+          s => s && s.phonetic_notation && s.translation
+        );
+        if (hasCompleteSentenceCache) {
+          this.setData({
+            sentences: cachedSentences,
+            currentSentenceIndex: 0
+          });
+          console.log('从缓存加载句子数据: 完整内容');
         }
-        
-        this.setData({
-          sentences: cachedSentences,
-          currentSentenceIndex: 0
-        });
-        
-        console.log('从缓存加载句子数据:', 
-                   hasCompleteSentenceCache ? '完整内容' : '部分内容');
       }
-      
       // 加载练习题缓存
       const exercisesCacheKey = `article_exercises_${articleId}`;
       const cachedExercises = wx.getStorageSync(exercisesCacheKey);
-      
       if (cachedExercises && cachedExercises.length > 0) {
         this.setData({
           exercises: cachedExercises,
@@ -1347,7 +1268,6 @@ Page({
           showExerciseResult: false
         });
       }
-      
       return {
         hasData: !!cachedData,
         hasCompleteSentenceCache: hasCompleteSentenceCache
@@ -1433,17 +1353,25 @@ Page({
     console.log('切换全文展开/收起状态');
     
     // 切换展开/收起状态
+    const isContentCollapsed = !this.data.isContentCollapsed;
+    
     this.setData({
-      isContentCollapsed: !this.data.isContentCollapsed,
-      // 展开时显示滚动提示
-      showScrollTip: !this.data.isContentCollapsed,
+      isContentCollapsed: isContentCollapsed,
+      // 只在展开时显示滚动提示，收起时不显示
+      showScrollTip: !isContentCollapsed,
       // 展开时默认显示底部遮罩
-      showBottomMask: !this.data.isContentCollapsed
+      showBottomMask: !isContentCollapsed
     });
     
-    // 展开时滚动到顶部
-    if (!this.data.isContentCollapsed) {
-      // 等待渲染完成后滚动
+    // 如果是展开操作，设置2.5秒后自动隐藏提示
+    if (!isContentCollapsed) {
+      setTimeout(() => {
+        this.setData({
+          showScrollTip: false
+        });
+      }, 2500);
+      
+      // 等待渲染完成后滚动到顶部
       setTimeout(() => {
         wx.createSelectorQuery()
           .select('.ancient-text-container scroll-view')
@@ -1455,6 +1383,82 @@ Page({
             }
           });
       }, 100);
+    }
+  },
+  
+  // 显示句子列表抽屉
+  showSentenceList: function() {
+    console.log('显示句子列表');
+    this.setData({
+      showSentenceListDrawer: true
+    });
+  },
+  
+  // 关闭句子列表抽屉
+  closeSentenceList: function() {
+    this.setData({
+      showSentenceListDrawer: false
+    });
+  },
+  
+  // 从列表中选择句子
+  selectSentenceFromList: function(e) {
+    const index = e.currentTarget.dataset.index;
+    console.log('从列表选择句子:', index);
+    
+    this.setData({
+      currentSentenceIndex: index,
+      showSentenceListDrawer: false
+    });
+    
+    // 加载句子详细解析
+    this.loadSentenceDetail(index);
+  },
+  
+  // 阻止事件冒泡
+  stopPropagation: function(e) {
+    return false;
+  },
+  
+  // 阻止触摸滑动事件
+  preventTouchMove: function() {
+    return false;
+  },
+
+  // 生成每个选项的class
+  updateOptionClassList: function() {
+    const { exercises, userAnswers, showExerciseResult } = this.data;
+    const optionClassList = exercises.map((ex, idx) => {
+      return ex.options.map((opt, optIdx) => {
+        if (showExerciseResult) {
+          if (opt === ex.answer) {
+            return 'exercise-option option-correct';
+          } else if (userAnswers[idx] === optIdx) {
+            return 'exercise-option option-wrong';
+          } else {
+            return 'exercise-option';
+          }
+        } else {
+          if (userAnswers[idx] === optIdx) {
+            return 'exercise-option option-selected';
+          } else {
+            return 'exercise-option';
+          }
+        }
+      });
+    });
+    this.setData({ optionClassList });
+  },
+
+  // 新增整体缓存句子数组的方法
+  cacheSentenceArray: function(sentencesArray) {
+    const articleId = this.data.articleId;
+    if (!articleId) return;
+    try {
+      const cacheKey = `article_sentences_${articleId}`;
+      wx.setStorageSync(cacheKey, sentencesArray);
+    } catch (e) {
+      console.error('整体缓存句子数组失败', e);
     }
   },
 });

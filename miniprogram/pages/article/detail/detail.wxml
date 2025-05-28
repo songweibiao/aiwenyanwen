@@ -1,12 +1,6 @@
 <view class="container">
-  <!-- 加载状态 -->
-  <view class="loading-container" wx:if="{{loading}}">
-    <view class="loading-spinner"></view>
-    <text class="loading-text">古卷加载中...</text>
-  </view>
-
   <!-- 课文详情内容 -->
-  <view class="article-container" wx:else>
+  <view class="article-container">
     <!-- 分享按钮（悬浮） -->
     <view class="share-button" bindtap="onShareTap">
       <text class="share-text">分享</text>
@@ -290,52 +284,49 @@
       <!-- 提问拓展 -->
       <view class="content-section" wx:if="{{currentTab === 'qa'}}">
         <view class="ai-content">
-          <!-- 提问加载中 -->
-          <view class="section-loading" wx:if="{{aiProcessing && qaMessages.length > 0}}">
+          <!-- AI助手头部 -->
+          <view class="ai-header">
+            <view class="ai-avatar-container">
+              <image class="ai-avatar" src="/images/laibai-avatar.png" mode="aspectFill"></image>
+            </view>
+            <view class="ai-intro">
+              <view class="ai-name">文言文学习助手 · 李白</view>
+              <view class="ai-description">你好！我是你的文言文学习助手。关于《{{article.title}}》，你有什么想问的吗？</view>
+            </view>
+          </view>
+          
+          <!-- AI加载动画 -->
+          <view class="section-loading" wx:if="{{aiProcessing}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+            <text class="section-loading-text">AI思考问题中...</text>
           </view>
-          <view wx:else>
-          <view class="messages-container">
-            <view class="welcome-message" wx:if="{{qaMessages.length === 0}}">
-              <view class="assistant-message">
-                <view class="message-content">
-                  你好！我是你的文言文学习助手。关于《{{article.title}}》，你有什么想问的吗？
-                </view>
-                <view class="message-time">文言文学习助手</view>
-              </view>
-            </view>
-            <view class="message-list" wx:else>
-              <view class="message-item {{item.role === 'user' ? 'user-message' : 'assistant-message'}}" 
-                    wx:for="{{qaMessages}}" 
-                    wx:key="timestamp">
-                  <text class="message-content" decode="{{true}}">{{item.content}}</text>
-                <view class="message-time">{{item.role === 'user' ? '我' : '文言文学习助手'}}</view>
-              </view>
-            </view>
-          </view>
-          <view class="suggested-questions" wx:if="{{qaMessages.length === 0}}">
-            <view class="suggestion-title">推荐问题：</view>
+          
+          <!-- 推荐问题区域 -->
+          <view class="suggested-questions" wx:else>
+            <view class="suggestion-title">推荐问题</view>
             <view class="suggestion-list">
               <view class="suggestion-item" 
                     wx:for="{{suggestedQuestions}}" 
                     wx:key="*this" 
-                      bindtap="tapSuggestedQuestion" 
+                    bindtap="tapSuggestedQuestion" 
                     data-question="{{item}}">
-                  <text>{{item}}</text>
+                <view class="suggestion-icon"></view>
+                <text>{{item}}</text>
               </view>
             </view>
           </view>
+          
+          <!-- 输入区域 -->
           <view class="input-container">
             <input class="question-input" 
-                     placeholder="输入你的问题..." 
+                   placeholder="输入你的问题..." 
                    value="{{userQuestion}}" 
                    bindinput="inputQuestion" 
-                     confirm-type="send" />
-              <view class="send-button" bindtap="askQuestion">
-                <text>提问</text>
-              </view>
-          </view>
+                   confirm-type="send"
+                   bindconfirm="askQuestion" />
+            <view class="send-button" bindtap="askQuestion">
+              <text>提问</text>
+            </view>
           </view>
         </view>
       </view>

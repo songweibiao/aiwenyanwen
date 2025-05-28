@@ -10,7 +10,6 @@ Page({
     // 课文基本信息
     articleId: null,
     article: null,
-    loading: true,
     
     // 课文学习状态
     isCollected: false,
@@ -233,10 +232,6 @@ Page({
   showArticleNotFoundError: function() {
     console.log('未找到课文数据');
     
-    this.setData({
-      loading: false
-    });
-    
     wx.showModal({
       title: '提示',
       content: '未找到课文数据，请返回重试',
@@ -259,7 +254,6 @@ Page({
     // 设置文章数据
     this.setData({
       article: articleData,
-      loading: false,
       // 先将内容设置为可见，以便后续测量高度
       contentReady: true,
       // 默认不显示展开/收起按钮，等待高度检测后再决定
@@ -369,11 +363,13 @@ Page({
   
   // 生成推荐问题
   generateSuggestedQuestions: function(article) {
+    // 根据文章信息生成5个常见问题
     const suggestedQuestions = [
       `《${article.title}》的写作背景是什么？`,
-      `${article.author}的生平有哪些特点？`,
-      `《${article.title}》在${article.dynasty}文学史上的地位如何？`,
-      `请分析《${article.title}》的艺术特色和思想内涵。`
+      `${article.author}的生平经历有哪些？`,
+      `《${article.title}》的主要内容是什么？`,
+      `《${article.title}》的艺术特色有哪些？`,
+      `《${article.title}》在${article.dynasty}文学史上的地位如何？`
     ];
     
     this.setData({
@@ -408,6 +404,8 @@ Page({
     const tab = e.currentTarget.dataset.tab;
     
     if (this.data.currentTab === tab) return;
+    
+    console.log('切换到标签页:', tab);
     
     this.setData({
       currentTab: tab,
@@ -871,7 +869,7 @@ Page({
           });
           
           // 缓存句子解析到本地
-          this.cacheSentenceAnalysis(updatedSentences);
+          this.cacheSentenceAnalysis(index, updatedSentences[index]);
         } catch (e) {
           console.error('解析句子详情失败', e);
           wx.showToast({
@@ -1195,6 +1193,8 @@ Page({
       }
     ];
     
+    console.log('开始加载推荐问题...');
+    
     // 直接调用OpenAI API
     wx.request({
       url: OPENAI_CONFIG.API_URL,
@@ -1210,6 +1210,7 @@ Page({
       success: (res) => {
         try {
           const responseText = res.data.choices[0].message.content.trim();
+          console.log('获取推荐问题成功');
           
           // 解析推荐问题
           const questions = responseText.split('\n')
@@ -1249,106 +1250,89 @@ Page({
     });
   },
   
-  // 提交问题
-  submitQuestion: function() {
-    const question = this.data.userQuestion.trim();
-    if (!question || this.data.aiProcessing) return;
-    
-    const article = this.data.article;
-    
-    // 添加用户问题到消息列表
-    const qaMessages = this.data.qaMessages.concat({
-      role: 'user',
-      content: question
-    });
-    
+  // 处理用户输入问题
+  inputQuestion: function(e) {
     this.setData({
-      qaMessages,
-      userQuestion: '',
-      aiProcessing: true
+      userQuestion: e.detail.value
     });
+  },
+  
+  // 处理点击推荐问题
+  tapSuggestedQuestion: function(e) {
+    const question = e.currentTarget.dataset.question;
+    console.log('点击了推荐问题:', question);
     
-    // 构造提示词
-    const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.QA, { 
-      title: article.title,
-      author: article.author,
-      dynasty: article.dynasty,
-      content: article.full_content,
-      question: question
-    });
+    // 将问题和文章信息保存到全局数据
+    const app = getApp();
+    if (!app.globalData) {
+      app.globalData = {};
+    }
     
-    // 构造OpenAI API请求消息
-    const apiMessages = [
-      {
-        role: 'system',
-        content: '你是一个拟人化的AI助手，名叫"李白"，是一个文言文学习顾问。请使用纯文本回复，不要使用Markdown格式。'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ];
+    // 构建带有上下文的问题
+    const article = this.data.article;
+    const contextQuestion = `关于${article.author}创作的《${article.title}》，我有一个问题，请你帮我解答，问题是：${question}`;
     
-    // 直接调用OpenAI API
-    wx.request({
-      url: OPENAI_CONFIG.API_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_CONFIG.API_KEY
-      },
-      data: {
-        model: OPENAI_CONFIG.MODEL,
-        messages: apiMessages
-      },
-      success: (res) => {
-        try {
-          const answer = res.data.choices[0].message.content.trim();
-          
-          // 添加AI回复到消息列表
-          const updatedQaMessages = this.data.qaMessages.concat({
-            role: 'assistant',
-            content: answer
-          });
-          
-          this.setData({
-            qaMessages: updatedQaMessages,
-            aiProcessing: false
-          });
-          
-          // 缓存对话记录到本地
-          this.cacheArticleData({
-            qa_messages: updatedQaMessages
-          });
-        } catch (e) {
-          console.error('解析AI回复失败', e);
-          
-          // 添加错误消息
-          const updatedQaMessages = this.data.qaMessages.concat({
-            role: 'assistant',
-            content: '抱歉，我暂时无法回答这个问题，请稍后再试。'
-          });
-          
-          this.setData({
-            qaMessages: updatedQaMessages,
-            aiProcessing: false
-          });
-        }
-      },
+    app.globalData.pendingQuestion = contextQuestion;
+    // 标记来源为文章详情页，并保存文章ID便于返回
+    app.globalData.fromArticleDetail = true;
+    app.globalData.articleId = this.data.articleId;
+    
+    // 跳转到AI助手页面（使用switchTab而不是navigateTo）
+    wx.switchTab({
+      url: `/pages/ai/index/index`,
       fail: (err) => {
-        console.error('获取AI回复失败', err);
-        
-        // 添加错误消息
-        const updatedQaMessages = this.data.qaMessages.concat({
-          role: 'assistant',
-          content: '网络异常，请稍后再试。'
-        });
-        
-        this.setData({
-          qaMessages: updatedQaMessages,
-          aiProcessing: false
+        console.error('跳转到AI助手页面失败:', err);
+        wx.showToast({
+          title: '跳转失败，请重试',
+          icon: 'none'
         });
       }
+    });
+  },
+  
+  // 提问并跳转到AI助手页面
+  askQuestion: function() {
+    const question = this.data.userQuestion.trim();
+    if (!question) {
+      wx.showToast({
+        title: '请输入问题',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    console.log('提交问题:', question);
+    
+    // 将问题和文章信息保存到全局数据
+    const app = getApp();
+    if (!app.globalData) {
+      app.globalData = {};
+    }
+    
+    // 构建带有上下文的问题
+    const article = this.data.article;
+    const contextQuestion = `关于${article.author}创作的《${article.title}》，我有一个问题，请你帮我解答，问题是：${question}`;
+    
+    app.globalData.pendingQuestion = contextQuestion;
+    // 标记来源为文章详情页，并保存文章ID便于返回
+    app.globalData.fromArticleDetail = true;
+    app.globalData.articleId = this.data.articleId;
+    
+    // 跳转到AI助手页面（使用switchTab而不是navigateTo）
+    wx.switchTab({
+      url: `/pages/ai/index/index`,
+      fail: (err) => {
+        console.error('跳转到AI助手页面失败:', err);
+        wx.showToast({
+          title: '跳转失败，请重试',
+          icon: 'none'
+        });
+      }
+    });
+    
+    // 清空输入框
+    this.setData({
+      userQuestion: ''
     });
   },
   

@@ -1,4 +1,10 @@
 <view class="ai-container">
+  <!-- 悬浮返回按钮 -->
+  <view class="back-button" bindtap="goBackToArticle" wx:if="{{showBackButton}}">
+    <view class="back-icon"></view>
+    <text class="back-text">返回课文</text>
+  </view>
+  
   <scroll-view 
     class="chat-list" 
     id="chatList" 

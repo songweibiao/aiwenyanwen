@@ -11,14 +11,58 @@ Page({
     ],
     inputValue: '',
     loading: false,
-    toView: ''  // 初始不设置toView，让滚动视图显示从顶部开始
+    toView: '',  // 初始不设置toView，让滚动视图显示从顶部开始
+    showBackButton: false, // 是否显示返回按钮
+    articleId: null // 来源文章ID
   },
 
-  onLoad() {
+  onLoad(options) {
+    console.log('AI助手页面加载，参数:', options);
+    
     // 延迟滚动到初始消息
     setTimeout(() => {
       this.scrollToBottom();
     }, 300);
+  },
+
+  onShow() {
+    console.log('AI助手页面显示');
+    
+    // 获取全局数据
+    const app = getApp();
+    
+    // 检查是否来自文章详情页
+    if (app.globalData && app.globalData.fromArticleDetail) {
+      this.setData({
+        showBackButton: true,
+        articleId: app.globalData.articleId
+      });
+    } else {
+      this.setData({
+        showBackButton: false,
+        articleId: null
+      });
+    }
+    
+    // 检查全局数据中是否有待处理的问题
+    if (app.globalData && app.globalData.pendingQuestion) {
+      const contextQuestion = app.globalData.pendingQuestion;
+      console.log('发现待处理问题:', contextQuestion);
+      
+      // 清除全局数据中的问题，防止重复处理
+      app.globalData.pendingQuestion = null;
+      
+      // 设置输入框内容并自动发送
+      this.setData({
+        inputValue: contextQuestion
+      }, () => {
+        // 延迟一点时间再发送，确保页面已完全加载
+        setTimeout(() => {
+          console.log('自动发送带上下文的问题:', this.data.inputValue);
+          this.onSend();
+        }, 500);
+      });
+    }
   },
 
   onInput(e) {
@@ -129,6 +173,29 @@ Page({
       this.setData({
         toView: 'msg' + lastMessageId
       });
+    }
+  },
+
+  // 返回文章详情页
+  goBackToArticle() {
+    if (this.data.articleId) {
+      // 返回文章详情页（使用reLaunch，因为从tabBar页面不能直接navigateTo）
+      wx.reLaunch({
+        url: `/pages/article/detail/detail?id=${this.data.articleId}&tab=qa`,
+        fail: (err) => {
+          console.error('返回文章详情页失败:', err);
+          wx.showToast({
+            title: '返回失败，请重试',
+            icon: 'none'
+          });
+        }
+      });
+      
+      // 清除来源标记
+      const app = getApp();
+      if (app.globalData) {
+        app.globalData.fromArticleDetail = false;
+      }
     }
   }
 });

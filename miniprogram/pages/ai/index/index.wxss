@@ -1,3 +1,38 @@
+/* 悬浮返回按钮 */
+.back-button {
+  position: fixed;
+  top: 100rpx;
+  left: -40rpx;
+  display: flex;
+  align-items: center;
+  background-color: rgba(139, 110, 79, 0.8);
+  padding: 10rpx 20rpx;
+  border-radius: 40rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  color: #fff;
+  transition: all 0.3s;
+}
+
+.back-button:active {
+  transform: scale(0.95);
+  background-color: rgba(139, 110, 79, 0.9);
+}
+
+.back-icon {
+  width: 20rpx;
+  height: 20rpx;
+  border-top: 3rpx solid #fff;
+  border-left: 3rpx solid #fff;
+  transform: rotate(-45deg);
+  margin-right: 10rpx;
+}
+
+.back-text {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
 .ai-container { display: flex; flex-direction: column; height: 100vh; background: #f8f4e3; }
 .chat-list { flex: 1; overflow-y: auto; padding: 0; }
 .chat-top-space { height: 32rpx; width: 100%; }

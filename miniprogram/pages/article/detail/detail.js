@@ -247,6 +247,14 @@ Page({
     if (!articleData.full_content && articleData.content) {
       articleData.full_content = articleData.content;
     }
+    
+    // 如果有翻译内容，处理翻译段落
+    if (articleData.translation) {
+      articleData.translationParagraphs = articleData.translation.split(/\n+/).filter(p => p.trim() !== '');
+    } else {
+      articleData.translationParagraphs = [];
+    }
+    
     this.setData({
       article: articleData,
       contentReady: true,
@@ -421,11 +429,16 @@ Page({
     db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
       if (res.data && res.data.length > 0) {
         // 数据库已有，直接显示
+        const translation = res.data[0].content;
+        // 处理翻译文本，按换行符分割成段落
+        const translationParagraphs = translation.split(/\n+/).filter(p => p.trim() !== '');
+        
         this.setData({
-          'article.translation': res.data[0].content,
+          'article.translation': translation,
+          'article.translationParagraphs': translationParagraphs,
           aiProcessing: false
         });
-        this.cacheArticleData({ translation: res.data[0].content });
+        this.cacheArticleData({ translation: translation });
         return;
       }
       // 数据库无，调用AI
@@ -446,7 +459,14 @@ Page({
           let translation = '';
           try {
             translation = res.data.choices[0].message.content.trim();
-            this.setData({ 'article.translation': translation, aiProcessing: false });
+            // 处理翻译文本，按换行符分割成段落
+            const translationParagraphs = translation.split(/\n+/).filter(p => p.trim() !== '');
+            
+            this.setData({
+              'article.translation': translation,
+              'article.translationParagraphs': translationParagraphs,
+              aiProcessing: false
+            });
             this.cacheArticleData({ translation });
             // 存入数据库
             db.collection('article_ai_content').add({

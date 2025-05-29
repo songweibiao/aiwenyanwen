@@ -195,7 +195,7 @@ wenyanwen/
 - author：文章作者
 - dynasty：朝代
 - full_content：课文内容
-- isshige：诗歌还是文言文
+- ishige：诗歌还是文言文
 - audio：音频
 
 #### article_ai_content 集合

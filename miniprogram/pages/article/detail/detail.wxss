@@ -7,10 +7,10 @@ page {
   --primary-dark: #6B4423;       /* 深棕色 */
   --secondary-color: #C83E3E;    /* 朱砂红 */
   --accent-color: #A7775F;       /* 赭石色 */
-  --bg-color: #F8F4E3;           /* 宣纸色背景 */
+  --bg-color:rgb(235, 196, 22);           /* 宣纸色背景 */
   --card-color: #FFF9E6;         /* 卡片背景 */
   --text-color: #333333;         /* 墨黑色文字 */
-  --border-color: #E8DFD5;       /* 淡棕色边框 */
+  --bg-color: #F8F4E3;  /* 米白色 */
   --success-color: #7EA075;      /* 成功色 */
   --warning-color: #E6B56B;      /* 警告色 */
   background-color: var(--bg-color);
@@ -393,12 +393,26 @@ page {
   line-height: 2.0;
   color: var(--text-color);
   text-align: justify;
-  text-indent: 2em;
   margin-top: 32rpx;
   margin-bottom: 16rpx;
   word-wrap: break-word;
-  white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* 翻译文本段落样式 */
+.modern-text .paragraph {
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.modern-text .paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* 为翻译文本中的段落添加间距 */
+.modern-text view + view,
+.modern-text text + text {
+  margin-top: 24rpx;
 }
 
 /* 逐句解析 */
@@ -719,6 +733,13 @@ page {
   background: none;
   border: none;
   box-shadow: none;
+}
+
+/* 诗歌样式 */
+.poem-text {
+  text-align: center;
+  text-indent: 0;
+  line-height: 2.2;
 }
 
 /* 分享按钮 */

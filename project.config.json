@@ -54,7 +54,7 @@
     },
     "appid": "wx45b9c35a83072cda",
     "libVersion": "2.30.4",
-    "cloudfunctionRoot": "miniprogram/cloudfunctions/",
+    "cloudfunctionRoot": "cloudfunctions/",
     "condition": {},
     "simulatorPluginLibVersion": {},
     "editorSetting": {},

@@ -1,0 +1,85 @@
+<view class="container">
+  <!-- 顶部用户信息卡片 -->
+  <view class="user-card card">
+    <!-- 未登录状态 -->
+    <block wx:if="{{!isLoggedIn}}">
+      <view class="user-info-wrapper flex-center">
+        <view class="avatar-placeholder">
+          <image class="avatar-icon" src="/images/default-avatar.png" mode="aspectFill"></image>
+        </view>
+        <view class="login-btn-wrapper">
+          <button class="btn btn-primary" bindtap="handleWechatAuth">微信登录</button>
+        </view>
+      </view>
+    </block>
+    
+    <!-- 已登录状态 -->
+    <block wx:else>
+      <view class="user-info-wrapper flex-between">
+        <view class="user-basic flex-row align-center">
+          <view class="avatar-container">
+            <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+              <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+              <view class="avatar-edit">修改</view>
+            </button>
+          </view>
+          <view class="user-text">
+            <view class="nickname-wrapper flex-row align-center">
+              <view class="username">{{userInfo.nickname || '文言用户'}}</view>
+              <view class="edit-icon" bindtap="showEditNicknameModal">
+                <text class="icon-edit">✎</text>
+              </view>
+            </view>
+            <view class="user-openid text-tertiary" wx:if="{{userInfo.openid}}">ID: {{userInfo.openid}}</view>
+          </view>
+        </view>
+        <button class="btn btn-outline btn-small" bindtap="handleLogout">退出登录</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="feature-list card">
+    <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/favorites/favorites">
+      <view class="feature-name">我的收藏</view>
+      <view class="feature-arrow">></view>
+    </view>
+    <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/history/history">
+      <view class="feature-name">浏览历史</view>
+      <view class="feature-arrow">></view>
+    </view>
+    <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/feedback/feedback">
+      <view class="feature-name">意见反馈</view>
+      <view class="feature-arrow">></view>
+    </view>
+    <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/about/about">
+      <view class="feature-name">关于我们</view>
+      <view class="feature-arrow">></view>
+    </view>
+  </view>
+  
+  <!-- 修改昵称弹窗 -->
+  <view class="modal" wx:if="{{showNicknameModal}}">
+    <view class="modal-mask" bindtap="hideEditNicknameModal"></view>
+    <view class="modal-content">
+      <view class="modal-header">
+        <view class="modal-title">修改昵称</view>
+        <view class="modal-close" bindtap="hideEditNicknameModal">×</view>
+      </view>
+      
+      <view class="modal-body">
+        <form bindsubmit="updateNickname">
+          <view class="input-wrapper">
+            <input type="nickname" name="nickname" class="input" placeholder="请输入昵称" value="{{userInfo.nickname}}" bindinput="onNicknameInput" focus="{{showNicknameModal}}"/>
+          </view>
+          <view class="input-error" wx:if="{{nicknameError}}">{{nicknameError}}</view>
+          
+          <view class="modal-btns">
+            <button class="btn btn-outline" bindtap="hideEditNicknameModal">取消</button>
+            <button class="btn btn-primary" form-type="submit">确定</button>
+          </view>
+        </form>
+      </view>
+    </view>
+  </view>
+</view>

@@ -836,8 +836,8 @@ page {
 .feature-card {
   flex: 1;
   height: 140rpx; /* 增加高度 */
-  background-color: rgba(139, 110, 79, 0.05);
-  border-radius: var(--radius-md);
+  background: #f9f6f1;
+  border-radius: 16rpx;
   padding: var(--spacing-md);
   display: flex;
   align-items: center;
@@ -845,6 +845,7 @@ page {
   overflow: hidden;
   transition: all 0.3s;
   border: 1rpx solid rgba(139, 110, 79, 0.1);
+  box-shadow: 0 4rpx 12rpx rgba(139, 110, 79, 0.08);
 }
 
 .feature-card:active {

@@ -853,6 +853,9 @@ Page({
   },
 
   initAudioPlayer: function() {
+    // 先设置初始值为0，确保进度条圆点在最左侧
+    this.setData({ audioCurrent: 0, audioDuration: 0, audioPlaying: false, audioSpeed: 1.0 });
+    
     if (this.data.audioContext) {
       this.data.audioContext.destroy();
     }
@@ -878,7 +881,7 @@ Page({
     ctx.onEnded(() => {
       this.setData({ audioPlaying: false, audioCurrent: 0 });
     });
-    this.setData({ audioContext: ctx, audioPlaying: false, audioCurrent: 0, audioDuration: 0, audioSpeed: 1.0 });
+    this.setData({ audioContext: ctx });
   },
 
   onAudioPlay: function() {

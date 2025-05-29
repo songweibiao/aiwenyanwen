@@ -33,7 +33,7 @@
         <!-- 底部滚动提示 -->
         <view wx:if="{{showScrollTip && !isContentCollapsed && !isAutoExpand}}" class="scroll-tip-bottom">可上下滑动查看更多</view>
         <scroll-view scroll-y="{{!isContentCollapsed && showToggleButton && !isAutoExpand}}" bindscroll="onAncientScroll" style="height:100%;">
-          <view class="ancient-text">{{article.full_content}}</view>
+          <view class="ancient-text {{article.ishige ? 'poem-text' : ''}}">{{article.full_content}}</view>
         </scroll-view>
         <!-- 底部渐变遮罩 -->
         <view wx:if="{{(isContentCollapsed && showToggleButton) || (!isContentCollapsed && showBottomMask && !isAutoExpand)}}" class="ancient-bottom-mask"></view>
@@ -86,7 +86,9 @@
           </view>
           <view class="translation-section" wx:else>
             <view class="section-title">白话文翻译</view>
-            <text class="modern-text" decode="{{true}}">{{article.translation}}</text>
+            <view class="modern-text">
+              <text wx:for="{{article.translationParagraphs}}" wx:key="index" class="paragraph">{{item}}</text>
+            </view>
           </view>
         </view>
       </view>

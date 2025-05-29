@@ -64,11 +64,22 @@ Page({
     aiProcessing: false,
     
     // 自动加载状态
-    autoLoad: false
+    autoLoad: false,
+    
+    // 学习记录相关
+    enterTime: 0, // 进入页面的时间戳
+    learnDuration: 0, // 本次学习时长（秒）
+    isRecordingTime: false // 是否正在记录时间
   },
 
   onLoad: function (options) {
     console.log('Detail page onLoad with options:', options);
+    // 记录进入页面的时间戳
+    this.setData({
+      enterTime: Date.now(),
+      isRecordingTime: true
+    });
+    
     if (options.id) {
       this.setData({
         articleId: options.id,
@@ -76,6 +87,9 @@ Page({
         autoLoad: options.auto === 'true'
       });
       this.fetchArticleDetail(options.id);
+      
+      // 调用云函数，记录学习记录
+      this.updateUserArticleRecord(options.id);
     }
     // 只设置currentTab，不在这里直接加载tab内容
     if (options.tab && ['translation', 'analysis', 'author', 'background', 'exercise', 'qa'].includes(options.tab)) {
@@ -90,6 +104,15 @@ Page({
   
   // 页面显示时触发
   onShow: function() {
+    // 如果之前记录过时间，且不是第一次加载（enterTime已设置）
+    if (!this.data.isRecordingTime && this.data.enterTime > 0) {
+      // 重新开始记录时间
+      this.setData({
+        enterTime: Date.now(),
+        isRecordingTime: true
+      });
+    }
+    
     // 创建动画
     this.createAnimation();
     
@@ -100,6 +123,64 @@ Page({
     if (this.data.article) {
       this.checkTextHeight();
     }
+  },
+  
+  // 页面隐藏时触发
+  onHide: function() {
+    // 停止记录时间，计算本次学习时长
+    this.calculateLearnDuration();
+  },
+  
+  // 页面卸载时触发
+  onUnload: function() {
+    // 停止记录时间，计算本次学习时长
+    this.calculateLearnDuration();
+  },
+  
+  // 计算学习时长并上报
+  calculateLearnDuration: function() {
+    if (!this.data.isRecordingTime) return;
+    
+    const now = Date.now();
+    const enterTime = this.data.enterTime;
+    const articleId = this.data.articleId;
+    
+    if (enterTime > 0 && articleId) {
+      // 计算停留时长（秒）
+      const duration = Math.floor((now - enterTime) / 1000);
+      
+      // 只有当停留时间大于1秒时才记录
+      if (duration > 1) {
+        console.log(`本次学习时长: ${duration}秒`);
+        
+        // 更新本地数据
+        this.setData({
+          learnDuration: this.data.learnDuration + duration,
+          isRecordingTime: false
+        });
+        
+        // 调用云函数更新学习时长
+        this.updateLearnDuration(articleId, duration);
+      }
+    }
+  },
+  
+  // 更新学习时长
+  updateLearnDuration: function(articleId, duration) {
+    // 调用云函数更新学习时长
+    wx.cloud.callFunction({
+      name: 'updateLearnDuration',
+      data: {
+        articleId: articleId,
+        duration: duration
+      },
+      success: res => {
+        console.log('更新学习时长成功:', res.result);
+      },
+      fail: err => {
+        console.error('更新学习时长失败:', err);
+      }
+    });
   },
   
   // 设置导航栏按钮
@@ -381,8 +462,63 @@ Page({
     // 根据选项卡加载相应内容
     this.loadTabContent(tab);
     
+    // 记录功能点击状态
+    this.updateFunctionClick(tab);
+    
     // 保存学习记录
     this.saveLearningRecord();
+  },
+  
+  // 更新功能点击状态
+  updateFunctionClick: function(tab) {
+    const articleId = this.data.articleId;
+    if (!articleId) return;
+    
+    // 根据tab名称映射到功能索引
+    const tabToFunctionMap = {
+      'translation': 1,  // 翻译功能
+      'author': 2,       // 作者介绍功能
+      'analysis': 3,     // 逐句解析功能
+      'background': 4,   // 背景知识功能
+      'exercise': 5,     // 练习巩固功能
+      'qa': 6            // 提问拓展功能
+    };
+    
+    const functionIndex = tabToFunctionMap[tab];
+    if (!functionIndex) return;
+    
+    // 调用云函数记录功能点击
+    wx.cloud.callFunction({
+      name: 'updateFunctionClick',
+      data: {
+        articleId: articleId,
+        functionIndex: functionIndex
+      },
+      success: res => {
+        console.log('更新功能点击状态成功:', res.result);
+        
+        // 如果返回了学习状态，更新本地状态
+        if (res.result && res.result.learnStatus) {
+          const statusMap = {
+            0: '未开始',
+            1: '学习中',
+            2: '已完成'
+          };
+          
+          const learnStatus = statusMap[res.result.learnStatus] || this.data.learnStatus;
+          
+          this.setData({
+            learnStatus: learnStatus
+          });
+          
+          // 更新本地存储
+          this.saveLearningRecord();
+        }
+      },
+      fail: err => {
+        console.error('更新功能点击状态失败:', err);
+      }
+    });
   },
   
   // 加载选项卡内容
@@ -1513,5 +1649,22 @@ Page({
     
     // 更新选项样式
     this.updateOptionClassList();
+  },
+  
+  // 更新用户文章学习记录
+  updateUserArticleRecord: function(articleId) {
+    // 调用云函数记录学习记录
+    wx.cloud.callFunction({
+      name: 'updateUserArticleRecord',
+      data: {
+        articleId: articleId
+      },
+      success: res => {
+        console.log('更新学习记录成功:', res.result);
+      },
+      fail: err => {
+        console.error('更新学习记录失败:', err);
+      }
+    });
   },
 });

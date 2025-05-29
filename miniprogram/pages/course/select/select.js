@@ -27,7 +27,9 @@ Page({
     // 年级列表滚动到指定位置的元素ID
     gradeScrollIntoView: '',
     // 选中文章的索引
-    selectedArticleIndex: -1
+    selectedArticleIndex: -1,
+    // 用户学习记录
+    userArticleRecords: {}
   },
 
   onLoad: function(options) {
@@ -65,8 +67,120 @@ Page({
       }
     }
     
+    // 获取用户学习记录
+    this.getUserArticleRecords();
+    
     // 从云数据库获取年级和学期列表
     this.fetchGradeAndSemesterList(selectedGradeInfo);
+  },
+  
+  // 获取用户学习记录
+  getUserArticleRecords: function() {
+    wx.cloud.callFunction({
+      name: 'getUserArticleRecords',
+      data: {},
+      success: res => {
+        console.log('获取学习历史记录成功:', res.result);
+        
+        if (res.result.success && res.result.data && res.result.data.length > 0) {
+          // 将学习记录转换为以文章ID为键的对象，方便查询
+          const recordsMap = {};
+          res.result.data.forEach(record => {
+            // 同时保存使用 _id 和 article_id 作为键的记录，确保能匹配到文章
+            recordsMap[record.article_id] = record;
+            
+            // 如果记录中有关联的文章信息
+            if (record.article && record.article._id) {
+              // 使用文章的 _id 也作为键存储记录
+              recordsMap[record.article._id] = record;
+            }
+          });
+          
+          this.setData({ userArticleRecords: recordsMap });
+          
+          // 如果当前已有文章列表，更新学习状态
+          if (this.data.currentArticles.length > 0) {
+            this.updateArticlesWithLearningStatus();
+          }
+          
+          // 如果当前有搜索结果，也更新搜索结果的学习状态
+          if (this.data.searchResult.length > 0) {
+            this.updateSearchResultWithLearningStatus();
+          }
+        }
+      },
+      fail: err => {
+        console.error('获取学习历史记录失败:', err);
+      }
+    });
+  },
+  
+  // 更新文章列表中的学习状态
+  updateArticlesWithLearningStatus: function() {
+    const { currentArticles, userArticleRecords } = this.data;
+    
+    const updatedArticles = currentArticles.map(article => {
+      // 首先尝试使用文章的 _id 查找记录
+      let record = userArticleRecords[article._id];
+      
+      // 如果没找到，尝试使用文章的 article_id 字段查找
+      if (!record && article.article_id) {
+        record = userArticleRecords[article.article_id];
+      }
+      
+      if (record) {
+        // 添加学习状态信息
+        return {
+          ...article,
+          learn_status: record.learn_status || 0,
+          learn_duration: record.learn_duration || 0,
+          statusText: this.getStatusText(record.learn_status)
+        };
+      }
+      return article;
+    });
+    
+    this.setData({ currentArticles: updatedArticles });
+  },
+  
+  // 更新搜索结果中的学习状态
+  updateSearchResultWithLearningStatus: function() {
+    const { searchResult, userArticleRecords } = this.data;
+    
+    const updatedSearchResult = searchResult.map(article => {
+      // 首先尝试使用文章的 _id 查找记录
+      let record = userArticleRecords[article._id];
+      
+      // 如果没找到，尝试使用文章的 article_id 字段查找
+      if (!record && article.article_id) {
+        record = userArticleRecords[article.article_id];
+      }
+      
+      if (record) {
+        // 添加学习状态信息
+        return {
+          ...article,
+          learn_status: record.learn_status || 0,
+          learn_duration: record.learn_duration || 0,
+          statusText: this.getStatusText(record.learn_status)
+        };
+      }
+      return article;
+    });
+    
+    this.setData({ searchResult: updatedSearchResult });
+  },
+  
+  // 获取学习状态文本
+  getStatusText: function(status) {
+    switch (status) {
+      case 1:
+        return '学习中';
+      case 2:
+        return '已学完';
+      default:
+        return '未学习';
+    }
   },
   
   // 页面渲染完成后执行
@@ -429,6 +543,11 @@ Page({
             loading: false
           });
           
+          // 更新文章的学习状态
+          if (Object.keys(this.data.userArticleRecords).length > 0) {
+            this.updateArticlesWithLearningStatus();
+          }
+          
           // 如果找到了之前选择的课文，滚动到对应位置
           if (selectedArticleIndex !== -1) {
             // 微信小程序中ScrollView组件有滚动到指定元素的功能
@@ -487,6 +606,11 @@ Page({
       const gradeInfo = this.data.gradeList[this.data.currentGradeIndex];
       
       console.log('选中课文:', article);
+      
+      // 确保文章对象包含 article_id 字段
+      if (!article.article_id) {
+        article.article_id = article._id;
+      }
       
       // 保存选中的课文到本地存储
       wx.setStorageSync('selectedCourse', {
@@ -626,6 +750,11 @@ Page({
             showSearchResult: true,
             loading: false
           });
+          
+          // 更新搜索结果的学习状态
+          if (Object.keys(this.data.userArticleRecords).length > 0) {
+            this.updateSearchResultWithLearningStatus();
+          }
         })
         .catch(err => {
           console.error('搜索失败:', err);
@@ -646,6 +775,11 @@ Page({
       const article = this.data.searchResult[articleIndex];
       
       console.log('选中搜索结果课文:', article);
+      
+      // 确保文章对象包含 article_id 字段
+      if (!article.article_id) {
+        article.article_id = article._id;
+      }
       
       // 保存选中的课文到本地存储
       wx.setStorageSync('selectedCourse', {

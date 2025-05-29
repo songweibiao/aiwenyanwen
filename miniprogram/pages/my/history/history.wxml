@@ -1,0 +1,46 @@
+<view class="container">
+  <view class="header">
+    <view class="title">学习历史</view>
+    <view class="clear-btn" bindtap="clearHistory" wx:if="{{!empty}}">清空</view>
+  </view>
+  
+  <!-- 加载中 - 使用微信原生加载组件 -->
+  <view class="loading-wrapper" wx:if="{{loading}}">
+    <view class="loading-content">
+      <wx:if wx:if="{{loading}}">
+        <view class="weui-loadmore">
+          <view class="weui-loading"></view>
+          <view class="weui-loadmore__tips">加载中</view>
+        </view>
+      </wx:if>
+    </view>
+  </view>
+  
+  <!-- 空状态 -->
+  <view class="empty-wrapper" wx:elif="{{empty}}">
+    <image class="empty-icon" src="/images/icons/empty.png" mode="aspectFit"></image>
+    <view class="empty-text">暂无学习记录</view>
+    <view class="empty-tip">快去学习一篇文章吧~</view>
+  </view>
+  
+  <!-- 历史列表 -->
+  <view class="history-list" wx:else>
+    <view class="history-item" wx:for="{{historyList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.article_id}}">
+      <view class="article-info">
+        <view class="article-title">{{item.article.title || '未知文章'}}</view>
+        <view class="article-author">{{item.article.author || '未知作者'}}{{item.article.dynasty ? ' · ' + item.article.dynasty : ''}}</view>
+      </view>
+      
+      <view class="study-info">
+        <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}">
+          {{item.statusText}}
+        </view>
+        
+        <view class="study-time">
+          <text class="duration">学习时长: {{item.durationText}}</text>
+          <text class="time">{{item.timeStr}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view> 

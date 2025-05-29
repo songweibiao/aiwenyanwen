@@ -389,4 +389,33 @@
   padding: 16rpx 60rpx;
   border-radius: 40rpx;
   margin-top: 30rpx;
+}
+
+/* 添加学习状态样式 */
+.study-status {
+  position: absolute;
+  top: 30rpx;
+  right: 30rpx;
+  font-size: 24rpx;
+  color: #999;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background-color: #f0f0f0;
+}
+
+.study-status.learning {
+  color: #ff9c00;
+  background-color: rgba(255, 156, 0, 0.1);
+}
+
+.study-status.completed {
+  color: #52c41a;
+  background-color: rgba(82, 196, 26, 0.1);
+}
+
+/* 搜索结果中的学习状态样式 */
+.search-article-list .article-item .study-status {
+  position: absolute;
+  top: 30rpx;
+  right: 30rpx;
 } 

@@ -45,7 +45,7 @@
       <view class="feature-arrow">></view>
     </view>
     <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/history/history">
-      <view class="feature-name">浏览历史</view>
+      <view class="feature-name">学习历史</view>
       <view class="feature-arrow">></view>
     </view>
     <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/feedback/feedback">

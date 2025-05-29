@@ -327,7 +327,64 @@ Page({
 
   // 获取最近学习的文章
   getLastStudy: function () {
-    // 从本地存储获取最近学习的记录
+    // 首先尝试调用云函数获取最新的学习记录
+    wx.cloud.callFunction({
+      name: 'getUserArticleRecords',
+      data: {
+        type: 'latest'
+      },
+      success: res => {
+        console.log('获取最新学习记录成功:', res.result);
+        
+        if (res.result.success && res.result.data) {
+          const record = res.result.data.record;
+          const article = res.result.data.article;
+          
+          if (record && article) {
+            // 格式化最后学习时间
+            const lastLearnTime = new Date(record.last_learn_time);
+            const timeStr = util.timeAgo(lastLearnTime);
+            
+            // 构建学习记录对象
+            const lastStudyRecord = {
+              article: {
+                _id: article._id || record.article_id,
+                title: article.title || '未知文章',
+                author: article.author || '未知作者',
+                dynasty: article.dynasty || '',
+              },
+              position: {
+                section_type: '文章详情',
+                section_index: 0
+              },
+              progress: record.learn_status === 2 ? 100 : (record.learn_status === 1 ? 50 : 0),
+              time: timeStr,
+              articleId: record.article_id // 保存原始article_id，便于跳转
+            };
+            
+            this.setData({
+              lastStudy: lastStudyRecord
+            });
+            
+            // 同时更新本地缓存
+            wx.setStorageSync('lastStudyRecord', lastStudyRecord);
+            return;
+          }
+        }
+        
+        // 如果云函数未返回数据，尝试从本地存储获取
+        this.getLastStudyFromLocal();
+      },
+      fail: err => {
+        console.error('获取最新学习记录失败:', err);
+        // 调用云函数失败，尝试从本地存储获取
+        this.getLastStudyFromLocal();
+      }
+    });
+  },
+  
+  // 从本地存储获取最近学习的记录
+  getLastStudyFromLocal: function() {
     try {
       const lastStudyRecord = wx.getStorageSync('lastStudyRecord');
       if (lastStudyRecord) {
@@ -337,7 +394,7 @@ Page({
         return;
       }
     } catch (e) {
-      console.error('获取学习记录失败:', e);
+      console.error('获取本地学习记录失败:', e);
     }
     
     // 如果没有本地记录，使用模拟数据

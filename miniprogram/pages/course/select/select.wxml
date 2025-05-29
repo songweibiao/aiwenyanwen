@@ -52,6 +52,9 @@
               <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
             </view>
           </view>
+          <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}" wx:if="{{item.learn_status !== undefined}}">
+            {{item.statusText || '未学习'}}
+          </view>
         </view>
       </view>
     </view>
@@ -122,6 +125,9 @@
                 <view class="lesson-number">
                   <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
                 </view>
+              </view>
+              <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}" wx:if="{{item.learn_status !== undefined}}">
+                {{item.statusText || '未学习'}}
               </view>
             </view>
           </view>

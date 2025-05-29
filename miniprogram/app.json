@@ -8,6 +8,7 @@
     "pages/exercise/specialized/specialized",
     "pages/ai/index/index",
     "pages/my/index/index",
+    "pages/my/history/history",
     "pages/logs/logs"
   ],
   "window": {

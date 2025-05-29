@@ -15,6 +15,9 @@ Page({
   onLoad: function (options) {
     // 检查是否已登录
     this.checkLoginStatus();
+    
+    // 检查基础库版本
+    this.checkSDKVersion();
   },
 
   /**
@@ -40,6 +43,26 @@ Page({
       this.setData({
         isLoggedIn: false,
         userInfo: null
+      });
+    }
+  },
+
+  /**
+   * 检查微信基础库版本
+   */
+  checkSDKVersion: function() {
+    const sdkVersion = wx.getSystemInfoSync().SDKVersion;
+    console.log('当前基础库版本:', sdkVersion);
+    
+    // 检查是否支持chooseAvatar功能（需要基础库2.21.2及以上）
+    const canIUseChooseAvatar = wx.canIUse('button.open-type.chooseAvatar');
+    console.log('是否支持chooseAvatar:', canIUseChooseAvatar);
+    
+    if (!canIUseChooseAvatar) {
+      wx.showToast({
+        title: '当前微信版本过低，请更新微信',
+        icon: 'none',
+        duration: 3000
       });
     }
   },
@@ -131,6 +154,13 @@ Page({
    */
   onChooseAvatar: function(e) {
     const { avatarUrl } = e.detail;
+    
+    // 如果用户取消选择，avatarUrl可能为空
+    if (!avatarUrl) {
+      console.log('用户取消选择头像');
+      return;
+    }
+    
     console.log('用户选择的头像:', avatarUrl);
     
     wx.showLoading({

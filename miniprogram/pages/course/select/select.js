@@ -774,7 +774,7 @@ Page({
     if (articleIndex !== -1) {
       const article = this.data.searchResult[articleIndex];
       
-      console.log('选中搜索结果课文:', article);
+      console.log('选中搜索结果中的课文:', article);
       
       // 确保文章对象包含 article_id 字段
       if (!article.article_id) {
@@ -784,10 +784,10 @@ Page({
       // 保存选中的课文到本地存储
       wx.setStorageSync('selectedCourse', {
         article: article,
-        grade: article.gradeDisplay || `${article.grade}${article.semester}`
+        grade: article.grade ? `${article.grade}${article.semester || ''}` : '未知年级'
       });
       
-      // 返回上一页
+      // 无论是否从首页跳转来的，都返回上一页
       wx.navigateBack();
     }
   }

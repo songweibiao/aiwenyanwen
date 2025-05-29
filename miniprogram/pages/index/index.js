@@ -112,13 +112,13 @@ Page({
     if (selectedCourse && selectedCourse.article) {
       console.log('找到已选择的课文:', selectedCourse);
       
-      // 检查是否有文章ID
-      if (selectedCourse.article._id) {
-        // 从云数据库获取最新的课文数据
-        this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
-      } else if (selectedCourse.article.article_id) {
-        // 如果有article_id字段，使用它查询
+      // 优先使用article_id查询
+      if (selectedCourse.article.article_id) {
+        // 如果有article_id字段，优先使用它查询
         this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
+      } else if (selectedCourse.article._id) {
+        // 如果只有_id，作为备用方案
+        this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
       } else {
         // 没有可用的ID，标记为未选择课文
         console.log('课文数据无有效ID');
@@ -138,59 +138,7 @@ Page({
     }
   },
   
-  // 通过_id从云数据库获取课文数据
-  fetchArticleFromCloud: function(articleId, selectedCourse) {
-    console.log('尝试通过_id获取课文:', articleId);
-    const db = wx.cloud.database();
-    
-    db.collection('articles').doc(articleId).get()
-      .then(res => {
-        if (res.data) {
-          console.log('成功获取到课文数据:', res.data);
-          
-          // 更新课文信息
-          const updatedSelectedCourse = {
-            article: res.data,
-            grade: `${res.data.grade}${res.data.semester}`
-          };
-          
-          // 更新本地存储
-          wx.setStorageSync('selectedCourse', updatedSelectedCourse);
-          
-          // 更新页面数据
-          this.setData({
-            hasSelectedCourse: true,
-            selectedCourse: updatedSelectedCourse,
-            currentGrade: updatedSelectedCourse.grade,
-            currentLesson: res.data.title,
-            courseLoading: false
-          });
-          if (res.data && res.data.audio) { this.initAudioPlayer(); }
-        } else {
-          console.log('未找到课文数据，尝试通过article_id查询');
-          // 尝试通过article_id查询
-          if (selectedCourse.article.article_id) {
-            this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
-          } else {
-            // 使用本地缓存数据
-            this.useLocalCourseData(selectedCourse);
-          }
-        }
-      })
-      .catch(err => {
-        console.error('获取课文详情失败:', err);
-        
-        // 尝试通过article_id查询
-        if (selectedCourse.article.article_id) {
-          this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
-        } else {
-          // 查询失败，使用本地缓存数据
-          this.useLocalCourseData(selectedCourse);
-        }
-      });
-  },
-  
-  // 通过article_id从云数据库获取课文数据
+  // 通过article_id从云数据库获取课文数据（优先方法）
   fetchArticleByArticleId: function(articleId, selectedCourse) {
     console.log('尝试通过article_id获取课文:', articleId);
     const db = wx.cloud.database();
@@ -224,15 +172,66 @@ Page({
             currentLesson: articleData.title,
             courseLoading: false
           });
+          if (articleData && articleData.audio) { this.initAudioPlayer(); }
+        } else {
+          console.log('通过article_id未找到课文，尝试通过_id查询');
+          // 尝试通过_id查询（作为备用方案）
+          if (selectedCourse.article._id) {
+            this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
+          } else {
+            // 查询失败，使用本地缓存数据
+            this.useLocalCourseData(selectedCourse);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('通过article_id获取课文失败:', err);
+        // 尝试通过_id查询（作为备用方案）
+        if (selectedCourse.article._id) {
+          this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
+        } else {
+          // 查询失败，使用本地缓存数据
+          this.useLocalCourseData(selectedCourse);
+        }
+      });
+  },
+  
+  // 通过_id从云数据库获取课文数据（备用方法）
+  fetchArticleFromCloud: function(articleId, selectedCourse) {
+    console.log('尝试通过_id获取课文:', articleId);
+    const db = wx.cloud.database();
+    
+    db.collection('articles').doc(articleId).get()
+      .then(res => {
+        if (res.data) {
+          console.log('成功获取到课文数据:', res.data);
+          
+          // 更新课文信息
+          const updatedSelectedCourse = {
+            article: res.data,
+            grade: `${res.data.grade}${res.data.semester}`
+          };
+          
+          // 更新本地存储
+          wx.setStorageSync('selectedCourse', updatedSelectedCourse);
+          
+          // 更新页面数据
+          this.setData({
+            hasSelectedCourse: true,
+            selectedCourse: updatedSelectedCourse,
+            currentGrade: updatedSelectedCourse.grade,
+            currentLesson: res.data.title,
+            courseLoading: false
+          });
           if (res.data && res.data.audio) { this.initAudioPlayer(); }
         } else {
-          console.log('通过article_id未找到课文，使用本地缓存数据');
-          // 查询失败，使用本地缓存数据
+          console.log('未找到课文数据，使用本地缓存');
+          // 使用本地缓存数据
           this.useLocalCourseData(selectedCourse);
         }
       })
       .catch(err => {
-        console.error('通过文章ID获取课文失败:', err);
+        console.error('获取课文详情失败:', err);
         // 查询失败，使用本地缓存数据
         this.useLocalCourseData(selectedCourse);
       });
@@ -536,6 +535,9 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 2); // 2 - 逐句解析
+      
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}&tab=analysis&auto=true`
       });
@@ -560,6 +562,9 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 1); // 1 - 全文翻译
+      
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}&tab=translation&auto=true`
       });
@@ -584,6 +589,9 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 4); // 4 - 背景知识
+      
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}&tab=background&auto=true`
       });
@@ -595,7 +603,7 @@ Page({
     }
   },
 
-  // 前往随堂练习
+  // 前往练习巩固
   goToExercise: function() {
     if (!this.data.hasSelectedCourse) {
       wx.showToast({
@@ -608,6 +616,9 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 5); // 5 - 练习巩固
+      
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}&tab=exercise&auto=true`
       });
@@ -632,6 +643,9 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 6); // 6 - AI互动
+      
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}&tab=qa&auto=true`
       });
@@ -824,7 +838,7 @@ Page({
     });
   },
   
-  // 前往作者介绍页面
+  // 前往作者介绍
   goToAuthorInfo: function() {
     if (!this.data.hasSelectedCourse) {
       wx.showToast({
@@ -837,8 +851,11 @@ Page({
     // 获取当前选择的课文ID
     const articleId = this.data.selectedCourse?.article?._id;
     if (articleId) {
+      // 记录功能点击
+      this.recordFunctionClick(articleId, 3); // 3 - 作者介绍
+      
       wx.navigateTo({
-        url: `/pages/article/detail/detail?id=${articleId}&tab=author`
+        url: `/pages/article/detail/detail?id=${articleId}&tab=author&auto=true`
       });
     } else {
       wx.showToast({
@@ -1024,5 +1041,35 @@ Page({
     setTimeout(() => {
       this.setData({ audioCurrent: value, audioSeeking: false });
     }, 200);
+  },
+
+  // 记录功能点击状态
+  recordFunctionClick: function(articleId, functionIndex) {
+    // 功能索引对应的功能名称
+    const functionNames = {
+      1: '全文翻译',
+      2: '逐句解析',
+      3: '作者介绍',
+      4: '背景知识',
+      5: '练习巩固',
+      6: 'AI互动'
+    };
+    
+    console.log(`首页点击功能: ${functionNames[functionIndex]}`);
+    
+    // 调用云函数记录功能点击
+    wx.cloud.callFunction({
+      name: 'updateFunctionClick',
+      data: {
+        articleId: articleId,
+        functionIndex: functionIndex
+      },
+      success: res => {
+        console.log('更新功能点击状态成功:', res.result);
+      },
+      fail: err => {
+        console.error('更新功能点击状态失败:', err);
+      }
+    });
   },
 }) 

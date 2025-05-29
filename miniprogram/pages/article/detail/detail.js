@@ -256,37 +256,7 @@ Page({
     
     const db = wx.cloud.database();
     
-    // 首先尝试通过ID直接查询
-    try {
-      // 先尝试通过云数据库的_id查询（优先）
-      db.collection('articles').doc(articleId).get()
-        .then(res => {
-          console.log('通过_id查询结果:', res);
-          if (res.data) {
-            // 处理获取到的课文数据
-            this.processArticleData(res.data);
-          } else {
-            // 如果_id查询失败，尝试通过article_id字段查询
-            this.queryArticleByArticleId(articleId);
-          }
-        })
-        .catch(err => {
-          console.error('通过_id查询失败:', err);
-          // 尝试通过article_id字段查询
-          this.queryArticleByArticleId(articleId);
-        });
-    } catch (err) {
-      console.error('查询过程发生错误:', err);
-      this.queryArticleByArticleId(articleId);
-    }
-  },
-  
-  // 通过article_id字段查询课文
-  queryArticleByArticleId: function(articleId) {
-    console.log('尝试通过article_id查询课文:', articleId);
-    
-    const db = wx.cloud.database();
-    
+    // 修改查询逻辑，优先通过article_id字段查询
     db.collection('articles')
       .where({
         article_id: articleId.toString()
@@ -298,14 +268,44 @@ Page({
           // 找到了课文
           this.processArticleData(res.data[0]);
         } else {
-          // 两种查询方式都失败了，显示错误
-          this.showArticleNotFoundError();
+          // 如果通过article_id查询失败，再尝试通过_id查询（兼容旧数据）
+          console.log('通过article_id未找到文章，尝试通过_id查询');
+          this.queryArticleById(articleId);
         }
       })
       .catch(err => {
         console.error('通过article_id查询失败:', err);
-        this.showArticleNotFoundError();
+        // 尝试通过_id查询
+        this.queryArticleById(articleId);
       });
+  },
+  
+  // 通过_id字段查询课文（作为备用方案）
+  queryArticleById: function(articleId) {
+    console.log('尝试通过_id查询课文:', articleId);
+    
+    const db = wx.cloud.database();
+    
+    try {
+      db.collection('articles').doc(articleId).get()
+        .then(res => {
+          console.log('通过_id查询结果:', res);
+          if (res.data) {
+            // 处理获取到的课文数据
+            this.processArticleData(res.data);
+          } else {
+            // 两种查询方式都失败了，显示错误
+            this.showArticleNotFoundError();
+          }
+        })
+        .catch(err => {
+          console.error('通过_id查询失败:', err);
+          this.showArticleNotFoundError();
+        });
+    } catch (err) {
+      console.error('查询过程发生错误:', err);
+      this.showArticleNotFoundError();
+    }
   },
   
   // 显示课文未找到错误
@@ -476,16 +476,28 @@ Page({
     
     // 根据tab名称映射到功能索引
     const tabToFunctionMap = {
-      'translation': 1,  // 翻译功能
-      'author': 2,       // 作者介绍功能
-      'analysis': 3,     // 逐句解析功能
-      'background': 4,   // 背景知识功能
-      'exercise': 5,     // 练习巩固功能
-      'qa': 6            // 提问拓展功能
+      'translation': 1,  // 全文翻译
+      'analysis': 2,     // 逐句解析
+      'author': 3,       // 作者介绍
+      'background': 4,   // 背景知识
+      'exercise': 5,     // 练习巩固
+      'qa': 6            // AI互动
     };
     
     const functionIndex = tabToFunctionMap[tab];
     if (!functionIndex) return;
+    
+    // 记录功能名称，与云函数中的定义保持一致
+    const functionNames = {
+      1: '全文翻译',
+      2: '逐句解析',
+      3: '作者介绍',
+      4: '背景知识',
+      5: '练习巩固',
+      6: 'AI互动'
+    };
+    
+    console.log(`点击功能: ${functionNames[functionIndex]}`);
     
     // 调用云函数记录功能点击
     wx.cloud.callFunction({
@@ -498,7 +510,7 @@ Page({
         console.log('更新功能点击状态成功:', res.result);
         
         // 如果返回了学习状态，更新本地状态
-        if (res.result && res.result.learnStatus) {
+        if (res.result && res.result.learnStatus !== undefined) {
           const statusMap = {
             0: '未开始',
             1: '学习中',
@@ -1661,6 +1673,24 @@ Page({
       },
       success: res => {
         console.log('更新学习记录成功:', res.result);
+        
+        // 如果返回了学习状态，更新本地状态
+        if (res.result && res.result.learnStatus !== undefined) {
+          const statusMap = {
+            0: '未开始',
+            1: '学习中',
+            2: '已完成'
+          };
+          
+          const learnStatus = statusMap[res.result.learnStatus] || this.data.learnStatus;
+          
+          this.setData({
+            learnStatus: learnStatus
+          });
+          
+          // 更新本地存储
+          this.saveLearningRecord();
+        }
       },
       fail: err => {
         console.error('更新学习记录失败:', err);

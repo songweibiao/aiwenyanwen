@@ -25,7 +25,11 @@ App({
         { key: 'senior', name: '高中' },
         { key: 'extra', name: '课外' }
       ],
-      currentGradeLevel: 'junior' // 默认年级为初中
+      currentGradeLevel: 'junior', // 默认年级为初中
+      defaultUserInfo: {
+        nickname: '新同学',
+        avatarUrl: '/images/default-avatar.png'
+      }
     }
 
     // 获取系统信息（现在可以安全调用了）
@@ -51,7 +55,11 @@ App({
           { key: 'senior', name: '高中' },
           { key: 'extra', name: '课外' }
         ],
-        currentGradeLevel: 'junior'
+        currentGradeLevel: 'junior',
+        defaultUserInfo: {
+          nickname: '新同学',
+          avatarUrl: '/images/default-avatar.png'
+        }
       };
     }
     
@@ -124,15 +132,23 @@ App({
           { key: 'senior', name: '高中' },
           { key: 'extra', name: '课外' }
         ],
-        currentGradeLevel: 'junior'
+        currentGradeLevel: 'junior',
+        defaultUserInfo: {
+          nickname: '新同学',
+          avatarUrl: '/images/default-avatar.png'
+        }
       };
     }
     
-    this.globalData.userInfo = {
-      nickname: '文言同学',
+    // 设置默认用户信息
+    const defaultUserInfo = {
+      nickname: '新同学',
       avatar_url: '/images/default-avatar.png'
     };
-    this.globalData.hasUserInfo = true;
+    
+    this.globalData.userInfo = defaultUserInfo;
+    this.globalData.defaultUserInfo = defaultUserInfo;
+    this.globalData.hasUserInfo = false; // 设置为false表示未登录
   },
 
   // 获取系统信息
@@ -152,7 +168,11 @@ App({
             { key: 'senior', name: '高中' },
             { key: 'extra', name: '课外' }
           ],
-          currentGradeLevel: 'junior'
+          currentGradeLevel: 'junior',
+          defaultUserInfo: {
+            nickname: '新同学',
+            avatarUrl: '/images/default-avatar.png'
+          }
         };
       }
       

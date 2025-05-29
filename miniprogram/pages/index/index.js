@@ -85,17 +85,23 @@ Page({
   },
 
   onShow: function () {
-    // 每次显示页面时可能更新用户信息
-    if (app.globalData.hasUserInfo) {
-      this.setData({
-        nickname: app.globalData.userInfo.nickname || '同学',
-        userInfo: app.globalData.userInfo,
-        hasUserInfo: true
-      })
-    }
+    // 每次显示页面时更新用户信息
+    this.getUserInfo();
     
     // 检查是否已选择课文
     this.checkSelectedCourse();
+    
+    // 额外检查：如果没有用户信息，确保显示默认头像
+    if (!this.data.hasUserInfo && (!this.data.userInfo || !this.data.userInfo.avatarUrl)) {
+      const mockUserInfo = {
+        nickname: '欢迎新同学！',
+        avatarUrl: '/images/default-avatar.png'
+      };
+      
+      this.setData({
+        userInfo: mockUserInfo
+      });
+    }
   },
   
   // 检查是否已选择课文
@@ -263,23 +269,58 @@ Page({
 
   // 获取用户信息
   getUserInfo: function () {
-    if (app.globalData.hasUserInfo) {
+    // 从本地存储获取用户信息
+    const userInfo = wx.getStorageSync('userInfo');
+    
+    if (userInfo) {
+      // 用户已登录，使用数据库中的用户信息
+      console.log('首页获取到用户信息:', userInfo);
       this.setData({
+        greeting: this.getGreeting(),
+        nickname: userInfo.nickname || '文言同学',
+        userInfo: userInfo,
+        hasUserInfo: true
+      });
+    } else if (app.globalData.hasUserInfo && app.globalData.userInfo) {
+      // 兼容全局数据
+      this.setData({
+        greeting: this.getGreeting(),
         nickname: app.globalData.userInfo.nickname || '同学',
         userInfo: app.globalData.userInfo,
         hasUserInfo: true
-      })
+      });
     } else {
-      // 模拟用户数据
-      const mockUserInfo = {
-        nickname: '文言同学',
+      // 用户未登录，使用默认值
+      // 优先使用全局默认用户信息
+      const mockUserInfo = app.globalData.defaultUserInfo || {
+        nickname: '新同学',
         avatarUrl: '/images/default-avatar.png'
       };
       
+      // 未登录用户使用"欢迎新同学"的问候语，但保留时间段问候语
+      const timeGreeting = this.getGreeting();
+      
+      // 确保每次都设置完整的用户信息，包括默认头像
       this.setData({
-        nickname: mockUserInfo.nickname,
+        greeting: timeGreeting,
+        nickname: '新同学',
         userInfo: mockUserInfo,
-        hasUserInfo: true
+        hasUserInfo: false
+      });
+      
+      // 将默认用户信息保存到全局，确保页面切换后能恢复
+      if (!app.globalData.defaultUserInfo) {
+        app.globalData.defaultUserInfo = mockUserInfo;
+      }
+    }
+    
+    // 额外检查：确保头像始终存在
+    if (!this.data.userInfo || !this.data.userInfo.avatarUrl) {
+      this.setData({
+        userInfo: {
+          ...this.data.userInfo,
+          avatarUrl: '/images/default-avatar.png'
+        }
       });
     }
   },

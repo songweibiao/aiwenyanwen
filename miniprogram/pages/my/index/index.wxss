@@ -4,6 +4,7 @@
   padding: 40rpx 30rpx;
   position: relative;
   overflow: hidden;
+  background-color: white;
 }
 
 .user-card::after {
@@ -13,7 +14,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(139, 110, 79, 0.05), rgba(139, 110, 79, 0.1));
+  background-color: white;
   z-index: 0;
 }
 
@@ -33,15 +34,25 @@
   justify-content: center;
   align-items: center;
   margin-right: 30rpx;
+  overflow: hidden;
 }
 
 .avatar-icon {
-  width: 80rpx;
-  height: 80rpx;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .login-btn-wrapper {
   flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.login-btn {
+  width: 80% !important;
+  font-size: 30rpx;
+  padding: 16rpx 0;
 }
 
 /* 已登录状态 */
@@ -111,13 +122,23 @@
 }
 
 .edit-icon {
-  margin-left: 16rpx;
-  padding: 6rpx;
+  margin-left: 10rpx;
+  padding: 6rpx 6rpx 12srpx 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.pencil-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+/* 旧的文本图标样式，保留以备不时之需 */
 .icon-edit {
   font-size: 28rpx;
   color: var(--primary-color);
+  display: none;
 }
 
 .user-openid {

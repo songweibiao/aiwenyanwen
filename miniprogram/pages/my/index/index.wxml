@@ -8,7 +8,7 @@
           <image class="avatar-icon" src="/images/default-avatar.png" mode="aspectFill"></image>
         </view>
         <view class="login-btn-wrapper">
-          <button class="btn btn-primary" bindtap="handleWechatAuth">微信登录</button>
+          <button class="btn btn-primary login-btn" bindtap="handleWechatAuth">微信一键登录</button>
         </view>
       </view>
     </block>
@@ -27,7 +27,7 @@
             <view class="nickname-wrapper flex-row align-center">
               <view class="username">{{userInfo.nickname || '文言用户'}}</view>
               <view class="edit-icon" bindtap="showEditNicknameModal">
-                <text class="icon-edit">✎</text>
+                <image class="pencil-icon" src="/images/icons/edit-pencil.svg" mode="aspectFit"></image>
               </view>
             </view>
             <view class="user-openid text-tertiary" wx:if="{{userInfo.openid}}">ID: {{userInfo.openid}}</view>

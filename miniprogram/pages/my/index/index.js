@@ -59,52 +59,9 @@ Page({
         const userProfile = res.userInfo;
         console.log('获取到的微信用户信息:', userProfile);
         
-        // 调用云函数登录
-        wx.cloud.callFunction({
-          name: 'login',
-          data: {
-            action: 'check',
-            userData: {
-              avatarUrl: userProfile.avatarUrl
-            }
-          },
-          success: (res) => {
-            console.log('云函数返回结果:', res.result);
-            const { userData } = res.result;
-            
-            if (!userData) {
-              wx.showToast({
-                title: '登录失败，请重试',
-                icon: 'none'
-              });
-              return;
-            }
-            
-            // 保存用户信息到本地
-            wx.setStorageSync('userInfo', userData);
-            
-            // 更新页面状态
-            this.setData({
-              isLoggedIn: true,
-              userInfo: userData
-            });
-            
-            wx.showToast({
-              title: '登录成功',
-              icon: 'success'
-            });
-          },
-          fail: (err) => {
-            console.error('登录失败', err);
-            wx.showToast({
-              title: '登录失败，请重试',
-              icon: 'none'
-            });
-          },
-          complete: () => {
-            wx.hideLoading();
-          }
-        });
+        // 直接调用登录云函数，不处理头像
+        // 避免downloadFile域名限制问题
+        this.callLoginFunction();
       },
       fail: (err) => {
         wx.hideLoading();
@@ -113,6 +70,58 @@ Page({
           title: '获取用户信息失败',
           icon: 'none'
         });
+      }
+    });
+  },
+
+  /**
+   * 调用登录云函数
+   */
+  callLoginFunction: function(avatarUrl = '') {
+    // 调用云函数登录
+    wx.cloud.callFunction({
+      name: 'login',
+      data: {
+        action: 'check',
+        userData: {
+          avatarUrl: avatarUrl
+        }
+      },
+      success: (res) => {
+        console.log('云函数返回结果:', res.result);
+        const { userData } = res.result;
+        
+        if (!userData) {
+          wx.showToast({
+            title: '登录失败，请重试',
+            icon: 'none'
+          });
+          return;
+        }
+        
+        // 保存用户信息到本地
+        wx.setStorageSync('userInfo', userData);
+        
+        // 更新页面状态
+        this.setData({
+          isLoggedIn: true,
+          userInfo: userData
+        });
+        
+        wx.showToast({
+          title: '登录成功',
+          icon: 'success'
+        });
+      },
+      fail: (err) => {
+        console.error('登录失败', err);
+        wx.showToast({
+          title: '登录失败，请重试',
+          icon: 'none'
+        });
+      },
+      complete: () => {
+        wx.hideLoading();
       }
     });
   },
@@ -128,45 +137,66 @@ Page({
       title: '更新中...',
     });
     
-    // 调用云函数更新头像
-    wx.cloud.callFunction({
-      name: 'login',
-      data: {
-        action: 'update',
-        userData: {
-          avatarUrl: avatarUrl
-        }
-      },
-      success: (res) => {
-        console.log('更新头像返回结果:', res.result);
-        if (res.result.success) {
-          // 更新本地存储的用户信息
-          wx.setStorageSync('userInfo', res.result.userData);
-          
-          // 更新页面状态
-          this.setData({
-            userInfo: res.result.userData
-          });
-          
-          wx.showToast({
-            title: '头像更新成功',
-            icon: 'success'
-          });
-        } else {
-          wx.showToast({
-            title: '头像更新失败',
-            icon: 'none'
-          });
-        }
-      },
-      fail: (err) => {
-        console.error('更新头像失败', err);
-        wx.showToast({
-          title: '更新失败，请重试',
-          icon: 'none'
+    // 将临时文件上传到云存储
+    const cloudPath = `avatar/${this.data.userInfo.openid}/${Date.now()}.jpg`;
+    
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: avatarUrl,
+      success: res => {
+        // 获取云存储文件ID
+        const fileID = res.fileID;
+        console.log('头像上传成功，fileID:', fileID);
+        
+        // 调用云函数更新头像
+        wx.cloud.callFunction({
+          name: 'login',
+          data: {
+            action: 'update',
+            userData: {
+              avatarUrl: fileID
+            }
+          },
+          success: (res) => {
+            console.log('更新头像返回结果:', res.result);
+            if (res.result.success) {
+              // 更新本地存储的用户信息
+              wx.setStorageSync('userInfo', res.result.userData);
+              
+              // 更新页面状态
+              this.setData({
+                userInfo: res.result.userData
+              });
+              
+              wx.showToast({
+                title: '头像更新成功',
+                icon: 'success'
+              });
+            } else {
+              wx.showToast({
+                title: '头像更新失败',
+                icon: 'none'
+              });
+            }
+          },
+          fail: (err) => {
+            console.error('更新头像失败', err);
+            wx.showToast({
+              title: '更新失败，请重试',
+              icon: 'none'
+            });
+          },
+          complete: () => {
+            wx.hideLoading();
+          }
         });
       },
-      complete: () => {
+      fail: err => {
+        console.error('头像上传失败', err);
+        wx.showToast({
+          title: '头像上传失败，请重试',
+          icon: 'none'
+        });
         wx.hideLoading();
       }
     });

@@ -52,7 +52,7 @@
               <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
             </view>
           </view>
-          <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}" wx:if="{{item.learn_status !== undefined}}">
+          <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">
             {{item.statusText || '未学习'}}
           </view>
         </view>
@@ -126,7 +126,7 @@
                   <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
                 </view>
               </view>
-              <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}" wx:if="{{item.learn_status !== undefined}}">
+              <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">
                 {{item.statusText || '未学习'}}
               </view>
             </view>

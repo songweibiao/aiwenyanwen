@@ -413,6 +413,11 @@
   background-color: rgba(82, 196, 26, 0.1);
 }
 
+.study-status.not-started {
+  color: #8a8a8a;
+  background-color: rgba(138, 138, 138, 0.1);
+}
+
 /* 搜索结果中的学习状态样式 */
 .search-article-list .article-item .study-status {
   position: absolute;

@@ -7,22 +7,33 @@ Page({
     historyList: [],
     loading: true,
     empty: false,
-    userInfo: null
+    userInfo: null,
+    isLoggedIn: false
   },
 
   onLoad: function (options) {
     // 获取用户信息
+    const userInfo = wx.getStorageSync('userInfo') || null;
     this.setData({
-      userInfo: app.globalData.userInfo || {}
-    })
-    
-    // 加载历史记录
-    this.loadHistoryRecords()
+      userInfo: userInfo,
+      isLoggedIn: !!userInfo
+    });
+    if (userInfo) {
+      // 加载历史记录
+      this.loadHistoryRecords();
+    }
   },
   
   onShow: function () {
-    // 每次显示页面时重新加载历史记录
-    this.loadHistoryRecords()
+    // 每次显示页面时重新判断登录状态
+    const userInfo = wx.getStorageSync('userInfo') || null;
+    this.setData({
+      userInfo: userInfo,
+      isLoggedIn: !!userInfo
+    });
+    if (userInfo) {
+      this.loadHistoryRecords();
+    }
   },
   
   // 加载历史记录
@@ -140,5 +151,12 @@ Page({
   onPullDownRefresh: function () {
     this.loadHistoryRecords()
     wx.stopPullDownRefresh()
+  },
+
+  // 跳转到登录页
+  goToLogin: function() {
+    wx.switchTab({
+      url: '/pages/my/index/index'
+    });
   }
 }) 

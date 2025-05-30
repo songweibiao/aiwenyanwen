@@ -86,10 +86,34 @@ Page({
 
   onShow: function () {
     // 每次显示页面时更新用户信息
+    const userInfo = wx.getStorageSync('userInfo');
+    const wasLoggedIn = this.data.hasUserInfo;
+    const isLoggedIn = !!userInfo;
+    
+    // 更新用户信息
     this.getUserInfo();
     
-    // 检查是否已选择课文
-    this.checkSelectedCourse();
+    // 如果登录状态发生变化
+    if (wasLoggedIn !== isLoggedIn) {
+      if (isLoggedIn) {
+        // 用户登录后，获取最近学习的文章
+        this.getLastStudy();
+        // 检查是否有最近学习的文章，如果有则显示
+        this.checkSelectedCourse();
+      } else {
+        // 用户退出登录后，清空选择的课文，显示初始界面
+        this.setData({
+          hasSelectedCourse: false,
+          selectedCourse: null,
+          courseLoading: false
+        });
+        // 清除本地存储的课文信息
+        wx.removeStorageSync('selectedCourse');
+      }
+    } else {
+      // 登录状态未变，正常检查选择的课文
+      this.checkSelectedCourse();
+    }
     
     // 额外检查：如果没有用户信息，确保显示默认头像
     if (!this.data.hasUserInfo && (!this.data.userInfo || !this.data.userInfo.avatarUrl)) {
@@ -107,10 +131,57 @@ Page({
   // 检查是否已选择课文
   checkSelectedCourse: function() {
     this.setData({ courseLoading: true });
+    console.log('开始检查选择的课文');
     
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    const isLoggedIn = !!userInfo;
+    console.log('用户登录状态:', isLoggedIn);
+    
+    // 如果用户已登录，优先使用最近学习的文章
+    if (isLoggedIn && this.data.lastStudy && this.data.lastStudy.article && this.data.lastStudy.article._id) {
+      console.log('使用最近学习的文章:', this.data.lastStudy);
+      
+      // 使用最近学习的文章ID查询完整信息
+      const articleId = this.data.lastStudy.articleId || this.data.lastStudy.article._id;
+      console.log('最近学习的文章ID:', articleId);
+      
+      // 优先使用article_id查询
+      if (articleId) {
+        // 先设置一个临时的课文数据，确保hasSelectedCourse为true
+        this.setData({
+          hasSelectedCourse: true,
+          selectedCourse: {
+            article: this.data.lastStudy.article,
+            grade: this.data.lastStudy.article.grade ? 
+                  `${this.data.lastStudy.article.grade}${this.data.lastStudy.article.semester || ''}` : 
+                  '未知年级'
+          }
+        });
+        
+        // 然后再异步获取完整数据
+        this.fetchArticleByArticleId(articleId, {
+          article: this.data.lastStudy.article,
+          grade: this.data.lastStudy.article.grade ? 
+                `${this.data.lastStudy.article.grade}${this.data.lastStudy.article.semester || ''}` : 
+                '未知年级'
+        });
+        return;
+      }
+    }
+    
+    // 如果没有最近学习的文章或者用户未登录，使用本地存储的选中课文
     const selectedCourse = wx.getStorageSync('selectedCourse');
     if (selectedCourse && selectedCourse.article) {
       console.log('找到已选择的课文:', selectedCourse);
+      
+      // 先设置本地缓存的课文数据，确保hasSelectedCourse为true
+      this.setData({
+        hasSelectedCourse: true,
+        selectedCourse: selectedCourse,
+        currentGrade: selectedCourse.grade || this.data.currentGrade,
+        currentLesson: selectedCourse.article.title || this.data.currentLesson
+      });
       
       // 优先使用article_id查询
       if (selectedCourse.article.article_id) {
@@ -141,11 +212,16 @@ Page({
   // 通过article_id从云数据库获取课文数据（优先方法）
   fetchArticleByArticleId: function(articleId, selectedCourse) {
     console.log('尝试通过article_id获取课文:', articleId);
+    
+    // 确保articleId是字符串类型
+    const articleIdStr = String(articleId);
+    console.log('转换后的article_id:', articleIdStr);
+    
     const db = wx.cloud.database();
     
     db.collection('articles')
       .where({
-        article_id: articleId.toString()
+        article_id: articleIdStr
       })
       .get()
       .then(res => {
@@ -154,6 +230,11 @@ Page({
           
           // 获取到课文数据
           const articleData = res.data[0];
+          
+          // 确保article_id字段存在
+          if (!articleData.article_id) {
+            articleData.article_id = articleIdStr;
+          }
           
           // 更新课文信息
           const updatedSelectedCourse = {
@@ -172,6 +253,13 @@ Page({
             currentLesson: articleData.title,
             courseLoading: false
           });
+          
+          // 检查更新后的状态
+          console.log('更新后的课文选择状态:', {
+            hasSelectedCourse: this.data.hasSelectedCourse,
+            selectedCourse: this.data.selectedCourse
+          });
+          
           if (articleData && articleData.audio) { this.initAudioPlayer(); }
         } else {
           console.log('通过article_id未找到课文，尝试通过_id查询');
@@ -206,10 +294,18 @@ Page({
         if (res.data) {
           console.log('成功获取到课文数据:', res.data);
           
+          // 获取到课文数据
+          const articleData = res.data;
+          
+          // 确保article_id字段存在
+          if (!articleData.article_id) {
+            articleData.article_id = articleData._id;
+          }
+          
           // 更新课文信息
           const updatedSelectedCourse = {
-            article: res.data,
-            grade: `${res.data.grade}${res.data.semester}`
+            article: articleData,
+            grade: `${articleData.grade}${articleData.semester}`
           };
           
           // 更新本地存储
@@ -220,10 +316,17 @@ Page({
             hasSelectedCourse: true,
             selectedCourse: updatedSelectedCourse,
             currentGrade: updatedSelectedCourse.grade,
-            currentLesson: res.data.title,
+            currentLesson: articleData.title,
             courseLoading: false
           });
-          if (res.data && res.data.audio) { this.initAudioPlayer(); }
+          
+          // 检查更新后的状态
+          console.log('更新后的课文选择状态:', {
+            hasSelectedCourse: this.data.hasSelectedCourse,
+            selectedCourse: this.data.selectedCourse
+          });
+          
+          if (articleData && articleData.audio) { this.initAudioPlayer(); }
         } else {
           console.log('未找到课文数据，使用本地缓存');
           // 使用本地缓存数据
@@ -241,13 +344,35 @@ Page({
   useLocalCourseData: function(selectedCourse) {
     console.log('使用本地缓存的课文数据:', selectedCourse);
     
-    this.setData({
-      hasSelectedCourse: true,
-      selectedCourse: selectedCourse,
-      currentGrade: selectedCourse.grade || this.data.currentGrade,
-      currentLesson: selectedCourse.article.title || this.data.currentLesson,
-      courseLoading: false
-    });
+    // 确保article对象存在且有必要的字段
+    if (selectedCourse && selectedCourse.article) {
+      // 确保article_id字段存在
+      if (!selectedCourse.article.article_id && selectedCourse.article._id) {
+        selectedCourse.article.article_id = selectedCourse.article._id;
+      }
+      
+      this.setData({
+        hasSelectedCourse: true,
+        selectedCourse: selectedCourse,
+        currentGrade: selectedCourse.grade || this.data.currentGrade,
+        currentLesson: selectedCourse.article.title || this.data.currentLesson,
+        courseLoading: false
+      });
+      
+      // 检查更新后的状态
+      console.log('更新后的课文选择状态:', {
+        hasSelectedCourse: this.data.hasSelectedCourse,
+        selectedCourse: this.data.selectedCourse
+      });
+    } else {
+      // 数据无效，设置为未选择状态
+      console.log('本地缓存数据无效');
+      this.setData({
+        hasSelectedCourse: false,
+        selectedCourse: null,
+        courseLoading: false
+      });
+    }
   },
 
   // 获取问候语
@@ -594,7 +719,13 @@ Page({
 
   // 前往逐句解析
   goToSentenceAnalysis: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -603,7 +734,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 2); // 2 - 逐句解析
@@ -621,7 +752,13 @@ Page({
 
   // 前往全文翻译
   goToFullTranslation: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -630,7 +767,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 1); // 1 - 全文翻译
@@ -648,7 +785,13 @@ Page({
 
   // 前往背景知识
   goToBackground: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -657,7 +800,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 4); // 4 - 背景知识
@@ -675,7 +818,13 @@ Page({
 
   // 前往练习巩固
   goToExercise: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -684,7 +833,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 5); // 5 - 练习巩固
@@ -702,7 +851,13 @@ Page({
 
   // 前往AI互动
   goToAIInteraction: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -711,7 +866,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 6); // 6 - AI互动
@@ -1036,7 +1191,13 @@ Page({
   
   // 前往作者介绍
   goToAuthorInfo: function() {
-    if (!this.data.hasSelectedCourse) {
+    // 添加调试日志
+    console.log('当前课文选择状态:', {
+      hasSelectedCourse: this.data.hasSelectedCourse,
+      selectedCourse: this.data.selectedCourse
+    });
+    
+    if (!this.data.hasSelectedCourse || !this.data.selectedCourse || !this.data.selectedCourse.article) {
       wx.showToast({
         title: '请先选择课文',
         icon: 'none'
@@ -1045,7 +1206,7 @@ Page({
     }
     
     // 获取当前选择的课文ID
-    const articleId = this.data.selectedCourse?.article?._id;
+    const articleId = this.data.selectedCourse.article._id;
     if (articleId) {
       // 记录功能点击
       this.recordFunctionClick(articleId, 3); // 3 - 作者介绍
@@ -1267,5 +1428,28 @@ Page({
         console.error('更新功能点击状态失败:', err);
       }
     });
+  },
+  
+  // 处理欢迎区域点击事件
+  onWelcomeCardTap: function() {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      // 未登录，跳转到"我的"页面并提示登录
+      wx.switchTab({
+        url: '/pages/my/index/index',
+        success: () => {
+          // 页面跳转成功后显示提示
+          setTimeout(() => {
+            wx.showToast({
+              title: '请登录后使用更多功能',
+              icon: 'none',
+              duration: 2000
+            });
+          }, 500); // 延迟500毫秒显示提示，确保页面已经跳转
+        }
+      });
+    }
+    // 如果用户已登录，则不做任何操作
   },
 }) 

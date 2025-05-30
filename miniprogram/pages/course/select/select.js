@@ -29,10 +29,18 @@ Page({
     // 选中文章的索引
     selectedArticleIndex: -1,
     // 用户学习记录
-    userArticleRecords: {}
+    userArticleRecords: {},
+    // 用户登录状态
+    isLoggedIn: false
   },
 
   onLoad: function(options) {
+    // 检查用户是否登录
+    const userInfo = wx.getStorageSync('userInfo');
+    this.setData({
+      isLoggedIn: !!userInfo
+    });
+    
     // 设置加载状态
     this.setData({
       loading: true,
@@ -67,11 +75,39 @@ Page({
       }
     }
     
-    // 获取用户学习记录
-    this.getUserArticleRecords();
+    // 获取用户学习记录（仅已登录用户）
+    if (this.data.isLoggedIn) {
+      this.getUserArticleRecords();
+    }
     
     // 从云数据库获取年级和学期列表
     this.fetchGradeAndSemesterList(selectedGradeInfo);
+  },
+  
+  // 页面显示时检查登录状态
+  onShow: function() {
+    // 重新检查用户是否登录
+    const userInfo = wx.getStorageSync('userInfo');
+    const wasLoggedIn = this.data.isLoggedIn;
+    const isLoggedIn = !!userInfo;
+    
+    // 如果登录状态发生变化
+    if (wasLoggedIn !== isLoggedIn) {
+      this.setData({ isLoggedIn: isLoggedIn });
+      
+      // 如果用户新登录，获取学习记录
+      if (isLoggedIn) {
+        this.getUserArticleRecords();
+      } else {
+        // 如果用户登出，清除学习记录
+        this.setData({ userArticleRecords: {} });
+        // 更新文章列表，移除学习状态
+        this.updateArticlesWithLearningStatus();
+        if (this.data.searchResult.length > 0) {
+          this.updateSearchResultWithLearningStatus();
+        }
+      }
+    }
   },
   
   // 获取用户学习记录
@@ -115,6 +151,18 @@ Page({
     });
   },
   
+  // 获取学习状态文本
+  getStatusText: function(status) {
+    switch (status) {
+      case 1:
+        return '学习中';
+      case 2:
+        return '已学完';
+      default:
+        return '未学习';
+    }
+  },
+  
   // 更新文章列表中的学习状态
   updateArticlesWithLearningStatus: function() {
     const { currentArticles, userArticleRecords } = this.data;
@@ -137,7 +185,13 @@ Page({
           statusText: this.getStatusText(record.learn_status)
         };
       }
-      return article;
+      // 如果没有找到记录，也添加未学习状态
+      return {
+        ...article,
+        learn_status: 0,
+        learn_duration: 0,
+        statusText: this.getStatusText(0)
+      };
     });
     
     this.setData({ currentArticles: updatedArticles });
@@ -165,22 +219,16 @@ Page({
           statusText: this.getStatusText(record.learn_status)
         };
       }
-      return article;
+      // 如果没有找到记录，也添加未学习状态
+      return {
+        ...article,
+        learn_status: 0,
+        learn_duration: 0,
+        statusText: this.getStatusText(0)
+      };
     });
     
     this.setData({ searchResult: updatedSearchResult });
-  },
-  
-  // 获取学习状态文本
-  getStatusText: function(status) {
-    switch (status) {
-      case 1:
-        return '学习中';
-      case 2:
-        return '已学完';
-      default:
-        return '未学习';
-    }
   },
   
   // 页面渲染完成后执行

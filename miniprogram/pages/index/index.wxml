@@ -19,7 +19,7 @@
   </view>
 
   <!-- 欢迎区域 -->
-  <view class="welcome-card card">
+  <view class="welcome-card card" bindtap="onWelcomeCardTap">
     <view class="welcome-content">
       <view class="user-info">
         <image class="user-avatar" src="{{hasUserInfo ? userInfo.avatarUrl : '/images/default-avatar.png'}}" mode="aspectFill"></image>

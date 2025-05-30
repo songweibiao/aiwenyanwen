@@ -178,4 +178,39 @@
 .time {
   font-size: 24rpx;
   color: #bbb;
+}
+
+/* 未登录状态样式 */
+.not-login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+}
+
+.not-login-image {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: 30rpx;
+}
+
+.not-login-text {
+  font-size: 32rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.login-btn {
+  margin-top: 20rpx;
+  width: 240rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 30rpx;
+  border-radius: 32rpx;
+  background: #8B6E4F;
+  color: #fff;
+  text-align: center;
+  font-weight: bold;
+  border: none;
 } 

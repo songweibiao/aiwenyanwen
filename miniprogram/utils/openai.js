@@ -182,5 +182,6 @@ function fillPromptTemplate(template, data) {
 
 module.exports = {
   OPENAI_CONFIG,
-  ARTICLE_PROMPTS
+  ARTICLE_PROMPTS,
+  fillPromptTemplate
 } 

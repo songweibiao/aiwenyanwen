@@ -6,6 +6,8 @@ const OPENAI_CONFIG = require('../../../utils/openai').OPENAI_CONFIG;
 const { ARTICLE_PROMPTS } = require('../../../utils/openai');
 // 在文件顶部引入云开发数据库
 const db = wx.cloud.database();
+// 在文件顶部引入AI内容存储工具
+const aiStorage = require('../../../utils/ai-storage');
 
 Page({
   data: {
@@ -329,6 +331,13 @@ Page({
       articleData.full_content = articleData.content;
     }
     
+    // 确保article_id字段存在并且是字符串类型
+    if (!articleData.article_id) {
+      articleData.article_id = articleData._id ? String(articleData._id) : String(this.data.articleId);
+    } else {
+      articleData.article_id = String(articleData.article_id);
+    }
+    
     // 如果有翻译内容，处理翻译段落
     if (articleData.translation) {
       articleData.translationParagraphs = articleData.translation.split(/\n+/).filter(p => p.trim() !== '');
@@ -570,13 +579,22 @@ Page({
   // 加载翻译内容
   loadTranslation: function() {
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载翻译');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'translate';
+    
+    console.log(`加载翻译内容: article_id=${article_id}`);
     this.setData({ aiProcessing: true });
+    
     // 先查数据库
-    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+    aiStorage.getAIContent(article_id, type).then(res => {
       if (res.data && res.data.length > 0) {
         // 数据库已有，直接显示
+        console.log('数据库中找到翻译内容，直接显示');
         const translation = res.data[0].content;
         // 处理翻译文本，按换行符分割成段落
         const translationParagraphs = translation.split(/\n+/).filter(p => p.trim() !== '');
@@ -589,7 +607,9 @@ Page({
         this.cacheArticleData({ translation: translation });
         return;
       }
+      
       // 数据库无，调用AI
+      console.log('数据库中未找到翻译内容，调用AI生成');
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.TRANSLATE, { content: article.full_content });
       const apiMessages = [
         { role: 'system', content: '你是一个专业的文言文翻译专家，请提供准确、流畅的现代汉语翻译。请使用纯文本回复，不要使用Markdown格式。' },
@@ -617,15 +637,8 @@ Page({
             });
             this.cacheArticleData({ translation });
             // 存入数据库
-            db.collection('article_ai_content').add({
-              data: {
-                article_id,
-                type,
-                content: translation,
-                created_at: new Date(),
-                updated_at: new Date()
-              }
-            });
+            console.log('保存翻译内容到数据库');
+            aiStorage.saveAIContent(article_id, type, translation);
           } catch (e) {
             console.error('解析翻译结果失败', e);
             wx.showToast({ title: '翻译结果解析失败', icon: 'none' });
@@ -657,15 +670,26 @@ Page({
   // 加载作者信息
   loadAuthorInfo: function() {
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载作者信息');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'author_info';
+    
+    console.log(`加载作者信息: article_id=${article_id}`);
     this.setData({ aiProcessing: true });
-    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+    
+    aiStorage.getAIContent(article_id, type).then(res => {
       if (res.data && res.data.length > 0) {
+        console.log('数据库中找到作者信息，直接显示');
         this.setData({ 'article.author_intro': res.data[0].content, aiProcessing: false });
         this.cacheArticleData({ author_intro: res.data[0].content });
         return;
       }
+      
+      console.log('数据库中未找到作者信息，调用AI生成');
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.AUTHOR_INFO, { author: article.author, dynasty: article.dynasty });
       const apiMessages = [
         { role: 'system', content: '你是一个中国古代文学专家，请提供作者的简要介绍。请使用纯文本回复，不要使用Markdown格式。' },
@@ -684,15 +708,8 @@ Page({
             const authorInfo = res.data.choices[0].message.content.trim();
             this.setData({ 'article.author_intro': authorInfo, aiProcessing: false });
             this.cacheArticleData({ author_intro: authorInfo });
-            db.collection('article_ai_content').add({
-              data: {
-                article_id,
-                type,
-                content: authorInfo,
-                created_at: new Date(),
-                updated_at: new Date()
-              }
-            });
+            console.log('保存作者信息到数据库');
+            aiStorage.saveAIContent(article_id, type, authorInfo);
           } catch (e) {
             console.error('解析作者信息失败', e);
             wx.showToast({ title: '作者信息解析失败', icon: 'none' });
@@ -820,27 +837,38 @@ Page({
     
     const sentence = sentences[index];
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载句子解析');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'sentence_analysis';
+    
+    console.log(`加载句子解析: article_id=${article_id}, 句子索引=${index}`);
     this.setData({ aiProcessing: true });
+    
     // 查库，extra为当前句子内容
-    db.collection('article_ai_content').where({ article_id, type, 'extra.sentence': sentence.original_text }).get().then(res => {
+    aiStorage.getAIContent(article_id, type, { sentence: sentence.original_text }).then(res => {
       if (res.data && res.data.length > 0) {
-        const dbData = res.data[0];
+        console.log('数据库中找到句子解析，直接显示');
+        const dbData = res.data[0].content;
         const updatedSentences = [...sentences];
         updatedSentences[index] = {
           ...sentence,
-          phonetic_notation: dbData.content.phonetic_notation || '',
-          translation: dbData.content.translation || '',
-          key_words: dbData.content.key_words || [],
-          grammar_analysis: dbData.content.grammar_analysis || '',
-          rhetorical_analysis: dbData.content.rhetorical_analysis || ''
+          phonetic_notation: dbData.phonetic_notation || '',
+          translation: dbData.translation || '',
+          key_words: dbData.key_words || [],
+          grammar_analysis: dbData.grammar_analysis || '',
+          rhetorical_analysis: dbData.rhetorical_analysis || ''
         };
         this.setData({ sentences: updatedSentences, aiProcessing: false });
         this.cacheSentenceAnalysis(index, updatedSentences[index]);
         return;
       }
+      
       // 数据库无，调用AI
+      console.log('数据库中未找到句子解析，调用AI生成');
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SENTENCE_ANALYSIS, { content: sentence.original_text });
       const apiMessages = [
         { role: 'system', content: '你是一个文言文教学专家，请对文言文句子进行详细解析。请使用纯文本回复，不要使用Markdown格式。' },
@@ -856,20 +884,23 @@ Page({
         data: { model: OPENAI_CONFIG.MODEL, messages: apiMessages },
         success: (res) => {
           try {
-            const analysisResult = res.data.choices[0].message.content.trim();
-            // 解析结果（与原有逻辑一致）
+            const analysisText = res.data.choices[0].message.content.trim();
+            // 解析各部分内容
             let phonetic = '';
             let translation = '';
             let keyWords = [];
             let grammar = '';
             let rhetoric = '';
-            const phoneticMatch = analysisResult.match(/拼音标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
-            const translationMatch = analysisResult.match(/现代汉语翻译[：:]([\s\S]*?)(?=关键词解析[：:]|$)/i);
-            const keyWordsMatch = analysisResult.match(/关键词解析[：:]([\s\S]*?)(?=语法结构分析[：:]|$)/i);
-            const grammarMatch = analysisResult.match(/语法结构分析[：:]([\s\S]*?)(?=修辞手法分析[：:]|$)/i);
-            const rhetoricMatch = analysisResult.match(/修辞手法分析[：:]([\s\S]*?)$/i);
+            
+            const phoneticMatch = analysisText.match(/拼音标注[：:]([\s\S]*?)(?=现代汉语翻译[：:]|$)/i);
+            const translationMatch = analysisText.match(/现代汉语翻译[：:]([\s\S]*?)(?=关键词解析[：:]|$)/i);
+            const keyWordsMatch = analysisText.match(/关键词解析[：:]([\s\S]*?)(?=语法结构分析[：:]|$)/i);
+            const grammarMatch = analysisText.match(/语法结构分析[：:]([\s\S]*?)(?=修辞手法分析[：:]|$)/i);
+            const rhetoricMatch = analysisText.match(/修辞手法分析[：:]([\s\S]*?)$/i);
+            
             if (phoneticMatch) phonetic = phoneticMatch[1].trim();
             if (translationMatch) translation = translationMatch[1].trim();
+            
             if (keyWordsMatch) {
               const keyWordsText = keyWordsMatch[1].trim();
               const keyWordLines = keyWordsText.split('\n');
@@ -889,40 +920,35 @@ Page({
             }
             if (grammarMatch) grammar = grammarMatch[1].trim();
             if (rhetoricMatch) rhetoric = rhetoricMatch[1].trim();
-            const updatedSentences = [...sentences];
-            updatedSentences[index] = {
-              ...sentence,
+            
+            const sentenceAnalysis = {
               phonetic_notation: phonetic,
               translation: translation,
               key_words: keyWords,
               grammar_analysis: grammar,
               rhetorical_analysis: rhetoric
             };
+            
+            const updatedSentences = [...sentences];
+            updatedSentences[index] = {
+              ...sentence,
+              ...sentenceAnalysis
+            };
+            
             this.setData({ sentences: updatedSentences, aiProcessing: false });
             this.cacheSentenceAnalysis(index, updatedSentences[index]);
-            // 存入数据库，content为结构化对象，extra为句子内容
-            db.collection('article_ai_content').add({
-              data: {
-                article_id,
-                type,
-                content: {
-                  phonetic_notation: phonetic,
-                  translation: translation,
-                  key_words: keyWords,
-                  grammar_analysis: grammar,
-                  rhetorical_analysis: rhetoric
-                },
-                extra: { sentence: sentence.original_text, sentence_index: index },
-                created_at: new Date(),
-                updated_at: new Date()
-              }
-            });
+            
+            // 存入数据库
+            console.log('保存句子解析到数据库');
+            aiStorage.saveAIContent(article_id, type, sentenceAnalysis, { sentence: sentence.original_text, sentence_index: index });
           } catch (e) {
+            console.error('解析句子失败', e);
             wx.showToast({ title: '句子解析失败', icon: 'none' });
             this.setData({ aiProcessing: false });
           }
         },
         fail: (err) => {
+          console.error('获取句子解析失败', err);
           wx.showToast({ title: '获取句子解析失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
@@ -959,11 +985,20 @@ Page({
   // 加载背景知识
   loadBackgroundInfo: function() {
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载背景知识');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'background';
+    
+    console.log(`加载背景知识: article_id=${article_id}`);
     this.setData({ aiProcessing: true });
-    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+    
+    aiStorage.getAIContent(article_id, type).then(res => {
       if (res.data && res.data.length > 0) {
+        console.log('数据库中找到背景知识，直接显示');
         const backgroundInfo = res.data[0].content;
         // 解析三部分
         let creationBackground = '';
@@ -990,6 +1025,8 @@ Page({
         });
         return;
       }
+      
+      console.log('数据库中未找到背景知识，调用AI生成');
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.BACKGROUND, { title: article.title, author: article.author, dynasty: article.dynasty, content: article.full_content });
       const apiMessages = [
         { role: 'system', content: '你是一个中国古代文学专家，请提供文章的背景知识介绍。请使用纯文本回复，不要使用Markdown格式。' },
@@ -1029,15 +1066,8 @@ Page({
               historical_background: historicalBackground || '暂无历史背景信息',
               main_idea: mainIdea || '暂无主旨思想信息'
             });
-            db.collection('article_ai_content').add({
-              data: {
-                article_id,
-                type,
-                content: backgroundInfo,
-                created_at: new Date(),
-                updated_at: new Date()
-              }
-            });
+            console.log('保存背景知识到数据库');
+            aiStorage.saveAIContent(article_id, type, backgroundInfo);
           } catch (e) {
             console.error('解析背景知识失败', e);
             wx.showToast({ title: '背景知识解析失败', icon: 'none' });
@@ -1056,11 +1086,20 @@ Page({
   // 加载练习题
   loadExercises: function() {
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载练习题');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'exercise';
+    
+    console.log(`加载练习题: article_id=${article_id}`);
     this.setData({ aiProcessing: true, exercises: [], userAnswers: [], showExerciseResult: false, optionClassList: [], currentExerciseIndex: 0 });
-    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+    
+    aiStorage.getAIContent(article_id, type).then(res => {
       if (res.data && res.data.length > 0) {
+        console.log('数据库中找到练习题，直接显示');
         const exercises = res.data[0].content;
         const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
         this.setData({
@@ -1072,7 +1111,9 @@ Page({
         this.cacheArticleData({ exercises });
         return;
       }
+      
       // 获取适合的年级水平
+      console.log('数据库中未找到练习题，调用AI生成');
       const gradeLevel = this.getArticleGradeLevel();
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.EXERCISE, { content: article.full_content, level: gradeLevel });
       const apiMessages = [
@@ -1091,49 +1132,45 @@ Page({
           try {
             const responseText = res.data.choices[0].message.content.trim();
             let exercises = [];
+            
+            // 尝试解析JSON
             try {
+              exercises = JSON.parse(responseText);
+            } catch (jsonError) {
+              // 如果解析失败，尝试提取JSON部分
               const jsonMatch = responseText.match(/\[[\s\S]*\]/);
               if (jsonMatch) {
                 exercises = JSON.parse(jsonMatch[0]);
               } else {
-                throw new Error('无法找到有效的JSON数据');
-              }
-            } catch (jsonError) {
-              const exerciseMatches = responseText.match(/\{"question"[\s\S]*?\}/g);
-              if (exerciseMatches) {
-                exercises = exerciseMatches.map(match => {
-                  try { return JSON.parse(match); } catch (e) { return null; }
-                }).filter(Boolean);
+                throw new Error('无法解析练习题JSON');
               }
             }
-            if (exercises && exercises.length > 0) {
-              const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
-              this.setData({
-                exercises,
-                userAnswers: new Array(exercises.length).fill(-1),
-                optionClassList,
-                aiProcessing: false
-              });
-              this.cacheArticleData({ exercises });
-              db.collection('article_ai_content').add({
-                data: {
-                  article_id,
-                  type,
-                  content: exercises,
-                  extra: { level: gradeLevel },
-                  created_at: new Date(),
-                  updated_at: new Date()
-                }
-              });
-            } else {
-              throw new Error('未能生成有效的练习题');
+            
+            // 确保是数组且至少有一题
+            if (!Array.isArray(exercises) || exercises.length === 0) {
+              throw new Error('练习题格式不正确');
             }
+            
+            const optionClassList = exercises.map(() => ['exercise-option', 'exercise-option', 'exercise-option', 'exercise-option']);
+            
+            this.setData({
+              exercises,
+              userAnswers: new Array(exercises.length).fill(-1),
+              optionClassList,
+              aiProcessing: false
+            });
+            
+            this.cacheArticleData({ exercises });
+            console.log('保存练习题到数据库');
+            aiStorage.saveAIContent(article_id, type, exercises);
           } catch (e) {
+            console.error('解析练习题失败', e);
             wx.showToast({ title: '练习题生成失败', icon: 'none' });
             this.setData({ aiProcessing: false });
           }
         },
         fail: (err) => {
+          console.error('获取练习题失败', err);
           wx.showToast({ title: '获取练习题失败', icon: 'none' });
           this.setData({ aiProcessing: false });
         }
@@ -1160,11 +1197,20 @@ Page({
   // 加载问答功能
   loadQA: function() {
     const article = this.data.article;
-    const article_id = article.article_id;
+    if (!article || !article.article_id) {
+      console.error('文章数据不完整，无法加载问答功能');
+      return;
+    }
+    
+    const article_id = String(article.article_id);
     const type = 'suggested_questions';
+    
+    console.log(`加载问答功能: article_id=${article_id}`);
     this.setData({ aiProcessing: true, qaMessages: [], suggestedQuestions: [] });
-    db.collection('article_ai_content').where({ article_id, type }).get().then(res => {
+    
+    aiStorage.getAIContent(article_id, type).then(res => {
       if (res.data && res.data.length > 0) {
+        console.log('数据库中找到推荐问题，直接显示');
         this.setData({
           suggestedQuestions: res.data[0].content.slice(0, 5),
           aiProcessing: false
@@ -1172,6 +1218,8 @@ Page({
         this.cacheArticleData({ suggested_questions: res.data[0].content.slice(0, 5) });
         return;
       }
+      
+      console.log('数据库中未找到推荐问题，调用AI生成');
       const prompt = this.fillPromptTemplate(ARTICLE_PROMPTS.SUGGESTED_QUESTIONS, { title: article.title, author: article.author, dynasty: article.dynasty, content: article.full_content });
       const apiMessages = [
         { role: 'system', content: '你是一个文言文学习顾问，请生成适合学生提问的问题。请使用纯文本回复，不要使用Markdown格式。' },
@@ -1194,15 +1242,8 @@ Page({
               aiProcessing: false
             });
             this.cacheArticleData({ suggested_questions: questions.slice(0, 5) });
-            db.collection('article_ai_content').add({
-              data: {
-                article_id,
-                type,
-                content: questions,
-                created_at: new Date(),
-                updated_at: new Date()
-              }
-            });
+            console.log('保存推荐问题到数据库');
+            aiStorage.saveAIContent(article_id, type, questions);
           } catch (e) {
             wx.showToast({ title: '推荐问题生成失败', icon: 'none' });
             this.setData({ aiProcessing: false });

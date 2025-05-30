@@ -13,7 +13,13 @@ wenyanwen/
 │   ├── sitemap.json          # 小程序SEO配置
 │   ├── cloudfunctions/       # 云函数目录
 │   │   ├── login/            # 用户登录云函数
-│   │   └── aiService/        # AI服务云函数
+│   │   ├── updateUserArticleRecord/  # 更新用户文章学习记录
+│   │   ├── updateFunctionClick/      # 更新功能点击状态
+│   │   ├── updateLearnDuration/      # 更新学习时长
+│   │   ├── getUserArticleRecords/    # 获取用户文章学习记录
+│   │   ├── getAIContent/             # 获取AI内容云函数
+│   │   ├── saveAIContent/            # 保存AI内容云函数
+│   │   └── uploadTestArticles/       # 上传测试文章
 │   ├── components/           # 自定义组件目录
 │   ├── images/               # 图片资源目录
 │   ├── pages/                # 页面目录
@@ -40,6 +46,7 @@ wenyanwen/
 │   ├── styles/               # 样式目录
 │   └── utils/                # 工具函数目录
 │       ├── ai.js             # AI功能工具函数
+│       ├── ai-storage.js     # AI内容存储工具函数
 │       ├── request.js        # 网络请求工具函数
 │       └── util.js           # 通用工具函数
 ├── project.config.json       # 项目配置文件
@@ -68,7 +75,25 @@ wenyanwen/
 - 从云数据库 `articles` 集合获取课文数据
 - 将选中的课文保存到本地存储
 
-### 2. 首页 (miniprogram/pages/index/)
+### 2. 文章详情页面 (miniprogram/pages/article/detail/)
+
+文章详情页面是用户学习文言文的核心页面，提供原文阅读、翻译、解析等功能。
+
+**核心功能：**
+- 展示文言文原文
+- 提供全文翻译功能
+- 逐句解析功能，帮助理解句子结构和含义
+- 作者介绍，了解作者背景
+- 背景知识，了解文章创作背景和历史背景
+- 练习巩固，通过练习题加深理解
+- AI互动，可以针对文章提问
+
+**学习进度跟踪：**
+- 记录用户在文章页面的停留时长
+- 跟踪用户使用的功能模块
+- 根据功能使用情况判断学习完成度
+
+### 3. 首页 (miniprogram/pages/index/)
 
 首页是用户进入小程序的第一个页面，提供各种功能入口。
 
@@ -112,6 +137,140 @@ wenyanwen/
 - 我的错题集：收集整理用户做错的题目
 - 我的收藏：管理收藏的内容
 
+## 云函数详解
+
+### 1. login（用户登录）
+
+**功能说明：**
+- 获取用户openid及基本信息
+- 处理用户首次登录的自动注册
+- 支持用户信息更新（昵称、头像等）
+
+**主要参数：**
+- `action`: 操作类型（check/updateNickname/update/logout）
+- `userData`: 用户数据（昵称、头像等）
+
+**核心逻辑：**
+- 检查用户是否已注册，未注册则自动创建用户记录
+- 生成随机昵称（"书生+4位数字"格式）
+- 支持更新用户昵称和头像等信息
+
+### 2. updateUserArticleRecord（更新用户文章学习记录）
+
+**功能说明：**
+- 创建或更新用户对特定文章的学习记录
+- 记录用户最后学习时间
+- 更新学习状态（未开始/学习中/已完成）
+
+**主要参数：**
+- `articleId`: 文章ID
+
+**核心逻辑：**
+- 检查文章ID是否有效（支持_id和article_id两种形式）
+- 查询用户是否已有该文章的学习记录
+- 如无记录则创建新记录，有则更新最后学习时间
+- 根据功能点击情况判断学习状态
+
+### 3. updateFunctionClick（更新功能点击状态）
+
+**功能说明：**
+- 记录用户在文章学习页面使用的功能模块
+- 跟踪六大功能模块的使用情况
+- 根据功能使用情况更新学习完成度
+
+**主要参数：**
+- `articleId`: 文章ID
+- `functionIndex`: 功能索引（1-6，对应六大功能模块）
+
+**核心逻辑：**
+- 更新对应功能的点击状态（func1_clicked ~ func6_clicked）
+- 记录功能点击历史（功能名称和时间）
+- 检查是否所有功能都已点击，如是则将学习状态更新为"已完成"
+
+**功能索引对应关系：**
+1. 全文翻译
+2. 逐句解析
+3. 作者介绍
+4. 背景知识
+5. 练习巩固
+6. AI互动
+
+### 4. updateLearnDuration（更新学习时长）
+
+**功能说明：**
+- 记录用户在文章页面的学习时长
+- 累计计算总学习时间
+- 更新学习状态
+
+**主要参数：**
+- `articleId`: 文章ID
+- `duration`: 本次学习时长（秒）
+
+**核心逻辑：**
+- 验证学习时长有效性
+- 查找用户文章学习记录
+- 累加学习时长
+- 根据功能点击情况更新学习状态
+
+### 5. getUserArticleRecords（获取用户文章学习记录）
+
+**功能说明：**
+- 获取用户的文章学习历史记录
+- 支持获取最新一条学习记录
+- 关联文章信息，提供完整学习数据
+
+**主要参数：**
+- `type`: 记录类型（'history'或'latest'）
+
+**核心逻辑：**
+- 根据type参数决定返回全部历史记录或最新一条记录
+- 查询用户的学习记录
+- 关联文章信息（标题、作者、朝代等）
+- 处理分页和数据合并
+
+### 6. getAIContent（获取AI内容）
+
+**功能说明：**
+- 获取文章的AI生成内容（翻译、解析、背景知识等）
+- 通过云函数实现，避免客户端权限问题
+- 确保不同用户访问同一文章时共享AI内容
+
+**主要参数：**
+- `articleId`: 文章ID
+- `type`: 内容类型（translate/sentence_analysis/author_info等）
+- `extra`: 额外参数（如句子内容等）
+
+**核心逻辑：**
+- 使用管理员权限查询article_ai_content集合
+- 根据article_id和type查找对应内容
+- 返回查询结果给客户端
+
+### 7. saveAIContent（保存AI内容）
+
+**功能说明：**
+- 保存或更新文章的AI生成内容
+- 通过云函数实现，避免客户端权限问题
+- 确保同一篇文章在数据库中只有一条记录
+
+**主要参数：**
+- `articleId`: 文章ID
+- `type`: 内容类型
+- `content`: 内容数据
+- `extra`: 额外参数
+- `timestamp`: 时间戳
+
+**核心逻辑：**
+- 检查是否已有该文章记录
+- 如有记录则更新内容，无则创建新记录
+- 特殊处理句子解析等复杂内容类型
+- 使用管理员权限操作数据库
+
+### 8. uploadTestArticles（上传测试文章）
+
+**功能说明：**
+- 用于批量上传测试文章数据到云数据库
+- 仅用于开发测试阶段
+
 ## 技术实现
 
 - 前端：微信小程序原生框架
@@ -135,10 +294,13 @@ wenyanwen/
 - [x] 课文选择页开发
 - [x] 课文学习页面开发
 - [x] UI风格优化（中国古典风格）
+- [x] 学习进度跟踪系统
+- [x] 用户学习记录管理
+- [x] AI内容存储优化
 - [ ] 练习模块开发
 - [ ] AI助手开发
 - [ ] 用户中心开发
-- [ ] 数据库设计与实现
+- [ ] 会员系统开发
 
 ## 启动项目
 
@@ -175,73 +337,173 @@ wenyanwen/
    - 设计会员权益与收藏管理
    - 添加学习计划和目标设置功能
 
-注意：在整个开发过程中，优先使用模拟数据进行功能和逻辑开发，待产品定稿后再进行数据库设计和实现。
-
 ## 数据库设计
 
 采用小程序云开发数据库
 
 ### 数据集合：
 
-#### articles (文章数据表)
-- education_stage：教育阶段
-- grade：年级
-- semester：学期
-- article_id：课文ID
-- grade_id：年级编号
-- lesson_number：课文序号
-- chapter：章节
-- title：文章标题
-- author：文章作者
-- dynasty：朝代
-- full_content：课文内容
-- ishige：诗歌还是文言文
-- audio：音频
+#### 1. articles（文章数据表）
+- `_id`: 文章唯一标识符（数据库自动生成）
+- `article_id`: 文章ID（业务层面的唯一标识）
+- `education_stage`: 教育阶段（小学/初中/高中）
+- `grade`: 年级（一年级/七年级/高一等）
+- `grade_id`: 年级编号（用于排序）
+- `semester`: 学期（上学期/下学期）
+- `lesson_number`: 课文序号（在教材中的编号）
+- `chapter`: 章节
+- `title`: 文章标题
+- `author`: 文章作者
+- `dynasty`: 朝代
+- `full_content`: 课文内容（原文）
+- `ishige`: 是否为诗歌（true为诗歌，false为文言文）
+- `audio`: 音频文件链接
 
-#### article_ai_content 集合
-{
-  "bsonType": "object",
-  "required": ["article_id", "type", "content", "created_at", "updated_at"],
-  "properties": {
-    "article_id": {
-      "bsonType": "string",
-      "description": "课文ID，关联 articles 表的 article_id"
-    },
-    "type": {
-      "bsonType": "string",
-      "enum": [
-        "translate",
-        "sentence_analysis",
-        "author_info",
-        "background",
-        "exercise",
-        "qa",
-        "suggested_questions"
-      ],
-      "description": "AI内容类型"
-    },
-    "content": {
-      "description": "AI生成内容，类型根据type而定",
-      "oneOf": [
-        { "bsonType": "string" },
-        { "bsonType": "array" },
-        { "bsonType": "object" }
-      ]
-    },
-    "extra": {
-      "bsonType": "object",
-      "description": "额外参数（如句子内容、用户问题、年级等上下文信息）",
-      "required": [],
-      "properties": {}
-    },
-    "created_at": {
-      "bsonType": "date",
-      "description": "创建时间"
-    },
-    "updated_at": {
-      "bsonType": "date",
-      "description": "更新时间"
-    }
-  },
-  "additionalProperties": false
-}
+#### 2. article_ai_content（文章AI内容表）
+- `_id`: 记录唯一标识符
+- `article_id`: 关联的文章ID
+- `translate`: 全文翻译内容
+- `translate_updated_at`: 翻译内容更新时间
+- `author_info`: 作者信息内容
+- `author_info_updated_at`: 作者信息更新时间
+- `background`: 背景知识内容
+- `background_updated_at`: 背景知识更新时间
+- `sentence_analysis`: 逐句解析内容
+  - `updated_at`: 更新时间
+  - `sentences`: 句子解析数组
+    - `original_text`: 原句文本
+    - `phonetic_notation`: 拼音标注
+    - `translation`: 翻译
+    - `key_words`: 关键词解析
+    - `grammar_analysis`: 语法分析
+    - `rhetorical_analysis`: 修辞分析
+- `exercise`: 练习题内容
+- `exercise_updated_at`: 练习题更新时间
+- `suggested_questions`: 推荐问题内容
+- `suggested_questions_updated_at`: 推荐问题更新时间
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+
+#### 3. user（用户表）
+- `_id`: 用户唯一标识符
+- `openid`: 微信用户唯一标识
+- `nickname`: 用户昵称
+- `avatarUrl`: 用户头像链接
+- `createdAt`: 创建时间
+- `updatedAt`: 更新时间
+
+#### 4. user_article_record（用户文章学习记录表）
+- `_id`: 记录唯一标识符
+- `user_id`: 用户ID（关联用户的openid）
+- `article_id`: 文章ID
+- `last_learn_time`: 最后学习时间
+- `learn_status`: 学习状态
+  - `0`: 未开始
+  - `1`: 学习中
+  - `2`: 已完成
+- `learn_duration`: 学习时长（秒）
+- `func1_clicked`: 全文翻译功能是否已点击
+- `func2_clicked`: 逐句解析功能是否已点击
+- `func3_clicked`: 作者介绍功能是否已点击
+- `func4_clicked`: 背景知识功能是否已点击
+- `func5_clicked`: 练习巩固功能是否已点击
+- `func6_clicked`: AI互动功能是否已点击
+- `function_clicks`: 功能点击历史记录数组
+  - `name`: 功能名称
+  - `time`: 点击时间
+- `create_time`: 记录创建时间
+
+#### 5. user_study_records（用户学习数据统计表）
+- `_id`: 记录唯一标识符
+- `user_id`: 关联用户ID
+- `total_study_time`: 累计学习时长(分钟)
+- `total_articles_count`: 已学习文章数
+- `total_words_mastered`: 已掌握字词数
+- `correct_rate`: 答题正确率
+- `last_study_time`: 最后学习时间
+- `study_days`: 连续学习天数
+- `last_study_position`: 最近学习位置
+  - `article_id`: 最近学习的文章ID
+  - `section_type`: 最近学习的位置类型（原文/翻译/逐句解析/练习）
+  - `section_index`: 最近学习的位置索引（第几句或第几题）
+
+#### 6. user_exercise_records（用户练习记录表）
+- `_id`: 记录唯一标识符
+- `user_id`: 关联用户ID
+- `article_id`: 关联文章ID
+- `exercise_batch_id`: 练习批次ID
+- `exercises`: 练习题数组
+  - `exercise_id`: 练习题ID
+  - `question`: 题目内容
+  - `options`: 选项数组
+  - `answer`: 正确答案
+  - `user_answer`: 用户回答
+  - `is_correct`: 是否回答正确
+- `total_score`: 总分
+- `finish_time`: 完成时间
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+
+#### 7. user_wrong_exercises（用户错题集）
+- `_id`: 记录唯一标识符
+- `user_id`: 关联用户ID
+- `article_id`: 关联文章ID
+- `exercise_id`: 练习题ID
+- `question`: 题目内容
+- `options`: 选项数组
+- `answer`: 正确答案
+- `user_answers`: 用户错误回答历史数组
+- `wrong_times`: 错误次数
+- `last_practice_time`: 最后练习时间
+- `is_mastered`: 是否已掌握
+
+## 核心业务逻辑
+
+### 1. 学习进度跟踪系统
+
+文言悦读小程序实现了完整的学习进度跟踪系统，通过以下方式判断用户的学习完成度：
+
+1. **功能使用跟踪**：
+   - 记录用户使用的六大功能模块（全文翻译、逐句解析、作者介绍、背景知识、练习巩固、AI互动）
+   - 当用户使用全部六个功能模块后，自动将学习状态标记为"已完成"
+
+2. **学习时长记录**：
+   - 在用户浏览文章页面时，定期记录学习时长
+   - 累计计算用户在每篇文章上的总学习时间
+
+3. **学习状态管理**：
+   - 未开始(0)：用户未学习该文章或仅浏览未使用功能
+   - 学习中(1)：用户已开始学习但未完成全部功能
+   - 已完成(2)：用户已使用全部六个功能模块
+
+### 2. AI内容生成与存储系统
+
+小程序利用AI技术为每篇文言文生成多种辅助内容，并通过优化的存储系统确保内容共享和高效访问：
+
+1. **AI内容生成**：
+   - **全文翻译**：将古文翻译成现代文，便于理解
+   - **逐句解析**：针对每句文言文进行详细解析，包括句法结构、关键词解释等
+   - **作者介绍**：提供作者生平、创作风格等背景信息
+   - **背景知识**：介绍文章的历史背景、创作背景等
+   - **练习题生成**：基于文章内容自动生成练习题，巩固学习
+   - **智能问答**：回答用户关于文章的任何问题
+
+2. **内容存储优化**：
+   - **合并存储模式**：同一篇文章的所有AI内容（翻译、解析、背景知识等）合并为一条记录
+   - **云函数访问**：使用云函数进行数据库操作，避免客户端权限问题
+   - **内容共享机制**：不同用户访问同一文章时共享相同的AI内容，避免重复生成
+   - **按需生成**：仅在内容不存在时调用AI接口生成，节省资源
+
+3. **数据存储结构**：
+   - 以`article_id`为主键，确保每篇文章只有一条记录
+   - 不同类型内容存储在同一记录的不同字段中
+   - 特殊处理逐句解析等复杂内容类型
+
+### 3. 用户学习数据分析
+
+系统通过收集和分析用户学习数据，提供个性化学习体验：
+
+1. **学习历史记录**：记录用户学习过的文章和学习状态
+2. **学习时长统计**：统计用户在每篇文章和总体的学习时间
+3. **功能使用偏好**：分析用户对不同功能模块的使用频率
+4. **学习进度追踪**：展示用户的整体学习进度和完成情况

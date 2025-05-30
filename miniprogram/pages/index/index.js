@@ -510,6 +510,27 @@ Page({
   
   // 开始学习（新增方法，用于未选择课文时跳转到课文选择页）
   startLearning: function() {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      // 未登录，先跳转到"我的"页面，然后再显示提示
+      wx.switchTab({
+        url: '/pages/my/index/index',
+        success: () => {
+          // 页面跳转成功后再显示提示
+          setTimeout(() => {
+            wx.showToast({
+              title: '请登录\n以便帮你记录学习进度',
+              icon: 'none',
+              duration: 2000
+            });
+          }, 500); // 延迟500毫秒显示提示，确保页面已经跳转
+        }
+      });
+      return;
+    }
+    
+    // 已登录，正常跳转到课文选择页
     wx.navigateTo({
       url: '/pages/course/select/select?fromHome=true'
     });

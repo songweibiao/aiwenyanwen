@@ -102,6 +102,7 @@ Page({
   goToArticleDetail: function (e) {
     const articleId = e.currentTarget.dataset.id
     if (articleId) {
+      // 直接使用articleId，不再尝试访问可能不存在的article属性
       wx.navigateTo({
         url: `/pages/article/detail/detail?id=${articleId}`
       })

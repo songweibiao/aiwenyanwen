@@ -253,61 +253,97 @@ Page({
   },
   
   // 获取课文详情
-  fetchArticleDetail: function (articleId) {
-    console.log('尝试获取课文详情, ID:', articleId);
-    
+  fetchArticleDetail: function(articleId) {
+    console.log('获取文章详情:', articleId);
     const db = wx.cloud.database();
     
-    // 修改查询逻辑，优先通过article_id字段查询
+    // 首先尝试通过article_id查询
     db.collection('articles')
       .where({
-        article_id: articleId.toString()
+        article_id: articleId
       })
       .get()
       .then(res => {
-        console.log('通过article_id查询结果:', res);
         if (res.data && res.data.length > 0) {
-          // 找到了课文
+          console.log('通过article_id获取到文章详情:', res.data[0]);
+          
+          // 处理文章内容
           this.processArticleData(res.data[0]);
+          
+          // 检查收藏状态
+          this.checkArticleCollectionStatus(articleId);
+          
+          // 如果设置了自动加载，则加载对应的tab内容
+          if (this.data.autoLoad) {
+            this.loadTabContent();
+          }
         } else {
-          // 如果通过article_id查询失败，再尝试通过_id查询（兼容旧数据）
-          console.log('通过article_id未找到文章，尝试通过_id查询');
-          this.queryArticleById(articleId);
+          // 如果通过article_id没有找到，再尝试通过_id查询
+          db.collection('articles').doc(articleId).get()
+            .then(res => {
+              if (res.data) {
+                console.log('通过_id获取到文章详情:', res.data);
+                
+                // 处理文章内容
+                this.processArticleData(res.data);
+                
+                // 检查收藏状态
+                this.checkArticleCollectionStatus(articleId);
+                
+                // 如果设置了自动加载，则加载对应的tab内容
+                if (this.data.autoLoad) {
+                  this.loadTabContent();
+                }
+              } else {
+                wx.showToast({
+                  title: '未找到文章',
+                  icon: 'none'
+                });
+              }
+            })
+            .catch(err => {
+              console.error('通过_id获取文章详情失败:', err);
+              wx.showToast({
+                title: '获取文章失败',
+                icon: 'none'
+              });
+            });
         }
       })
       .catch(err => {
-        console.error('通过article_id查询失败:', err);
+        console.error('通过article_id获取文章详情失败:', err);
+        
         // 尝试通过_id查询
-        this.queryArticleById(articleId);
+        db.collection('articles').doc(articleId).get()
+          .then(res => {
+            if (res.data) {
+              console.log('通过_id获取到文章详情:', res.data);
+              
+              // 处理文章内容
+              this.processArticleData(res.data);
+              
+              // 检查收藏状态
+              this.checkArticleCollectionStatus(articleId);
+              
+              // 如果设置了自动加载，则加载对应的tab内容
+              if (this.data.autoLoad) {
+                this.loadTabContent();
+              }
+            } else {
+              wx.showToast({
+                title: '未找到文章',
+                icon: 'none'
+              });
+            }
+          })
+          .catch(err => {
+            console.error('通过_id获取文章详情失败:', err);
+            wx.showToast({
+              title: '获取文章失败',
+              icon: 'none'
+            });
+          });
       });
-  },
-  
-  // 通过_id字段查询课文（作为备用方案）
-  queryArticleById: function(articleId) {
-    console.log('尝试通过_id查询课文:', articleId);
-    
-    const db = wx.cloud.database();
-    
-    try {
-      db.collection('articles').doc(articleId).get()
-        .then(res => {
-          console.log('通过_id查询结果:', res);
-          if (res.data) {
-            // 处理获取到的课文数据
-            this.processArticleData(res.data);
-          } else {
-            // 两种查询方式都失败了，显示错误
-            this.showArticleNotFoundError();
-          }
-        })
-        .catch(err => {
-          console.error('通过_id查询失败:', err);
-          this.showArticleNotFoundError();
-        });
-    } catch (err) {
-      console.error('查询过程发生错误:', err);
-      this.showArticleNotFoundError();
-    }
   },
   
   // 显示课文未找到错误
@@ -1735,6 +1771,164 @@ Page({
       },
       fail: err => {
         console.error('更新学习记录失败:', err);
+      }
+    });
+  },
+  
+  // 切换收藏状态
+  toggleCollect: function() {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    const article = this.data.article;
+    if (!article) {
+      wx.showToast({
+        title: '文章数据不存在',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 显示加载提示
+    wx.showLoading({
+      title: '处理中...',
+      mask: true
+    });
+    
+    // 判断是收藏还是取消收藏
+    if (this.data.isCollected) {
+      // 取消收藏
+      wx.cloud.callFunction({
+        name: 'userFavorite',
+        data: {
+          action: 'remove',
+          type: 'article',
+          id: article._id
+        },
+        success: res => {
+          console.log('取消收藏成功:', res.result);
+          
+          if (res.result.success) {
+            // 更新本地数据
+            this.setData({
+              isCollected: false
+            });
+            
+            // 更新本地学习记录
+            this.saveLearningRecord();
+            
+            wx.showToast({
+              title: '已取消收藏',
+              icon: 'success'
+            });
+          } else {
+            wx.showToast({
+              title: res.result.message || '取消收藏失败',
+              icon: 'none'
+            });
+          }
+        },
+        fail: err => {
+          console.error('取消收藏失败:', err);
+          wx.showToast({
+            title: '取消收藏失败',
+            icon: 'none'
+          });
+        },
+        complete: () => {
+          wx.hideLoading();
+        }
+      });
+    } else {
+      // 添加收藏
+      wx.cloud.callFunction({
+        name: 'userFavorite',
+        data: {
+          action: 'add',
+          type: 'article',
+          id: article._id,
+          data: {
+            title: article.title,
+            author: article.author,
+            dynasty: article.dynasty,
+            preview: article.full_content ? article.full_content.substring(0, 50) : ''
+          }
+        },
+        success: res => {
+          console.log('收藏成功:', res.result);
+          
+          if (res.result.success) {
+            // 更新本地数据
+            this.setData({
+              isCollected: true
+            });
+            
+            // 更新本地学习记录
+            this.saveLearningRecord();
+            
+            wx.showToast({
+              title: '收藏成功',
+              icon: 'success'
+            });
+          } else {
+            wx.showToast({
+              title: res.result.message || '收藏失败',
+              icon: 'none'
+            });
+          }
+        },
+        fail: err => {
+          console.error('收藏失败:', err);
+          wx.showToast({
+            title: '收藏失败',
+            icon: 'none'
+          });
+        },
+        complete: () => {
+          wx.hideLoading();
+        }
+      });
+    }
+  },
+  
+  // 检查文章收藏状态
+  checkArticleCollectionStatus: function(articleId) {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      return;
+    }
+    
+    // 调用云函数检查收藏状态
+    wx.cloud.callFunction({
+      name: 'userFavorite',
+      data: {
+        action: 'check',
+        type: 'article',
+        id: articleId
+      },
+      success: res => {
+        console.log('检查文章收藏状态:', res.result);
+        
+        if (res.result.success) {
+          // 更新本地数据
+          this.setData({
+            isCollected: res.result.isFavorite
+          });
+          
+          // 更新本地学习记录
+          this.saveLearningRecord();
+        }
+      },
+      fail: err => {
+        console.error('检查文章收藏状态失败:', err);
       }
     });
   },

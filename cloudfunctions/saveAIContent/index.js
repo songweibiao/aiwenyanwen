@@ -9,12 +9,15 @@ exports.main = async (event, context) => {
   const { articleId, type, content, extra, timestamp } = event
   const now = timestamp ? new Date(timestamp) : new Date()
   
-  console.log(`云函数保存AI内容: articleId=${articleId}, type=${type}`)
+  // 强制 articleId 为字符串
+  const articleIdStr = String(articleId)
+  
+  console.log(`云函数保存AI内容: articleId=${articleIdStr}, type=${type}`)
   
   try {
     // 查询是否已有该文章记录
     const queryResult = await db.collection('article_ai_content')
-      .where({ article_id: articleId })
+      .where({ article_id: articleIdStr })
       .get()
     
     if (queryResult.data && queryResult.data.length > 0) {
@@ -72,7 +75,7 @@ exports.main = async (event, context) => {
     } else {
       // 没有记录，创建新记录
       const newRecord = {
-        article_id: articleId,
+        article_id: articleIdStr,
         created_at: now,
         updated_at: now
       }
@@ -89,7 +92,7 @@ exports.main = async (event, context) => {
         newRecord[`${type}_updated_at`] = now
       }
       
-      console.log(`创建新记录: articleId=${articleId}`)
+      console.log(`创建新记录: articleId=${articleIdStr}`)
       
       // 创建新记录
       const addResult = await db.collection('article_ai_content').add({

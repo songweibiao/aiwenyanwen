@@ -474,6 +474,12 @@ page {
   transition: all 0.2s ease;
 }
 
+.action-icon.collected {
+  opacity: 1;
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 2rpx rgba(139, 110, 79, 0.5));
+}
+
 .icon-btn:active .action-icon {
   opacity: 1;
 }

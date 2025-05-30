@@ -159,6 +159,7 @@ exports.main = async (event, context) => {
         ...record,
         article: {
           _id: article._id || articleId,
+          article_id: article.article_id || articleId,
           title: article.title,
           author: article.author,
           dynasty: article.dynasty

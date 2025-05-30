@@ -419,66 +419,115 @@ Page({
 
   // 获取随机名句
   getRandomFamousQuote: function () {
-    // 从云数据库获取名句数据
+    // 调用云函数获取名句数据
+    wx.cloud.callFunction({
+      name: 'getRandomQuote',
+      data: {},
+      success: res => {
+        console.log('云函数获取名句结果:', res.result);
+        
+        if (res.result && res.result.success && res.result.data) {
+          this.setData({
+            famousQuote: res.result.data
+          });
+          
+          // 检查是否已收藏
+          if (res.result.data._id) {
+            this.checkQuoteCollectionStatus(res.result.data._id);
+          }
+        } else {
+          // 获取失败，尝试直接从数据库获取
+          this.getQuoteFromDatabase();
+        }
+      },
+      fail: err => {
+        console.error('云函数获取名句失败:', err);
+        // 获取失败，尝试直接从数据库获取
+        this.getQuoteFromDatabase();
+      }
+    });
+  },
+  
+  // 从数据库直接获取名句（备用方法）
+  getQuoteFromDatabase: function() {
     const db = wx.cloud.database();
     
-    // 尝试从名句集合获取随机名句
-    db.collection('famous_quotes')
-      .aggregate()
-      .sample({
-        size: 1
-      })
-      .end()
+    // 获取名句总数
+    db.collection('famous_quotes').count()
       .then(res => {
-        if (res.list && res.list.length > 0) {
-          this.setData({
-            famousQuote: res.list[0]
+        if (res.total <= 0) {
+          console.error('数据库中没有名句数据');
+          wx.showToast({
+            title: '暂无名句数据',
+            icon: 'none'
           });
-        } else {
-          // 如果没有名句集合或数据，使用模拟数据
-          this.useLocalQuoteData();
+          return;
+        }
+        
+        // 生成随机索引
+        const randomIndex = Math.floor(Math.random() * res.total);
+        
+        // 使用skip和limit获取随机名句
+        return db.collection('famous_quotes')
+          .skip(randomIndex)
+          .limit(1)
+          .get();
+      })
+      .then(res => {
+        if (res && res.data && res.data.length > 0) {
+          console.log('成功从数据库获取名句:', res.data[0]);
+          this.setData({
+            famousQuote: res.data[0]
+          });
+          
+          // 检查是否已收藏
+          this.checkQuoteCollectionStatus(res.data[0]._id);
+        } else if (res) {
+          // 数据库中没有数据
+          console.error('数据库中没有名句数据');
+          wx.showToast({
+            title: '暂无名句数据',
+            icon: 'none'
+          });
         }
       })
       .catch(err => {
         console.error('获取名句失败:', err);
-        // 使用模拟数据
-        this.useLocalQuoteData();
+        wx.showToast({
+          title: '获取名句失败',
+          icon: 'none'
+        });
       });
   },
   
-  // 使用本地模拟的名句数据
-  useLocalQuoteData: function() {
-    // 模拟的名句数据
-    const mockQuotes = [
-      {
-        _id: 'q001',
-        content: '欲穷千里目，更上一层楼。',
-        source: '登鹳雀楼',
-        author: '王之涣',
-        dynasty: '唐',
-        translation: '如果想要看到更远的地方，那就要登上更高的楼层。'
+  // 刷新名句
+  refreshQuote: function() {
+    // 调用云函数获取名句数据
+    wx.cloud.callFunction({
+      name: 'getRandomQuote',
+      data: {},
+      success: res => {
+        console.log('云函数获取名句结果:', res.result);
+        
+        if (res.result && res.result.success && res.result.data) {
+          this.setData({
+            famousQuote: res.result.data
+          });
+          
+          // 检查是否已收藏
+          if (res.result.data._id) {
+            this.checkQuoteCollectionStatus(res.result.data._id);
+          }
+        } else {
+          // 获取失败，尝试直接从数据库获取
+          this.getQuoteFromDatabase();
+        }
       },
-      {
-        _id: 'q002',
-        content: '会当凌绝顶，一览众山小。',
-        source: '望岳',
-        author: '杜甫',
-        dynasty: '唐',
-        translation: '我一定要登上泰山的顶峰，俯瞰群山的渺小。'
-      },
-      {
-        _id: 'q003',
-        content: '人生自古谁无死，留取丹心照汗青。',
-        source: '过零丁洋',
-        author: '文天祥',
-        dynasty: '宋',
-        translation: '自古以来谁能够免于一死，只愿留下赤诚的忠心照耀青史。'
+      fail: err => {
+        console.error('云函数获取名句失败:', err);
+        // 获取失败，尝试直接从数据库获取
+        this.getQuoteFromDatabase();
       }
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * mockQuotes.length);
-    this.setData({
-      famousQuote: mockQuotes[randomIndex]
     });
   },
 
@@ -818,31 +867,157 @@ Page({
     })
   },
 
-  // 刷新名句
-  refreshQuote: function (e) {
-    e.stopPropagation();
-    this.getRandomFamousQuote();
-    wx.showToast({
-      title: '已刷新',
-      icon: 'success',
-      duration: 1000
-    });
-  },
-
   // 收藏名句
-  collectQuote: function (e) {
-    e.stopPropagation();
+  collectQuote: function() {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
     wx.showToast({
-      title: '已收藏',
-      icon: 'success',
-      duration: 1000
+        title: '请先登录',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    const quote = this.data.famousQuote;
+    if (!quote) {
+      wx.showToast({
+        title: '名句数据不存在',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 判断是收藏还是取消收藏
+    if (quote.isCollected) {
+      // 取消收藏
+      wx.cloud.callFunction({
+        name: 'userFavorite',
+        data: {
+          action: 'remove',
+          type: 'quote',
+          id: quote._id
+        },
+        success: res => {
+          console.log('取消收藏成功:', res.result);
+          
+          if (res.result.success) {
+            // 更新本地数据
+            const updatedQuote = { ...quote, isCollected: false };
+            this.setData({
+              famousQuote: updatedQuote
+            });
+            
+            wx.showToast({
+              title: '已取消收藏',
+              icon: 'success'
+            });
+          } else {
+            wx.showToast({
+              title: res.result.message || '取消收藏失败',
+              icon: 'none'
+            });
+          }
+        },
+        fail: err => {
+          console.error('取消收藏失败:', err);
+          wx.showToast({
+            title: '取消收藏失败',
+            icon: 'none'
+          });
+        }
+      });
+    } else {
+      // 添加收藏
+      wx.cloud.callFunction({
+        name: 'userFavorite',
+        data: {
+          action: 'add',
+          type: 'quote',
+          id: quote._id,
+          data: {
+            content: quote.content,
+            source: quote.source,
+            author: quote.author,
+            dynasty: quote.dynasty,
+            translation: quote.translation
+          }
+        },
+        success: res => {
+          console.log('收藏成功:', res.result);
+          
+          if (res.result.success) {
+            // 更新本地数据
+            const updatedQuote = { ...quote, isCollected: true };
+            this.setData({
+              famousQuote: updatedQuote
+            });
+            
+            wx.showToast({
+              title: '收藏成功',
+              icon: 'success'
+            });
+          } else {
+            wx.showToast({
+              title: res.result.message || '收藏失败',
+              icon: 'none'
+            });
+          }
+        },
+        fail: err => {
+          console.error('收藏失败:', err);
+          wx.showToast({
+            title: '收藏失败',
+            icon: 'none'
+          });
+        }
+      });
+    }
+  },
+
+  // 检查名句收藏状态
+  checkQuoteCollectionStatus: function(quoteId) {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      return;
+    }
+    
+    // 调用云函数检查收藏状态
+    wx.cloud.callFunction({
+      name: 'userFavorite',
+      data: {
+        action: 'check',
+        type: 'quote',
+        id: quoteId
+      },
+      success: res => {
+        console.log('检查名句收藏状态:', res.result);
+        
+        if (res.result.success) {
+          // 更新本地数据
+          const updatedQuote = { 
+            ...this.data.famousQuote, 
+            isCollected: res.result.isFavorite 
+          };
+          
+          this.setData({
+            famousQuote: updatedQuote
+          });
+        }
+      },
+      fail: err => {
+        console.error('检查名句收藏状态失败:', err);
+      }
     });
   },
 
-  // 前往名句详情
-  goToQuoteDetail: function () {
+  // 跳转到名句详情页
+  goToQuoteDetail: function() {
+    if (!this.data.famousQuote) return;
+    
     wx.navigateTo({
-      url: `/miniprogram/pages/article/quote-detail?id=${this.data.famousQuote._id}`
+      url: `/pages/quote/detail/detail?id=${this.data.famousQuote._id}`
     });
   },
 

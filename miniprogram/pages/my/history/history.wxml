@@ -25,7 +25,7 @@
   
   <!-- 历史列表 -->
   <view class="history-list" wx:else>
-    <view class="history-item" wx:for="{{historyList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.article_id}}">
+    <view class="history-item" wx:for="{{historyList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.article.article_id || item.article_id}}">
       <view class="article-info">
         <view class="article-title">{{item.article.title || '未知文章'}}</view>
         <view class="article-author">{{item.article.author || '未知作者'}}{{item.article.dynasty ? ' · ' + item.article.dynasty : ''}}</view>

@@ -1,0 +1,83 @@
+<view class="container">
+  <view class="header">
+    <view class="title">我的收藏</view>
+  </view>
+  
+  <!-- 未登录状态 -->
+  <view class="not-login-container" wx:if="{{!isLoggedIn}}">
+    <image class="not-login-image" src="/images/common/not-login.svg" mode="aspectFit"></image>
+    <view class="not-login-text">请先登录查看收藏内容</view>
+    <button class="btn btn-primary login-btn" bindtap="goToLogin">去登录</button>
+  </view>
+  
+  <!-- 已登录状态 -->
+  <block wx:else>
+    <!-- 标签页切换 -->
+    <view class="tab-header">
+      <view class="tab-item {{currentTab === 'article' ? 'active' : ''}}" bindtap="switchTab" data-tab="article">
+        <text>文章收藏</text>
+      </view>
+      <view class="tab-item {{currentTab === 'quote' ? 'active' : ''}}" bindtap="switchTab" data-tab="quote">
+        <text>名句收藏</text>
+      </view>
+    </view>
+    
+    <!-- 加载中状态 -->
+    <view class="loading-container" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <!-- 文章收藏列表 -->
+    <view class="article-list" wx:if="{{currentTab === 'article' && !loading}}">
+      <!-- 没有收藏内容 -->
+      <view class="empty-container" wx:if="{{articleList.length === 0}}">
+        <image class="empty-image" src="/images/icons/empty.png" mode="aspectFit"></image>
+        <view class="empty-text">暂无收藏的文章</view>
+        <view class="empty-tip">快去收藏一些文章吧~</view>
+      </view>
+      
+      <!-- 收藏列表 -->
+      <view class="article-item" wx:for="{{articleList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.itemId}}">
+        <view class="article-content">
+          <view class="article-title">{{item.article.title || '未知文章'}}</view>
+          <view class="article-info">
+            <text>{{item.article.dynasty || ''}} · {{item.article.author || ''}}</text>
+          </view>
+          <view class="article-preview" wx:if="{{item.article.preview}}">{{item.article.preview}}...</view>
+        </view>
+        <view class="article-actions">
+          <view class="cancel-btn" catchtap="cancelFavorite" data-id="{{item._id}}" data-type="article" data-itemid="{{item.itemId}}">
+            <image class="cancel-icon" src="/images/icons/delete.svg" mode="aspectFit"></image>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 名句收藏列表 -->
+    <view class="quote-list" wx:if="{{currentTab === 'quote' && !loading}}">
+      <!-- 没有收藏内容 -->
+      <view class="empty-container" wx:if="{{quoteList.length === 0}}">
+        <image class="empty-image" src="/images/icons/empty.png" mode="aspectFit"></image>
+        <view class="empty-text">暂无收藏的名句</view>
+        <view class="empty-tip">快去收藏一些名句吧~</view>
+      </view>
+      
+      <!-- 收藏列表 -->
+      <view class="quote-item" wx:for="{{quoteList}}" wx:key="_id" bindtap="goToQuoteDetail" data-id="{{item.itemId}}">
+        <view class="quote-content">
+          <text class="quote-text">{{item.quote.content || '未知名句'}}</text>
+          <view class="quote-source">
+            <text>{{item.quote.dynasty || ''}} · {{item.quote.author || ''}}</text>
+            <text>《{{item.quote.source || ''}}》</text>
+          </view>
+        </view>
+        <view class="quote-actions">
+          <view class="cancel-btn" catchtap="cancelFavorite" data-id="{{item._id}}" data-type="quote" data-itemid="{{item.itemId}}">
+            <image class="cancel-icon" src="/images/icons/delete.svg" mode="aspectFit"></image>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view> 

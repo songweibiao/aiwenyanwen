@@ -226,7 +226,7 @@
           <image src="/images/icons/refresh.svg" mode="aspectFit" class="action-icon"></image>
         </view>
         <view class="icon-btn" bindtap="collectQuote">
-          <image src="/images/icons/bookmark.svg" mode="aspectFit" class="action-icon"></image>
+          <image src="{{famousQuote.isCollected ? '/images/icons/star-filled.svg' : '/images/icons/star.svg'}}" mode="aspectFit" class="action-icon {{famousQuote.isCollected ? 'collected' : ''}}"></image>
         </view>
       </view>
     </view>

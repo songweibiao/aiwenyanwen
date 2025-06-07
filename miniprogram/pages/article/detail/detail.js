@@ -1238,6 +1238,13 @@ Page({
       return;
     }
     
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      // 如果未登录，仍然显示界面，但在点击问题或提问时会提示登录
+      console.log('用户未登录，AI互动功能将受限');
+    }
+    
     const article_id = String(article.article_id);
     const type = 'suggested_questions';
     
@@ -1302,6 +1309,24 @@ Page({
   
   // 处理点击推荐问题
   tapSuggestedQuestion: function(e) {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再使用AI互动功能',
+        showCancel: false,
+        success: (res) => {
+          if (res.confirm) {
+            wx.switchTab({
+              url: '/pages/my/index/index'
+            });
+          }
+        }
+      });
+      return;
+    }
+    
     const question = e.currentTarget.dataset.question;
     console.log('点击了推荐问题:', question);
     
@@ -1335,6 +1360,24 @@ Page({
   
   // 提问并跳转到AI助手页面
   askQuestion: function() {
+    // 检查用户是否已登录
+    const userInfo = wx.getStorageSync('userInfo');
+    if (!userInfo) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再使用AI互动功能',
+        showCancel: false,
+        success: (res) => {
+          if (res.confirm) {
+            wx.switchTab({
+              url: '/pages/my/index/index'
+            });
+          }
+        }
+      });
+      return;
+    }
+    
     const question = this.data.userQuestion.trim();
     if (!question) {
       wx.showToast({

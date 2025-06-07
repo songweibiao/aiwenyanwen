@@ -2,20 +2,35 @@
 <wxs src="../../utils/filters.wxs" module="filters" />
 <view class="container">
   <!-- 公告栏 -->
-  <view class="notice-bar" wx:if="{{noticeList.length > 0 && !noticeClosed}}">
+  <view class="notice-bar" wx:if="{{noticeList.length > 0}}">
     <text class="notice-icon">📢</text>
     <view class="marquee-wrap">
       <view
         class="marquee-content"
         style="transform: translateX({{marqueeTranslateX}}rpx); transition: all {{marqueeState === 'scroll' ? marqueeDuration : 0}}s linear;"
-        catchtap="onNoticeTap"
+        bindtap="onNoticeTap"
         data-url="{{currentNotice.url}}"
       >
         <text class="notice-content">{{currentNotice.content}}</text>
+        <text class="notice-detail" wx:if="{{currentNotice.detail}}" catchtap="showNoticeDetail">【查看详情】</text>
         <text class="notice-gap"> </text>
       </view>
     </view>
-    <view class="notice-close" bindtap="closeNotice">×</view>
+  </view>
+
+  <!-- 公告详情弹窗 -->
+  <view class="notice-modal" wx:if="{{showNoticeDetail}}" bindtap="closeNoticeDetail">
+    <view class="notice-modal-content" catchtap="stopPropagation">
+      <view class="notice-modal-header">
+        <text class="notice-modal-title">{{currentNotice.title || '公告详情'}}</text>
+      </view>
+      <scroll-view scroll-y class="notice-modal-body">
+        <text class="notice-modal-text">{{currentNotice.detail}}</text>
+      </scroll-view>
+      <view class="notice-modal-footer">
+        <view class="notice-modal-btn" bindtap="closeNoticeDetail">关闭</view>
+      </view>
+    </view>
   </view>
 
   <!-- 欢迎区域 -->

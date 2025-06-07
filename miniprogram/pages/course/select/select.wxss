@@ -423,4 +423,15 @@
   position: absolute;
   top: 30rpx;
   right: 30rpx;
+}
+
+.chapter-info {
+  margin-top: 4rpx;
+}
+.chapter-text {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+  display: block;
+  word-break: break-all;
 } 

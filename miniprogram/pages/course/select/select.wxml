@@ -48,8 +48,8 @@
               <text class="tag tag-primary">{{item.gradeDisplay || item.grade + item.semester}}</text>
               <text class="text-secondary">{{item.author}} · {{item.dynasty}}</text>
             </view>
-            <view class="lesson-number">
-              <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
+            <view class="chapter-info">
+              <text class="chapter-text">{{item.chapter || '无章节'}}</text>
             </view>
           </view>
           <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">
@@ -122,8 +122,8 @@
               <view class="article-title text-bold">{{item.title}}</view>
               <view class="article-info">
                 <text class="article-meta text-secondary">{{item.author}} · {{item.dynasty}}</text>
-                <view class="lesson-number">
-                  <text class="text-tertiary">课文序号：{{item.lesson_number || '无'}}</text>
+                <view class="chapter-info">
+                  <text class="chapter-text">{{item.chapter || '无章节'}}</text>
                 </view>
               </view>
               <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">

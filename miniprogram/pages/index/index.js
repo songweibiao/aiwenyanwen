@@ -24,6 +24,7 @@ Page({
     marqueeTranslateX: 0,
     marqueeTimer: null,
     noticeClosed: false,
+    showNoticeDetail: false, // 新增：是否显示公告详情弹窗
     // 是否已选择课文
     hasSelectedCourse: false,
     // 当前选择的课文信息
@@ -79,9 +80,6 @@ Page({
           }
         });
       });
-    // 检查本地关闭状态
-    const closed = wx.getStorageSync('noticeClosed');
-    this.setData({ noticeClosed: !!closed });
   },
 
   onShow: function () {
@@ -92,6 +90,27 @@ Page({
     
     // 更新用户信息
     this.getUserInfo();
+    
+    // 检查本地存储中的课文信息是否有更新
+    const selectedCourse = wx.getStorageSync('selectedCourse');
+    const currentSelectedCourse = this.data.selectedCourse;
+    
+    // 判断课文是否发生变化
+    let courseChanged = false;
+    if (selectedCourse && selectedCourse.article) {
+      if (!currentSelectedCourse || !currentSelectedCourse.article) {
+        courseChanged = true;
+      } else if (selectedCourse.article._id !== currentSelectedCourse.article._id) {
+        courseChanged = true;
+      }
+    }
+    
+    // 如果课文发生了变化，强制重新加载
+    if (courseChanged) {
+      console.log('检测到课文已更换，重新加载课文数据');
+      this.checkSelectedCourse();
+      return;
+    }
     
     // 如果登录状态发生变化
     if (wasLoggedIn !== isLoggedIn) {
@@ -111,7 +130,7 @@ Page({
         wx.removeStorageSync('selectedCourse');
       }
     } else {
-      // 登录状态未变，正常检查选择的课文
+      // 登录状态未变且课文未变，正常检查选择的课文
       this.checkSelectedCourse();
     }
     
@@ -138,7 +157,32 @@ Page({
     const isLoggedIn = !!userInfo;
     console.log('用户登录状态:', isLoggedIn);
     
-    // 如果用户已登录，优先使用最近学习的文章
+    // 先获取本地存储的选中课文，优先使用本地存储的最新选择
+    const selectedCourse = wx.getStorageSync('selectedCourse');
+    if (selectedCourse && selectedCourse.article) {
+      console.log('找到已选择的课文:', selectedCourse);
+      
+      // 先设置本地缓存的课文数据，确保hasSelectedCourse为true
+      this.setData({
+        hasSelectedCourse: true,
+        selectedCourse: selectedCourse,
+        currentGrade: selectedCourse.grade || this.data.currentGrade,
+        currentLesson: selectedCourse.article.title || this.data.currentLesson
+      });
+      
+      // 优先使用article_id查询
+      if (selectedCourse.article.article_id) {
+        // 如果有article_id字段，优先使用它查询
+        this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
+        return;
+      } else if (selectedCourse.article._id) {
+        // 如果只有_id，作为备用方案
+        this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
+        return;
+      }
+    }
+    
+    // 如果没有本地存储的课文，且用户已登录，尝试使用最近学习的文章
     if (isLoggedIn && this.data.lastStudy && this.data.lastStudy.article && this.data.lastStudy.article._id) {
       console.log('使用最近学习的文章:', this.data.lastStudy);
       
@@ -170,43 +214,13 @@ Page({
       }
     }
     
-    // 如果没有最近学习的文章或者用户未登录，使用本地存储的选中课文
-    const selectedCourse = wx.getStorageSync('selectedCourse');
-    if (selectedCourse && selectedCourse.article) {
-      console.log('找到已选择的课文:', selectedCourse);
-      
-      // 先设置本地缓存的课文数据，确保hasSelectedCourse为true
-      this.setData({
-        hasSelectedCourse: true,
-        selectedCourse: selectedCourse,
-        currentGrade: selectedCourse.grade || this.data.currentGrade,
-        currentLesson: selectedCourse.article.title || this.data.currentLesson
-      });
-      
-      // 优先使用article_id查询
-      if (selectedCourse.article.article_id) {
-        // 如果有article_id字段，优先使用它查询
-        this.fetchArticleByArticleId(selectedCourse.article.article_id, selectedCourse);
-      } else if (selectedCourse.article._id) {
-        // 如果只有_id，作为备用方案
-        this.fetchArticleFromCloud(selectedCourse.article._id, selectedCourse);
-      } else {
-        // 没有可用的ID，标记为未选择课文
-        console.log('课文数据无有效ID');
-        this.setData({
-          hasSelectedCourse: false,
-          selectedCourse: null,
-          courseLoading: false
-        });
-      }
-    } else {
-      console.log('未找到已选择的课文');
-      this.setData({
-        hasSelectedCourse: false,
-        selectedCourse: null,
-        courseLoading: false
-      });
-    }
+    // 如果既没有本地存储的课文，也没有最近学习的文章，显示未选择状态
+    console.log('未找到已选择的课文');
+    this.setData({
+      hasSelectedCourse: false,
+      selectedCourse: null,
+      courseLoading: false
+    });
   },
   
   // 通过article_id从云数据库获取课文数据（优先方法）
@@ -1222,12 +1236,6 @@ Page({
     }
   },
 
-  // 关闭公告
-  closeNotice() {
-    this.setData({ noticeClosed: true });
-    wx.setStorageSync('noticeClosed', true);
-  },
-
   // 点击公告
   onNoticeTap(e) {
     const url = e.currentTarget.dataset.url;
@@ -1236,6 +1244,42 @@ Page({
         url: `/miniprogram/pages/webview/index?url=${encodeURIComponent(url)}`
       });
     }
+  },
+
+  // 显示公告详情
+  showNoticeDetail(e) {
+    // 阻止冒泡，避免触发onNoticeTap
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
+    // 显示详情弹窗
+    this.setData({
+      showNoticeDetail: true
+    });
+    
+    // 暂停公告滚动
+    if (this.data.marqueeTimer) {
+      clearTimeout(this.data.marqueeTimer);
+      this.data.marqueeTimer = null;
+    }
+  },
+  
+  // 关闭公告详情
+  closeNoticeDetail() {
+    this.setData({
+      showNoticeDetail: false
+    });
+    
+    // 恢复公告滚动
+    this.showCurrentNotice();
+  },
+  
+  // 阻止事件冒泡
+  stopPropagation() {
+    // 在小程序中，使用catchtap而不是这个函数来阻止事件冒泡
+    // 这个函数仅用于配合catchtap使用
+    return false;
   },
 
   // 启动公告循环
@@ -1255,39 +1299,98 @@ Page({
 
   // 检查并滚动公告
   checkAndScroll() {
-    // 获取公告内容宽度
-    const query = wx.createSelectorQuery();
-    query.select('.notice-content').boundingClientRect();
-    query.select('.notice-bar').boundingClientRect();
+    // 如果只有一条公告，并且已显示完成，则2秒后重新显示
+    if (this.data.noticeList.length === 1) {
+      // 获取公告内容宽度
+      const query = wx.createSelectorQuery();
+      query.select('.marquee-content').boundingClientRect();
+      query.select('.notice-bar').boundingClientRect();
 
-    query.exec(res => {
-      if (!res[0] || !res[1]) return;
-      
-      const contentWidth = res[0].width;
-      const containerWidth = res[1].width - 60; // 减去图标和间距的宽度
-      
-      if (contentWidth > containerWidth) {
-        // 计算滚动时间和距离
-        const duration = contentWidth / 50; // 50rpx/s的速度
-        const distance = -contentWidth - 20; // 额外的20rpx确保完全滚出
+      query.exec(res => {
+        if (!res[0] || !res[1]) return;
         
-        this.setData({
-          marqueeState: 'scroll',
-          marqueeDuration: duration,
-          marqueeTranslateX: distance
-        });
+        const contentWidth = res[0].width;
+        const containerWidth = res[1].width - 40; // 减去图标和间距的宽度（移除关闭按钮后从60改为40）
         
-        // 滚动结束后，重置并滚动下一条
-        this.data.marqueeTimer = setTimeout(() => {
-          this.nextNotice();
-        }, duration * 1000 + 1000); // 多等待1秒，确保完全滚动完
-      } else {
-        // 内容不需要滚动，3秒后切换到下一条
-        this.data.marqueeTimer = setTimeout(() => {
-          this.nextNotice();
-        }, 3000);
-      }
-    });
+        if (contentWidth > containerWidth) {
+          // 计算需要滚动的距离，确保"查看详情"按钮完全显示
+          // 比实际需要的距离少滚动一些，保留更多空间（大约80rpx的余量）
+          const distance = -(contentWidth - containerWidth + 50);
+          
+          // 计算滚动时间，保持速度一致
+          const duration = Math.abs(distance) / 50; // 50rpx/s的速度
+          
+          this.setData({
+            marqueeState: 'scroll',
+            marqueeDuration: duration,
+            marqueeTranslateX: distance
+          });
+          
+          // 滚动结束后，停留2秒，然后重置位置重新开始
+          this.data.marqueeTimer = setTimeout(() => {
+            this.setData({
+              marqueeState: 'pause',
+              marqueeTranslateX: 0
+            }, () => {
+              // 等待2秒后再次滚动
+              this.data.marqueeTimer = setTimeout(() => {
+                this.showCurrentNotice();
+              }, 4000);
+            });
+          }, duration * 1000 + 2000); // 滚动时间加上2秒停留时间
+        } else {
+          // 内容不需要滚动，2秒后重置
+          this.data.marqueeTimer = setTimeout(() => {
+            this.setData({
+              marqueeState: 'pause',
+              marqueeTranslateX: 0
+            }, () => {
+              // 等待2秒后再次显示
+              this.data.marqueeTimer = setTimeout(() => {
+                this.showCurrentNotice();
+              }, 2000);
+            });
+          }, 2000);
+        }
+      });
+    } else {
+      // 多条公告时的处理
+      const query = wx.createSelectorQuery();
+      query.select('.marquee-content').boundingClientRect();
+      query.select('.notice-bar').boundingClientRect();
+
+      query.exec(res => {
+        if (!res[0] || !res[1]) return;
+        
+        const contentWidth = res[0].width;
+        const containerWidth = res[1].width - 40; // 减去图标和间距的宽度（移除关闭按钮后从60改为40）
+        
+        if (contentWidth > containerWidth) {
+          // 计算需要滚动的距离，确保"查看详情"按钮完全显示
+          // 比实际需要的距离少滚动一些，保留更多空间（大约80rpx的余量）
+          const distance = -(contentWidth - containerWidth - 80);
+          
+          // 计算滚动时间，保持速度一致
+          const duration = Math.abs(distance) / 50; // 50rpx/s的速度
+          
+          this.setData({
+            marqueeState: 'scroll',
+            marqueeDuration: duration,
+            marqueeTranslateX: distance
+          });
+          
+          // 滚动结束后，停留2秒，然后切换到下一条
+          this.data.marqueeTimer = setTimeout(() => {
+            this.nextNotice();
+          }, duration * 1000 + 2000); // 滚动时间加上2秒停留时间
+        } else {
+          // 内容不需要滚动，2秒后切换到下一条
+          this.data.marqueeTimer = setTimeout(() => {
+            this.nextNotice();
+          }, 2000);
+        }
+      });
+    }
   },
 
   // 切换到下一条公告

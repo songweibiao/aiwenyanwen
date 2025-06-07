@@ -34,10 +34,23 @@
     </block>
     <view class="chat-bottom-space" id="scrollBottom"></view>
   </scroll-view>
+  
+  <!-- 输入区域 -->
   <view class="input-bar">
     <view class="input-wrap">
-      <input class="input" placeholder="请输入你的问题..." value="{{inputValue}}" bindinput="onInput" confirm-type="send" bindconfirm="onSend"/>
+      <input class="input"
+             placeholder="请输入你的问题..."
+             value="{{inputValue}}"
+             bindfocus="checkLoginBeforeInput"
+             bindinput="onInput"
+             confirm-type="send"
+             bindconfirm="checkLoginAndSend"/>
     </view>
-    <button class="send-btn" size="mini" bindtap="onSend" disabled="{{loading}}">发送</button>
+    <button class="send-btn"
+            size="mini"
+            bindtap="checkLoginAndSend"
+            disabled="{{loading}}">
+      发送
+    </button>
   </view>
 </view>

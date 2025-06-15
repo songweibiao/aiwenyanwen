@@ -263,4 +263,9 @@
       <view class="btn btn-light promo-btn">立即领取</view>
     </view>
   </view>
+
+  <!-- 在适当位置添加一个导航按钮链接到测试页面 -->
+  <navigator url="/pages/word-learning/test-db/test-db" class="test-db-link">
+    <button class="test-btn">数据库连接测试</button>
+  </navigator>
 </view> 

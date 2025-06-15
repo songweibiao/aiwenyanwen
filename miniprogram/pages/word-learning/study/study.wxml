@@ -1,0 +1,126 @@
+<!-- miniprogram/pages/word-learning/study/study.wxml -->
+<view class="container">
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在加载词条...</text>
+  </view>
+
+  <!-- 错误信息 -->
+  <view class="error-message" wx:if="{{error}}">
+    <text class="error-title">错误:</text>
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <!-- 无数据提示 -->
+  <view class="no-data" wx:if="{{!loading && loaded && !wordList.length}}">
+    <view class="no-data-icon">!</view>
+    <text class="no-data-text">暂无词条数据</text>
+    <button class="no-data-button" bindtap="goBack">返回首页</button>
+  </view>
+
+  <!-- 页面顶部区域 - 优化布局 -->
+  <view class="page-header">
+    <!-- 词条计数器 -->
+    <view class="word-counter-container">
+      <view class="word-counter">{{currentIndex + 1}}/{{wordList.length}}</view>
+    </view>
+
+    <!-- 词条大标题区域（包含导航按钮） -->
+    <view class="word-title-area">
+      <!-- 左侧导航按钮 -->
+      <view class="nav-button prev-btn" bindtap="goToPrevWord" wx:if="{{currentIndex > 0}}">
+        <view class="prev-icon"></view>
+      </view>
+      
+      <!-- 词条大标题 -->
+      <view class="word-title-container">
+        <view class="word-title">{{wordList[currentIndex].word}}</view>
+      </view>
+      
+      <!-- 右侧导航按钮 -->
+      <view class="nav-button next-btn" bindtap="goToNextWord" wx:if="{{currentIndex < wordList.length - 1}}">
+        <view class="next-icon"></view>
+      </view>
+    </view>
+    
+    <!-- 读音显示区域 -->
+    <block wx:if="{{wordList[currentIndex].pronunciations.length}}">
+      <!-- 多个读音时显示读音切换标签 -->
+      <view class="pronunciation-tabs" wx:if="{{wordList[currentIndex].pronunciations.length > 1}}">
+        <view 
+          wx:for="{{wordList[currentIndex].pronunciations}}" 
+          wx:key="index"
+          class="pronunciation-tab {{currentPronunciationIndex === index ? 'active' : ''}}"
+          data-index="{{index}}"
+          bindtap="onPronunciationTabChange">
+          <text>{{item.pronunciation}}</text>
+          <view class="tab-indicator" wx:if="{{currentPronunciationIndex === index}}"></view>
+        </view>
+      </view>
+      
+      <!-- 单个读音时直接显示 -->
+      <view class="pronunciation-container" wx:elif="{{wordList[currentIndex].pronunciations[0].pronunciation}}">
+        <text class="pronunciation-text">{{wordList[currentIndex].pronunciations[0].pronunciation}}</text>
+      </view>
+    </block>
+
+    <!-- 用法标签栏 - 多个用法时显示为分段控件 -->
+    <view class="usage-tabs-container" wx:if="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages.length > 1}}">
+      <view class="usage-tabs">
+        <view class="usage-tab {{currentUsageIndex === index ? 'active' : ''}}" 
+          wx:for="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages}}" 
+          wx:key="usage_id"
+          data-index="{{index}}" 
+          bindtap="onUsageTabChange">
+          <text>用法{{index + 1}}</text>
+          <view class="tab-indicator" wx:if="{{currentUsageIndex === index}}"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content-area">
+    <!-- 词义标题 - 无论单个还是多个用法都显示 -->
+    <view class="single-usage-title">
+      <text class="usage-label">词义</text>
+    </view>
+    
+    <!-- 词性与词义卡片 -->
+    <view class="card meaning-card">
+      <view class="meaning-label">
+        <text class="pos-tag" wx:if="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages[currentUsageIndex].part_of_speech}}">{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages[currentUsageIndex].part_of_speech}}</text>
+        <text class="meaning-text">{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages[currentUsageIndex].meaning}}</text>
+      </view>
+    </view>
+
+    <!-- 例句标题 -->
+    <view class="single-example-title">
+      <text class="example-label">例句</text>
+    </view>
+
+    <!-- 例句列表 - 显示所有例句 -->
+    <view class="examples-list">
+      <view class="card example-card" wx:for="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages[currentUsageIndex].examples}}" wx:key="example_sentence_id">
+        <view class="example-index" wx:if="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages[currentUsageIndex].examples.length > 1}}">例句{{index + 1}}</view>
+        <view class="example-main">
+          <!-- 使用rich-text显示高亮处理后的例句 -->
+          <rich-text class="example-sentence" nodes="{{item.highlightedSentence || item.example_sentence}}"></rich-text>
+          <text class="example-source" wx:if="{{item.source}}">
+            ——{{item.source}}
+          </text>
+        </view>
+        <view class="example-translation">
+          译文：{{item.explanation}}
+        </view>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons">
+      <button class="action-button review-button" bindtap="markForReview">需要复习</button>
+      <button class="action-button learned-button" bindtap="markAsLearned">已掌握</button>
+    </view>
+  </view>
+</view>

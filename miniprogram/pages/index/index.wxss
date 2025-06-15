@@ -1362,3 +1362,16 @@ page {
   line-height: 1.2;
   height: auto;
 } 
+
+/* 添加数据库测试入口按钮样式 */
+.test-db-link {
+  margin: 30rpx 0;
+  display: block;
+}
+
+.test-btn {
+  background-color: #4caf50;
+  color: white;
+  font-size: 28rpx;
+  padding: 15rpx 0;
+} 

@@ -1,0 +1,103 @@
+<!-- miniprogram/pages/word-learning/review/review.wxml -->
+<view class="container">
+  <!-- 复习进度 -->
+  <view class="progress-container">
+    <view class="progress-info">
+      <text class="progress-text">{{currentIndex + 1}}/{{totalWords}}</text>
+      <view class="progress-bar">
+        <view class="progress-inner" style="width: {{progressPercent}}"></view>
+      </view>
+    </view>
+    <view class="memory-info">
+      <view class="memory-item">
+        <view class="memory-count remembered">{{rememberedCount || 0}}</view>
+        <text class="memory-label">已掌握</text>
+      </view>
+      <view class="memory-divider"></view>
+      <view class="memory-item">
+        <view class="memory-count forgot">{{forgotCount || 0}}</view>
+        <text class="memory-label">需加强</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 词卡区域 -->
+  <view class="card-container">
+    <!-- 正面 -->
+    <view class="word-card card {{showAnswer ? 'flipped' : ''}}" bindtap="toggleAnswer">
+      <view class="card-front">
+        <view class="card-label">点击卡片查看答案</view>
+        <view class="word-content">
+          <text class="word-text">{{currentWord.word || '之'}}</text>
+        </view>
+        <image class="card-bg" src="/images/common/chinese-pattern-1.svg" mode="aspectFill"></image>
+      </view>
+      
+      <!-- 背面 -->
+      <view class="card-back">
+        <view class="card-label">释义与例句</view>
+        <view class="word-type-tag {{currentWord.type === '虚词' ? 'virtual' : 'real'}}">{{currentWord.type || '虚词'}}</view>
+        <view class="word-info">
+          <text class="word-pinyin">{{currentWord.pinyin || '[zhī]'}}</text>
+          <text class="word-meaning">{{currentWord.meaning || '助词，"的"的意思'}}</text>
+        </view>
+        
+        <view class="example-section">
+          <view class="section-title">
+            <image class="icon-title" src="/images/icons/example.svg" mode="aspectFit"></image>
+            <text class="title-text">经典例句</text>
+          </view>
+          <view class="example-content">
+            <text class="example-text">{{currentWord.sentence || '不识庐山真面目，只缘身在此山中。'}}</text>
+            <view class="example-source" wx:if="{{currentWord.source}}">—— {{currentWord.source}}</view>
+          </view>
+        </view>
+        <image class="card-bg" src="/images/common/chinese-pattern-2.svg" mode="aspectFill"></image>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons {{showAnswer ? 'show' : 'hide'}}">
+    <button class="btn forgot-btn" bindtap="markAsForgot">
+      <image class="btn-icon" src="/images/icons/forgot.svg" mode="aspectFit"></image>
+      <text>没记住</text>
+    </button>
+    <button class="btn remembered-btn" bindtap="markAsRemembered">
+      <image class="btn-icon" src="/images/icons/check.svg" mode="aspectFit"></image>
+      <text>已记住</text>
+    </button>
+  </view>
+
+  <!-- 完成页面 -->
+  <view class="completion-container" wx:if="{{isComplete}}">
+    <view class="completion-card card">
+      <image class="completion-image" src="/images/common/completion.svg" mode="aspectFit"></image>
+      <text class="completion-title">恭喜完成复习!</text>
+      <view class="completion-stats">
+        <view class="stats-row">
+          <text class="stats-label">总词数:</text>
+          <text class="stats-value">{{totalWords}}</text>
+        </view>
+        <view class="stats-row">
+          <text class="stats-label">掌握词数:</text>
+          <text class="stats-value">{{rememberedCount}}</text>
+        </view>
+        <view class="stats-row">
+          <text class="stats-label">掌握率:</text>
+          <text class="stats-value">{{masteryRate}}%</text>
+        </view>
+      </view>
+      <view class="completion-actions">
+        <button class="action-btn home-btn" bindtap="navigateToIndex">返回首页</button>
+        <button class="action-btn review-btn" bindtap="restartReview">再次复习</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+</view>

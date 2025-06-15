@@ -867,7 +867,11 @@ Page({
       }
     }).then(res => {
       if (res.result && res.result.success) {
-        const wordList = res.result.data || [];
+        let wordList = res.result.data || [];
+        
+        // 处理读音和用法合并
+        wordList = this.processPronunciationsAndUsages(wordList);
+        
         this.setData({
           wordList,
           currentIndex: 0,
@@ -885,6 +889,145 @@ Page({
       }
     }).catch(err => {
       this.setData({ loading: false, error: err.message || '云函数调用失败', loaded: true });
+    });
+  },
+  
+  // 新增：处理读音和用法合并
+  processPronunciationsAndUsages: function(wordList) {
+    return wordList.map(word => {
+      if (!word.pronunciations || word.pronunciations.length === 0) {
+        return word;
+      }
+      
+      // 检查是否有多个不同的读音
+      const uniquePronunciations = new Set();
+      let validPronunciation = null;
+      
+      // 查找有效的读音
+      for (const pron of word.pronunciations) {
+        if (pron.pronunciation) {
+          uniquePronunciations.add(pron.pronunciation);
+          if (!validPronunciation) {
+            validPronunciation = pron.pronunciation;
+          }
+        }
+      }
+      
+      // 如果只有一种读音或者全部为空，则合并用法
+      if (uniquePronunciations.size <= 1) {
+        const mergedPronunciation = {
+          pronunciation: validPronunciation || '',
+          usages: []
+        };
+        
+        // 用于跟踪已处理的用法ID，并存储合并后的用法
+        const usageMap = new Map(); // 用法ID -> 合并后的用法对象
+        
+        // 第一遍扫描：收集所有用法，按ID分组
+        word.pronunciations.forEach(pron => {
+          if (pron.usages && pron.usages.length > 0) {
+            pron.usages.forEach(usage => {
+              const usageId = usage.usage_id || `anonymous_${Math.random().toString(36).substr(2, 9)}`;
+              
+              if (!usageMap.has(usageId)) {
+                // 创建该用法ID的新条目
+                usageMap.set(usageId, {
+                  ...usage,
+                  examples: [...(usage.examples || [])]
+                });
+              } else {
+                // 合并例句
+                const existingUsage = usageMap.get(usageId);
+                
+                // 确保基本信息一致
+                if (!existingUsage.part_of_speech && usage.part_of_speech) {
+                  existingUsage.part_of_speech = usage.part_of_speech;
+                }
+                if (!existingUsage.meaning && usage.meaning) {
+                  existingUsage.meaning = usage.meaning;
+                }
+                
+                // 合并例句，避免重复
+                if (usage.examples && usage.examples.length > 0) {
+                  const existingExampleIds = new Set(
+                    existingUsage.examples.map(ex => ex.example_sentence_id || JSON.stringify(ex))
+                  );
+                  
+                  usage.examples.forEach(example => {
+                    const exampleId = example.example_sentence_id || JSON.stringify(example);
+                    if (!existingExampleIds.has(exampleId)) {
+                      existingUsage.examples.push(example);
+                      existingExampleIds.add(exampleId);
+                    }
+                  });
+                }
+              }
+            });
+          }
+        });
+        
+        // 将合并后的用法添加到结果中
+        mergedPronunciation.usages = Array.from(usageMap.values());
+        
+        // 替换原有的读音列表
+        word.pronunciations = [mergedPronunciation];
+        
+        console.log(`词条 ${word.word} 的读音已合并，共有 ${mergedPronunciation.usages.length} 个用法`);
+      } else {
+        // 有多个不同读音，则对每个读音内的用法进行去重和合并
+        word.pronunciations.forEach(pron => {
+          if (pron.usages && pron.usages.length > 0) {
+            // 用于跟踪已处理的用法ID，并存储合并后的用法
+            const usageMap = new Map(); // 用法ID -> 合并后的用法对象
+            
+            // 收集所有用法，按ID分组
+            pron.usages.forEach(usage => {
+              const usageId = usage.usage_id || `anonymous_${Math.random().toString(36).substr(2, 9)}`;
+              
+              if (!usageMap.has(usageId)) {
+                // 创建该用法ID的新条目
+                usageMap.set(usageId, {
+                  ...usage,
+                  examples: [...(usage.examples || [])]
+                });
+              } else {
+                // 合并例句
+                const existingUsage = usageMap.get(usageId);
+                
+                // 确保基本信息一致
+                if (!existingUsage.part_of_speech && usage.part_of_speech) {
+                  existingUsage.part_of_speech = usage.part_of_speech;
+                }
+                if (!existingUsage.meaning && usage.meaning) {
+                  existingUsage.meaning = usage.meaning;
+                }
+                
+                // 合并例句，避免重复
+                if (usage.examples && usage.examples.length > 0) {
+                  const existingExampleIds = new Set(
+                    existingUsage.examples.map(ex => ex.example_sentence_id || JSON.stringify(ex))
+                  );
+                  
+                  usage.examples.forEach(example => {
+                    const exampleId = example.example_sentence_id || JSON.stringify(example);
+                    if (!existingExampleIds.has(exampleId)) {
+                      existingUsage.examples.push(example);
+                      existingExampleIds.add(exampleId);
+                    }
+                  });
+                }
+              }
+            });
+            
+            // 更新为合并后的用法列表
+            pron.usages = Array.from(usageMap.values());
+          }
+        });
+        
+        console.log(`词条 ${word.word} 有多个不同读音，每个读音内的用法已合并`);
+      }
+      
+      return word;
     });
   },
 

@@ -23,47 +23,51 @@
   <view class="page-header">
     <!-- 词条计数器 -->
     <view class="word-counter-container">
+      <view class="collection-name">{{wordList[currentIndex].collection || '词条学习'}}</view>
       <view class="word-counter">{{currentIndex + 1}}/{{wordList.length}}</view>
     </view>
 
-    <!-- 词条大标题区域（包含导航按钮） -->
-    <view class="word-title-area">
-      <!-- 左侧导航按钮 -->
-      <view class="nav-button prev-btn" bindtap="goToPrevWord" wx:if="{{currentIndex > 0}}">
-        <view class="prev-icon"></view>
-      </view>
-      
-      <!-- 词条大标题 -->
-      <view class="word-title-container">
-        <view class="word-title">{{wordList[currentIndex].word}}</view>
-      </view>
-      
-      <!-- 右侧导航按钮 -->
-      <view class="nav-button next-btn" bindtap="goToNextWord" wx:if="{{currentIndex < wordList.length - 1}}">
-        <view class="next-icon"></view>
-      </view>
-    </view>
-    
-    <!-- 读音显示区域 -->
-    <block wx:if="{{wordList[currentIndex].pronunciations.length}}">
-      <!-- 多个读音时显示读音切换标签 -->
-      <view class="pronunciation-tabs" wx:if="{{wordList[currentIndex].pronunciations.length > 1}}">
-        <view 
-          wx:for="{{wordList[currentIndex].pronunciations}}" 
-          wx:key="index"
-          class="pronunciation-tab {{currentPronunciationIndex === index ? 'active' : ''}}"
-          data-index="{{index}}"
-          bindtap="onPronunciationTabChange">
-          <text>{{item.pronunciation}}</text>
-          <view class="tab-indicator" wx:if="{{currentPronunciationIndex === index}}"></view>
+    <!-- 词条展示卡片 -->
+    <view class="word-card">
+      <!-- 词条大标题区域（包含导航按钮） -->
+      <view class="word-title-area">
+        <!-- 左侧导航按钮 -->
+        <view class="nav-button prev-btn {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="{{currentIndex > 0 ? 'goToPrevWord' : ''}}">
+          <view class="prev-icon"></view>
+        </view>
+        
+        <!-- 词条大标题 -->
+        <view class="word-title-container">
+          <view class="word-title">{{wordList[currentIndex].word}}</view>
+        </view>
+        
+        <!-- 右侧导航按钮 -->
+        <view class="nav-button next-btn {{currentIndex === wordList.length - 1 ? 'disabled' : ''}}" bindtap="{{currentIndex < wordList.length - 1 ? 'goToNextWord' : ''}}">
+          <view class="next-icon"></view>
         </view>
       </view>
       
-      <!-- 单个读音时直接显示 -->
-      <view class="pronunciation-container" wx:elif="{{wordList[currentIndex].pronunciations[0].pronunciation}}">
-        <text class="pronunciation-text">{{wordList[currentIndex].pronunciations[0].pronunciation}}</text>
-      </view>
-    </block>
+      <!-- 读音显示区域 -->
+      <block wx:if="{{wordList[currentIndex].pronunciations.length}}">
+        <!-- 多个读音时显示读音切换标签 -->
+        <view class="pronunciation-tabs" wx:if="{{wordList[currentIndex].pronunciations.length > 1}}">
+          <view 
+            wx:for="{{wordList[currentIndex].pronunciations}}" 
+            wx:key="index"
+            class="pronunciation-tab {{currentPronunciationIndex === index ? 'active' : ''}}"
+            data-index="{{index}}"
+            bindtap="onPronunciationTabChange">
+            <text>{{item.pronunciation}}</text>
+            <view class="tab-indicator" wx:if="{{currentPronunciationIndex === index}}"></view>
+          </view>
+        </view>
+        
+        <!-- 单个读音时直接显示 -->
+        <view class="pronunciation-container" wx:elif="{{wordList[currentIndex].pronunciations[0].pronunciation}}">
+          <text class="pronunciation-text">{{wordList[currentIndex].pronunciations[0].pronunciation}}</text>
+        </view>
+      </block>
+    </view>
 
     <!-- 用法标签栏 - 多个用法时显示为分段控件 -->
     <view class="usage-tabs-container" wx:if="{{wordList[currentIndex].pronunciations[currentPronunciationIndex].usages.length > 1}}">
@@ -116,11 +120,11 @@
         </view>
       </view>
     </view>
-
-    <!-- 操作按钮 -->
-    <view class="action-buttons">
-      <button class="action-button review-button" bindtap="markForReview">需要复习</button>
-      <button class="action-button learned-button" bindtap="markAsLearned">已掌握</button>
-    </view>
+  </view>
+  
+  <!-- 操作按钮 - 悬浮在底部 -->
+  <view class="fixed-action-buttons">
+    <button class="action-button review-button" bindtap="markForReview">需要复习</button>
+    <button class="action-button learned-button" bindtap="markAsLearned">已掌握</button>
   </view>
 </view>

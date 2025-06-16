@@ -113,14 +113,14 @@ Page({
     // 使用Promise.all并行获取各个分类的数据
     Promise.all(categories.map(category => {
       return new Promise((resolve) => {
-        wx.cloud.callFunction({
-          name: 'getXushiciData',
-          data: {
+    wx.cloud.callFunction({
+      name: 'getXushiciData',
+      data: {
             type: 'getCategoryInfo',
             category: category.type
-          }
-        })
-        .then(res => {
+      }
+    })
+    .then(res => {
           if (res.result && res.result.success && res.result.total) {
             console.log(`分类 ${category.name} 词条数: ${res.result.total}`);
             resolve({ ...category, count: res.result.total });
@@ -137,12 +137,12 @@ Page({
     }))
     .then(results => {
       console.log('所有分类数量获取完成:', results);
-      this.setData({
+        this.setData({
         categories: results,
         isLoading: false
       }, () => {
         console.log('分类数据已设置到页面:', this.data.categories);
-      });
+        });
     })
     .catch(err => {
       console.error('获取分类数量出错:', err);

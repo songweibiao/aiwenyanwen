@@ -29,6 +29,14 @@
 
     <!-- 词条展示卡片 -->
     <view class="word-card">
+      <!-- 学习状态指示器 - 右上角位置 -->
+      <view class="learning-status-badge {{currentWordStatus}}">
+        <text wx:if="{{currentWordStatus === 'learned'}}">已掌握</text>
+        <text wx:elif="{{currentWordStatus === 'review'}}">待复习</text>
+        <text wx:elif="{{currentWordStatus === 'learning'}}">学习中</text>
+        <text wx:else>未学习</text>
+      </view>
+      
       <!-- 词条大标题区域（包含导航按钮） -->
       <view class="word-title-area">
         <!-- 左侧导航按钮 -->
@@ -125,7 +133,18 @@
   <!-- 操作按钮 - 悬浮在底部 -->
   <view class="fixed-action-buttons" wx:if="{{!(!loading && loaded && !wordList.length)}}">
     
-    <button class="action-button learned-button" bindtap="markAsLearned">已掌握</button>
-    <button class="action-button review-button" bindtap="markForReview">待复习</button>
+    <button class="action-button learned-button {{currentWordStatus === 'learned' ? 'disabled' : ''}}" bindtap="{{currentWordStatus === 'learned' ? '' : 'markAsLearned'}}">已掌握</button>
+    <button class="action-button review-button {{currentWordStatus === 'review' ? 'disabled' : ''}}" bindtap="{{currentWordStatus === 'review' ? '' : 'markForReview'}}">待复习</button>
+  </view>
+
+  <!-- 新增：反馈提示覆盖层 -->
+  <view class="feedback-overlay {{showFeedback ? 'show' : ''}}" bindtap="hideFeedbackAndGoNext">
+    <view class="feedback-icon {{feedbackType}} {{showFeedback ? 'animate' : ''}}">
+      <view class="feedback-icon-inner"></view>
+    </view>
+    <view class="feedback-text {{feedbackType}}">
+      {{feedbackType === 'learned' ? '已掌握' : '已添加到复习列表'}}
+    </view>
+    <view class="feedback-hint">即将进入下一个词条...</view>
   </view>
 </view>

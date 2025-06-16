@@ -21,9 +21,16 @@ function decodeIfNeeded(str) {
 
 exports.main = async (event, context) => {
   console.log('【云函数参数】', event);
-  const { userId, wordId, collection, status } = event
+  const { userId, wordId, collection, status, action } = event
   const now = new Date()
   
+  // 增加action参数，区分更新和获取操作
+  // action = 'get' 时获取进度，默认为更新操作
+  if (action === 'get') {
+    return await getUserProgress(userId, collection);
+  }
+  
+  // 更新操作需要检查必要参数
   if (!userId || !wordId || !status) {
     console.error('【参数不完整】', { userId, wordId, collection, status });
     return { success: false, error: '参数不完整' }
@@ -65,5 +72,40 @@ exports.main = async (event, context) => {
   } catch (err) {
     console.error('【云函数执行异常】', err);
     return { success: false, error: err.message || err }
+  }
+}
+
+// 获取用户学习进度的函数
+async function getUserProgress(userId, collection) {
+  if (!userId) {
+    return { success: false, error: '用户ID不能为空' };
+  }
+  
+  try {
+    // 构建查询条件
+    const query = { userId };
+    
+    // 如果指定了合集，添加合集过滤条件
+    if (collection) {
+      const decodedCollection = decodeIfNeeded(collection);
+      query.collection = decodedCollection;
+    }
+    
+    console.log('【查询条件】', query);
+    
+    // 执行查询
+    const result = await db.collection('user_word_progress')
+      .where(query)
+      .get();
+    
+    console.log('【查询结果】', result);
+    
+    return {
+      success: true,
+      data: result.data || []
+    };
+  } catch (err) {
+    console.error('【获取用户进度异常】', err);
+    return { success: false, error: err.message || err };
   }
 } 

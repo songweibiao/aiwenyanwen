@@ -1,37 +1,45 @@
 <view class="container">
-  <!-- 搜索框 -->
-  <view class="search-box">
-    <input 
-      class="search-input" 
-      placeholder="搜索例词..." 
-      value="{{searchKeyword}}"
-      bindinput="onSearchInput"
-      confirm-type="search"
-      bindconfirm="onSearchConfirm"
-    />
-    <view class="search-btn" bindtap="onSearchConfirm">
-      <view class="search-icon"></view>
+  <!-- 固定顶部区域 -->
+  <view class="fixed-header">
+    <!-- 搜索框 -->
+    <view class="search-box">
+      <view class="search-input-container">
+        <input 
+          class="search-input" 
+          placeholder="搜索例词..." 
+          value="{{searchKeyword}}"
+          bindinput="onSearchInput"
+          confirm-type="search"
+          bindconfirm="onSearchConfirm"
+        />
+        <view class="clear-btn" bindtap="clearSearch" wx:if="{{searchKeyword}}">
+          <view class="clear-icon"></view>
+        </view>
+      </view>
+      <view class="search-btn" bindtap="onSearchConfirm">
+        <view class="search-icon"></view>
+      </view>
     </view>
-  </view>
 
-  <!-- 顶部状态切换栏 -->
-  <view class="status-tabs">
-    <view class="status-tab {{currentStatus === 'all' ? 'active' : ''}}" data-status="all" bindtap="switchStatus">
-      全部 ({{stats.total || 0}})
-    </view>
-    <view class="status-tab {{currentStatus === 'unlearned' ? 'active' : ''}}" data-status="unlearned" bindtap="switchStatus">
-      未学习 ({{stats.unlearned || 0}})
-    </view>
-    <view class="status-tab {{currentStatus === 'learning' ? 'active' : ''}}" data-status="learning" bindtap="switchStatus">
-      已浏览 ({{stats.learning || 0}})
-    </view>
-    <view class="status-tab {{currentStatus === 'learned' ? 'active' : ''}}" data-status="learned" bindtap="switchStatus">
-      已掌握 ({{stats.learned || 0}})
-    </view>
-    <view class="status-tab {{currentStatus === 'review' ? 'active' : ''}}" data-status="review" bindtap="switchStatus">
-      需复习 ({{stats.review || 0}})
+    <!-- 顶部状态切换栏 -->
+    <view class="status-tabs">
+      <view class="status-tab {{currentStatus === 'unlearned' ? 'active' : ''}}" data-status="unlearned" bindtap="switchStatus">
+        未学习 ({{stats.unlearned || 0}})
+      </view>
+      <view class="status-tab {{currentStatus === 'learning' ? 'active' : ''}}" data-status="learning" bindtap="switchStatus">
+        已浏览 ({{stats.learning || 0}})
+      </view>
+      <view class="status-tab {{currentStatus === 'learned' ? 'active' : ''}}" data-status="learned" bindtap="switchStatus">
+        已掌握 ({{stats.learned || 0}})
+      </view>
+      <view class="status-tab {{currentStatus === 'review' ? 'active' : ''}}" data-status="review" bindtap="switchStatus">
+        需复习 ({{stats.review || 0}})
+      </view>
     </view>
   </view>
+  
+  <!-- 内容区域 -->
+  <view class="content-area">
 
   <!-- 加载状态 -->
   <view class="loading" wx:if="{{loading}}">
@@ -59,7 +67,9 @@
           data-word-id="{{item.wordId}}"
           data-category="{{category}}"
           bindtap="goToWordDetail">
-      <text class="word-text">{{item.word}}</text>
+      <view class="word-item-inner">
+        <text class="word-text">{{item.word}}</text>
+      </view>
       <view class="word-status-icon" wx:if="{{getWordStatus(item) !== 'unlearned'}}">
         <view class="status-dot {{getWordStatus(item)}}"></view>
       </view>
@@ -67,4 +77,5 @@
   </view>
 
   <!-- 已经显示全部数据，不需要加载更多按钮 -->
+  </view>
 </view> 

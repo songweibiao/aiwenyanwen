@@ -17,7 +17,7 @@ Page({
     userProgress: {},
     
     // 当前状态筛选
-    currentStatus: 'all',
+    currentStatus: 'unlearned',
     
     // 搜索相关
     searchKeyword: '',
@@ -41,8 +41,21 @@ Page({
     
     // 设置页面标题
     if (category) {
+      // 防止中文乱码问题
+      let title;
+      try {
+        // 如果是编码的中文，则进行解码
+        if (/%[0-9A-F]{2}/.test(category)) {
+          title = decodeURIComponent(category);
+        } else {
+          title = category;
+        }
+      } catch (e) {
+        title = category;
+      }
+      
       wx.setNavigationBarTitle({
-        title: category
+        title: title
       });
     }
     
@@ -62,9 +75,55 @@ Page({
   // 加载用户学习进度
   loadUserProgress: function() {
     return new Promise((resolve) => {
-      const progress = wx.getStorageSync('wordLearningProgress') || {};
-      this.setData({ userProgress: progress }, () => {
-        resolve();
+      // 从云端获取用户学习进度
+      const userId = wx.getStorageSync('userInfo')?.openid || getApp().globalData?.openid;
+      if (!userId) {
+        console.warn('未获取到用户openid，无法获取云端进度');
+        this.setData({ userProgress: {} }, () => {
+          resolve();
+        });
+        return;
+      }
+      
+      // 调用云函数获取用户词条学习进度
+      wx.cloud.callFunction({
+        name: 'updateUserWordProgress',
+        data: {
+          userId,
+          collection: this.data.category, // 可选参数，按合集过滤
+          action: 'get' // 指定为获取操作
+        },
+        success: res => {
+          console.log('获取用户学习进度成功:', res);
+          if (res.result && res.result.success) {
+            // 将云端数据转换为本地格式
+            const progressList = res.result.data || [];
+            const progress = {};
+            
+            progressList.forEach(item => {
+              progress[item.wordId] = {
+                status: item.status,
+                lastStudied: item.lastStudied,
+                collection: item.collection
+              };
+            });
+            
+            this.setData({ userProgress: progress }, () => {
+              resolve();
+            });
+          } else {
+            console.error('获取用户学习进度失败:', res.result);
+            this.setData({ userProgress: {} }, () => {
+              resolve();
+            });
+          }
+        },
+        fail: err => {
+          console.error('调用云函数获取用户学习进度失败:', err);
+          this.setData({ userProgress: {} }, () => {
+            resolve();
+          });
+        }
       });
     });
   },
@@ -278,6 +337,14 @@ Page({
     });
   },
   
+  // 页面显示时刷新数据
+  onShow: function() {
+    // 页面从学习页面返回时，刷新学习进度
+    this.loadUserProgress().then(() => {
+      this.loadWordList();
+    });
+  },
+  
   // 处理搜索输入
   onSearchInput: function(e) {
     this.setData({
@@ -312,5 +379,33 @@ Page({
     
     // 统计各状态数量
     this.calculateStats(searchedList);
+  },
+
+  // 清空搜索
+  clearSearch: function() {
+    // 清空搜索关键词
+    this.setData({
+      searchKeyword: ''
+    });
+    
+    // 重新筛选数据
+    const { allWordList } = this.data;
+    
+    if (!allWordList || allWordList.length === 0) {
+      return;
+    }
+    
+    // 根据当前状态筛选
+    const filteredList = this.filterWordsByStatus(allWordList, this.data.currentStatus);
+    
+    // 更新列表和统计数据
+    this.setData({
+      wordList: filteredList
+    });
+    
+    // 统计各状态数量
+    this.calculateStats(allWordList);
+    
+    console.log('已清空搜索');
   }
 }); 

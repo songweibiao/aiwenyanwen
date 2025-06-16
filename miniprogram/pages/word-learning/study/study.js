@@ -30,12 +30,19 @@ Page({
       toReview: 0,
       remaining: 0
     },
-    showMeaning: false,
     userProgress: {},
     error: null, // 添加错误信息字段
     categoryInfo: null, // 添加分类信息字段
     loaded: false,
     isProcessing: false,
+    
+    // 新增：反馈状态
+    showFeedback: false,
+    feedbackType: '', // 'learned' 或 'review'
+    feedbackTimeout: null,
+    
+    // 新增：当前词条状态
+    currentWordStatus: 'loading', // 'unlearned', 'learning', 'learned', 'review'
   },
 
   onLoad: function (options) {
@@ -59,7 +66,10 @@ Page({
     
     // 从本地存储获取学习记录
     const history = wx.getStorageSync('wordLearnHistory') || [];
-    this.setData({ learnHistory: history });
+    this.setData({ 
+      learnHistory: history,
+      currentWordStatus: 'loading' // 设置初始状态为加载中
+    });
     
     // 计算当前学习时间
     this.calculateStudyTime();
@@ -112,7 +122,7 @@ Page({
 
     // 只在没有wordId参数时加载唯一词条
     if (!wordId) {
-      this.loadUniqueWordsByCategory(category || examType);
+    this.loadUniqueWordsByCategory(category || examType);
     }
     
     // 确保计数器显示正确
@@ -235,13 +245,93 @@ Page({
   },
 
   // 更新词条计数器显示
-  updateWordCounter: function() {
+  updateWordCounter: function(autoUpdateStatus = true) {
     const { currentIndex, wordList } = this.data;
     if (wordList && wordList.length > 0) {
       this.setData({
         wordCounter: `${currentIndex + 1}/${wordList.length}`
       });
+      
+      if (autoUpdateStatus) {
+        this.checkCurrentWordStatus();
+      }
     }
+  },
+
+  // 获取当前词条的学习状态
+  checkCurrentWordStatus: function() {
+    if (!this.data.currentWord) return;
+    
+    // 获取当前词条ID
+    const wordId = this.data.currentWord.wordId || 
+                  this.data.currentWord.word_id || 
+                  this.data.currentWord['例词id'] || 
+                  this.data.currentWord._id || '';
+    
+    if (!wordId) {
+      console.error('无法获取有效的wordId，无法检查学习状态');
+      return;
+    }
+    
+    // 获取用户ID
+    const userId = wx.getStorageSync('userInfo')?.openid || app.globalData?.openid;
+    if (!userId) {
+      console.warn('未获取到用户openid，无法检查学习状态');
+      return;
+    }
+
+    // 先从本地缓存获取状态
+    const cachedProgress = wx.getStorageSync('wordProgressCache') || {};
+    if (cachedProgress[wordId]) {
+      console.log('从本地缓存获取词条状态:', cachedProgress[wordId]);
+      this.setData({
+        currentWordStatus: cachedProgress[wordId]
+      });
+    }
+    
+    // 无论是否有缓存，都从云端获取最新状态
+    wx.cloud.callFunction({
+      name: 'updateUserWordProgress',
+      data: {
+        userId,
+        action: 'get' // 指定为获取操作
+      },
+      success: res => {
+        console.log('获取词条学习状态成功', res);
+        if (res.result && res.result.success && res.result.data) {
+          // 查找当前词条的进度记录
+          const wordProgress = res.result.data.find(item => item.wordId === wordId);
+          
+          // 更新本地缓存
+          const newCache = {...cachedProgress};
+          
+          if (wordProgress) {
+            // 更新当前词条状态
+            this.setData({
+              currentWordStatus: wordProgress.status
+            });
+            console.log('当前词条状态:', wordProgress.status);
+            
+            // 更新缓存
+            newCache[wordId] = wordProgress.status;
+            wx.setStorageSync('wordProgressCache', newCache);
+          } else {
+            // 没有找到进度记录，直接设置为学习中状态
+            this.setData({
+              currentWordStatus: 'learning'
+            });
+            console.log('当前词条状态: 未找到记录，直接设置为学习中');
+            
+            // 更新缓存
+            newCache[wordId] = 'learning';
+            wx.setStorageSync('wordProgressCache', newCache);
+            
+            // 同时更新到云端
+            this.updateLearningStatus();
+          }
+        }
+      }
+    });
   },
 
   // 前往下一个词条
@@ -267,17 +357,26 @@ Page({
         wordId: nextWord.wordId || nextWord.word_id || nextWord._id || nextWord.id || ''
       };
       
+      // 设置为加载状态
       this.setData({
-        currentIndex: newIndex,
-        currentWord: nextWordWithId,
-        currentPronunciationIndex: 0,
-        currentUsageIndex: 0,
-        currentExampleIndex: 0,
-        showMeaning: false,
-        isProcessing: false // 解锁操作
-      }, () => {
-        this.processExamplesHighlight();
-        this.updateWordCounter(); // 更新计数器显示
+        loading: true
+      });
+      
+      // 获取词条状态后再更新UI
+      this.getWordStatus(nextWordWithId.wordId, (status) => {
+        this.setData({
+          currentIndex: newIndex,
+          currentWord: nextWordWithId,
+          currentPronunciationIndex: 0,
+          currentUsageIndex: 0,
+          currentExampleIndex: 0,
+          currentWordStatus: status,
+          loading: false,
+          isProcessing: false // 解锁操作
+        }, () => {
+          this.processExamplesHighlight();
+          this.updateWordCounter(false); // 更新计数器显示但不更新状态
+        });
       });
     } else {
       console.log('已经是最后一个词条');
@@ -310,17 +409,26 @@ Page({
         wordId: prevWord.wordId || prevWord.word_id || prevWord._id || prevWord.id || ''
       };
       
+      // 设置为加载状态
       this.setData({
-        currentIndex: newIndex,
-        currentWord: prevWordWithId,
-        currentPronunciationIndex: 0,
-        currentUsageIndex: 0,
-        currentExampleIndex: 0,
-        showMeaning: false,
-        isProcessing: false // 解锁操作
-      }, () => {
-        this.processExamplesHighlight();
-        this.updateWordCounter(); // 更新计数器显示
+        loading: true
+      });
+      
+      // 获取词条状态后再更新UI
+      this.getWordStatus(prevWordWithId.wordId, (status) => {
+        this.setData({
+          currentIndex: newIndex,
+          currentWord: prevWordWithId,
+          currentPronunciationIndex: 0,
+          currentUsageIndex: 0,
+          currentExampleIndex: 0,
+          currentWordStatus: status,
+          loading: false,
+          isProcessing: false // 解锁操作
+        }, () => {
+          this.processExamplesHighlight();
+          this.updateWordCounter(false); // 更新计数器显示但不更新状态
+        });
       });
     } else {
       console.log('已经是第一个词条');
@@ -529,7 +637,7 @@ Page({
     })
     .catch(err => {
       console.error('获取所有词条失败:', err);
-      this.setData({
+      this.setData({ 
         loading: false,
         error: '获取词条数据失败: ' + (err.message || JSON.stringify(err))
       });
@@ -537,62 +645,58 @@ Page({
   },
 
   // 处理词条数据
-  processWordData: function(words) {
+  processWordData: function(wordList) {
     try {
-      // 处理词条数据，转换为页面需要的格式，兼容中英文字段
-      const processedWords = words.map(word => {
+      console.log('处理词条数据:', wordList.length);
+      
+      // 设置为加载状态
+      this.setData({ 
+        currentWordStatus: 'loading'
+      });
+      
+      // 处理每个词条的数据
+      const processedWords = wordList.map(word => {
         try {
           // 优先使用word_id作为唯一标识，确保wordId不为空
-          const wordId = word.word_id || word['例词id'] || word._id || '';
-          
-          // 确保collection字段存在
-          let collection = word['合集'] || word.collection || this.data.category || this.data.examType || '';
-          
-          if (!wordId) {
-            console.error('警告：检测到wordId为空的数据:', word);
-          }
-          
-          // 构建基本词条对象
           const processedWord = {
-            id: word._id || wordId || '',
-            wordId: wordId, // 明确设置wordId优先级
+            ...word,
+            wordId: word.word_id || word['例词id'] || word._id || word.id || '',
             word: word.word || word['例词'] || '',
-            pinyin: word.pronunciation || word['读音'] || '',
-            usageId: word.usage_id || word['用法id'] || '',
-            wordType: word.part_of_speech || word['词性'] || '',
             meaning: word.meaning || word['词义'] || '',
-            example: word.example_sentence || word['例句'] || '',
+            wordType: word.part_of_speech || word['词性'] || '',
+            pronunciation: word.pronunciation || word['读音'] || '',
+            example: word.example || word['例句'] || '',
+            translation: word.translation || word['译文'] || '',
             source: word.source || word['出处'] || '',
-            translation: word.explanation || word['释义'] || '',
-            collection: collection // 确保collection字段存在
+            collection: word.collection || word['合集'] || this.data.category || this.data.examType
           };
           
-          // 检查是否已有pronunciations字段
-          if (!word.pronunciations || !Array.isArray(word.pronunciations) || word.pronunciations.length === 0) {
-            // 创建默认的pronunciations结构
+          // 确保wordId字段不为空
+          if (!processedWord.wordId) {
+            console.warn('词条缺少ID字段，尝试使用其他字段作为ID:', processedWord);
+            processedWord.wordId = processedWord.word || `word_${Date.now()}`;
+          }
+          
+          // 确保有读音数据结构
+          if (!processedWord.pronunciations || !Array.isArray(processedWord.pronunciations) || processedWord.pronunciations.length === 0) {
+            // 创建默认的读音结构
             processedWord.pronunciations = [{
-              pronunciation: processedWord.pinyin,
+              pronunciation: processedWord.pronunciation,
+              pronunciation_id: `pron_0`,
               usages: [{
                 part_of_speech: processedWord.wordType,
                 meaning: processedWord.meaning,
-                usage_id: processedWord.usageId || 'default_usage',
+                usage_id: `usage_0_0`,
                 examples: [{
                   example_sentence: processedWord.example,
                   source: processedWord.source,
                   explanation: processedWord.translation,
-                  example_sentence_id: 'default_example'
+                  example_sentence_id: `example_0_0_0`,
+                  // 添加高亮处理后的例句
+                  highlightedSentence: this.highlightKeyword(processedWord.example, processedWord.word)
                 }]
               }]
             }];
-            
-            // 生成高亮处理后的例句
-            if (processedWord.pronunciations[0].usages[0].examples[0].example_sentence) {
-              processedWord.pronunciations[0].usages[0].examples[0].highlightedSentence = 
-                this.highlightKeyword(
-                  processedWord.pronunciations[0].usages[0].examples[0].example_sentence, 
-                  processedWord.word
-                );
-            }
           } else {
             // 已有pronunciations结构，保留原有结构
             processedWord.pronunciations = word.pronunciations;
@@ -649,19 +753,23 @@ Page({
         // 检查是否已收藏
         const isBookmarked = this.checkIfBookmarked(currentWord.wordId);
         
-        this.setData({
-          wordList: processedWords,
-          currentWord: currentWord,
-          currentIndex: 0,
-          isBookmarked: isBookmarked,
-          loading: false,
-          loaded: true,
-          error: null
-        }, () => {
-          // 处理例句高亮
-          this.processExamplesHighlight();
-          // 更新计数器显示
-          this.updateWordCounter();
+        // 获取当前词条的学习状态，然后再设置数据
+        this.getWordStatus(currentWord.wordId, (status) => {
+          this.setData({
+            wordList: processedWords,
+            currentWord: currentWord,
+            currentIndex: 0,
+            isBookmarked: isBookmarked,
+            loading: false,
+            loaded: true,
+            error: null,
+            currentWordStatus: status
+          }, () => {
+            // 处理例句高亮
+            this.processExamplesHighlight();
+            // 更新计数器显示，但不再自动更新学习状态
+            this.updateWordCounter(false);
+          });
         });
       } else {
         // 如果有多个词条，则设置整个列表，并显示当前索引的词条
@@ -671,19 +779,23 @@ Page({
         // 检查是否已收藏
         const isBookmarked = this.checkIfBookmarked(currentWord.wordId);
         
-        this.setData({
-          wordList: processedWords,
-          currentWord: currentWord,
-          currentIndex: currentIndex,
-          isBookmarked: isBookmarked,
-          loading: false,
-          loaded: true,
-          error: null
-        }, () => {
-          // 处理例句高亮
-          this.processExamplesHighlight();
-          // 更新计数器显示
-          this.updateWordCounter();
+        // 获取当前词条的学习状态，然后再设置数据
+        this.getWordStatus(currentWord.wordId, (status) => {
+          this.setData({
+            wordList: processedWords,
+            currentWord: currentWord,
+            currentIndex: currentIndex,
+            isBookmarked: isBookmarked,
+            loading: false,
+            loaded: true,
+            error: null,
+            currentWordStatus: status
+          }, () => {
+            // 处理例句高亮
+            this.processExamplesHighlight();
+            // 更新计数器显示，但不再自动更新学习状态
+            this.updateWordCounter(false);
+          });
         });
       }
     } catch (err) {
@@ -695,29 +807,236 @@ Page({
       });
     }
   },
-
-  // 显示释义
-  showMeaning: function() {
-    this.setData({ showMeaning: true });
+  
+  // 新增：获取词条状态的方法，使用回调返回结果
+  getWordStatus: function(wordId, callback) {
+    if (!wordId) {
+      console.error('无法获取有效的wordId，无法检查学习状态');
+      callback('learning');
+      return;
+    }
     
-    // 更新学习进度
-    if (this.data.currentWord) {
-      const wordId = this.data.currentWord.wordId;
-      const progress = this.data.userProgress;
+    // 获取用户ID
+    const userId = wx.getStorageSync('userInfo')?.openid || app.globalData?.openid;
+    if (!userId) {
+      console.warn('未获取到用户openid，无法检查学习状态');
+      callback('learning');
+      return;
+    }
+
+    // 先从wordList中查找状态
+    if (this.data.wordList && this.data.wordList.length > 0) {
+      const wordInList = this.data.wordList.find(item => item.wordId === wordId);
+      if (wordInList && wordInList.status) {
+        console.log('从wordList获取词条状态:', wordInList.status);
+        callback(wordInList.status);
+        return;
+      }
+    }
+
+    // 再从本地缓存获取状态
+    const cachedProgress = wx.getStorageSync('wordProgressCache') || {};
+    if (cachedProgress[wordId]) {
+      console.log('从本地缓存获取词条状态:', cachedProgress[wordId]);
+      // 有缓存时，先返回缓存的状态，但仍然请求最新数据
+      const cachedStatus = cachedProgress[wordId];
       
-      if (!progress[wordId]) {
-        progress[wordId] = {
-          status: 'learning',
-          lastStudied: new Date().getTime(),
-          studyCount: 1
-        };
-      } else {
-        progress[wordId].lastStudied = new Date().getTime();
-        progress[wordId].studyCount = (progress[wordId].studyCount || 0) + 1;
+      // 从云端获取最新状态
+      wx.cloud.callFunction({
+        name: 'updateUserWordProgress',
+        data: {
+          userId,
+          action: 'get' // 指定为获取操作
+        },
+        success: res => {
+          console.log('获取词条学习状态成功', res);
+          if (res.result && res.result.success && res.result.data) {
+            // 查找当前词条的进度记录
+            const wordProgress = res.result.data.find(item => item.wordId === wordId);
+            
+            // 更新本地缓存
+            const newCache = {...cachedProgress};
+            
+            if (wordProgress) {
+              // 更新缓存
+              newCache[wordId] = wordProgress.status;
+              wx.setStorageSync('wordProgressCache', newCache);
+              
+              // 更新wordList中的状态
+              if (this.data.wordList && this.data.wordList.length > 0) {
+                const updatedWordList = this.data.wordList.map(item => {
+                  if (item.wordId === wordId) {
+                    return { ...item, status: wordProgress.status };
+                  }
+                  return item;
+                });
+                this.setData({ wordList: updatedWordList });
+              }
+            } else {
+              // 没有找到记录，设置为学习中状态并保存
+              console.log('没有找到词条进度记录，自动设置为学习中状态');
+              this.setLearningStatusDirectly(userId, wordId);
+            }
+          }
+        }
+      });
+      
+      // 立即返回缓存的状态
+      callback(cachedStatus);
+      return;
+    }
+    
+    // 没有缓存时，从云端获取状态
+    wx.cloud.callFunction({
+      name: 'updateUserWordProgress',
+      data: {
+        userId,
+        action: 'get' // 指定为获取操作
+      },
+      success: res => {
+        console.log('获取词条学习状态成功', res);
+        if (res.result && res.result.success && res.result.data) {
+          // 查找当前词条的进度记录
+          const wordProgress = res.result.data.find(item => item.wordId === wordId);
+          
+          // 更新本地缓存
+          const newCache = {...cachedProgress};
+          
+          if (wordProgress) {
+            // 更新缓存
+            newCache[wordId] = wordProgress.status;
+            wx.setStorageSync('wordProgressCache', newCache);
+            
+            // 更新wordList中的状态
+            if (this.data.wordList && this.data.wordList.length > 0) {
+              const updatedWordList = this.data.wordList.map(item => {
+                if (item.wordId === wordId) {
+                  return { ...item, status: wordProgress.status };
+                }
+                return item;
+              });
+              this.setData({ wordList: updatedWordList });
+            }
+            
+            // 返回状态
+            callback(wordProgress.status);
+          } else {
+            // 没有找到进度记录，设置为学习中状态并保存
+            console.log('没有找到词条进度记录，自动设置为学习中状态');
+            this.setLearningStatusDirectly(userId, wordId);
+            
+            // 更新wordList中的状态
+            if (this.data.wordList && this.data.wordList.length > 0) {
+              const updatedWordList = this.data.wordList.map(item => {
+                if (item.wordId === wordId) {
+                  return { ...item, status: 'learning' };
+                }
+                return item;
+              });
+              this.setData({ wordList: updatedWordList });
+            }
+            
+            // 直接返回"学习中"状态
+            callback('learning');
+          }
+        } else {
+          // 获取失败，设置为学习中状态
+          console.log('获取词条状态失败，设置为学习中状态');
+          this.setLearningStatusDirectly(userId, wordId);
+          callback('learning');
+        }
+      },
+      fail: err => {
+        console.error('获取词条学习状态失败', err);
+        // 失败时也设置为学习中状态
+        this.setLearningStatusDirectly(userId, wordId);
+        callback('learning');
+      }
+    });
+  },
+  
+  // 新增：直接设置为学习中状态的辅助方法
+  setLearningStatusDirectly: function(userId, wordId) {
+    if (!userId || !wordId) {
+      console.error('无法设置学习状态，缺少用户ID或词条ID');
+      return;
+    }
+    
+    // 获取当前词条的合集/分类
+    let collection = '';
+    if (this.data.currentWord) {
+      if (this.data.currentWord.collection) {
+        collection = this.data.currentWord.collection;
+      } else if (this.data.category) {
+        collection = this.data.category;
+      } else if (this.data.examType) {
+        collection = this.data.examType;
+      }
+    }
+    
+    // 调用云函数更新学习状态
+    wx.cloud.callFunction({
+      name: 'updateUserWordProgress',
+      data: {
+        userId,
+        wordId,
+        collection,
+        status: 'learning'
+      },
+      success: res => {
+        console.log('学习中状态同步成功', res);
+        
+        // 更新本地缓存
+        const cachedProgress = wx.getStorageSync('wordProgressCache') || {};
+        cachedProgress[wordId] = 'learning';
+        wx.setStorageSync('wordProgressCache', cachedProgress);
+      }
+    });
+  },
+
+  // 更新学习进度为"学习中"状态
+  updateLearningStatus: function() {
+    if (this.data.currentWord) {
+      const wordId = this.data.currentWord.wordId || 
+                    this.data.currentWord.word_id || 
+                    this.data.currentWord['例词id'] || 
+                    this.data.currentWord._id || '';
+      
+      if (!wordId) {
+        console.error('无法获取有效的wordId，无法更新学习状态');
+        return;
       }
       
-      this.setData({ userProgress: progress });
-      this.saveUserProgress();
+      // 获取当前词条的合集/分类
+      let collection = '';
+      if (this.data.currentWord.collection) {
+        collection = this.data.currentWord.collection;
+      } else if (this.data.category) {
+        collection = this.data.category;
+      } else if (this.data.examType) {
+        collection = this.data.examType;
+      }
+      
+      // 直接同步到云端
+      const userId = wx.getStorageSync('userInfo')?.openid || app.globalData?.openid;
+      if (!userId) {
+        console.warn('未获取到用户openid，无法同步云端进度');
+        return;
+      }
+      
+      // 调用云函数更新学习状态
+      wx.cloud.callFunction({
+        name: 'updateUserWordProgress',
+        data: {
+          userId,
+          wordId,
+          collection,
+          status: 'learning'
+        },
+        success: res => {
+          console.log('学习中状态同步成功', res);
+        }
+      });
     }
   },
 
@@ -775,22 +1094,51 @@ Page({
         
         console.log('当前词条合集:', collection);
         
-        const progress = this.data.userProgress;
+        // 显示反馈提示
+        this.setData({
+          showFeedback: true,
+          feedbackType: 'learned'
+        });
         
-        progress[wordId] = {
-          ...progress[wordId],
-          status: 'learned',
-          lastStudied: new Date().getTime(),
-          collection: collection
-        };
-      
-        this.setData({ userProgress: progress });
-        this.saveUserProgress();
-        this.saveRecentLearnHistory(wordId, 'learned', collection);
-        this.updateUserWordProgressCloud(wordId, collection, 'learned');
-        
-        // 调用goToNextWord函数跳转到下一个词条
-        this.goToNextWord();
+        // 直接同步到云端，不保存本地数据
+        wx.cloud.callFunction({
+          name: 'updateUserWordProgress',
+          data: {
+            userId: wx.getStorageSync('userInfo')?.openid || app.globalData?.openid,
+            wordId,
+            collection,
+            status: 'learned'
+          },
+          success: res => {
+            console.log('云端进度同步成功', res);
+            
+            // 更新当前词条状态
+            this.setData({
+              currentWordStatus: 'learned'
+            });
+            
+            // 更新本地缓存
+            const cachedProgress = wx.getStorageSync('wordProgressCache') || {};
+            cachedProgress[wordId] = 'learned';
+            wx.setStorageSync('wordProgressCache', cachedProgress);
+            
+            // 更新wordList中的状态，确保翻页后状态一致
+            const updatedWordList = this.data.wordList.map(item => {
+              if (item.wordId === wordId) {
+                return { ...item, status: 'learned' };
+              }
+              return item;
+            });
+            this.setData({ wordList: updatedWordList });
+            
+            // 设置定时器，延迟跳转到下一个词条
+            this.setFeedbackTimer();
+          },
+          complete: () => {
+            // 确保处理锁解除
+            this.setData({ isProcessing: false });
+          }
+        });
       });
     } else {
       this.setData({ isProcessing: false });
@@ -856,22 +1204,51 @@ Page({
         
         console.log('当前词条合集:', collection);
         
-        const progress = this.data.userProgress;
+        // 显示反馈提示
+        this.setData({
+          showFeedback: true,
+          feedbackType: 'review'
+        });
         
-        progress[wordId] = {
-          ...progress[wordId],
-          status: 'review',
-          lastStudied: new Date().getTime(),
-          collection: collection
-        };
-      
-        this.setData({ userProgress: progress });
-        this.saveUserProgress();
-        this.saveRecentLearnHistory(wordId, 'review', collection);
-        this.updateUserWordProgressCloud(wordId, collection, 'review');
-        
-        // 调用goToNextWord函数跳转到下一个词条
-        this.goToNextWord();
+        // 直接同步到云端，不保存本地数据
+        wx.cloud.callFunction({
+          name: 'updateUserWordProgress',
+          data: {
+            userId: wx.getStorageSync('userInfo')?.openid || app.globalData?.openid,
+            wordId,
+            collection,
+            status: 'review'
+          },
+          success: res => {
+            console.log('云端进度同步成功', res);
+            
+            // 更新当前词条状态
+            this.setData({
+              currentWordStatus: 'review'
+            });
+            
+            // 更新本地缓存
+            const cachedProgress = wx.getStorageSync('wordProgressCache') || {};
+            cachedProgress[wordId] = 'review';
+            wx.setStorageSync('wordProgressCache', cachedProgress);
+            
+            // 更新wordList中的状态，确保翻页后状态一致
+            const updatedWordList = this.data.wordList.map(item => {
+              if (item.wordId === wordId) {
+                return { ...item, status: 'review' };
+              }
+              return item;
+            });
+            this.setData({ wordList: updatedWordList });
+            
+            // 设置定时器，延迟跳转到下一个词条
+            this.setFeedbackTimer();
+          },
+          complete: () => {
+            // 确保处理锁解除
+            this.setData({ isProcessing: false });
+          }
+        });
       });
     } else {
       this.setData({ isProcessing: false });
@@ -882,24 +1259,41 @@ Page({
       });
     }
   },
-
-  // 保存最近学习记录，带合集字段
-  saveRecentLearnHistory: function(wordId, status, collection) {
-    const word = this.data.currentWord;
-    if (!word) return;
-    const record = {
-      wordId: wordId,
-      word: word.word,
-      status: status,
-      learnTime: new Date().toISOString(),
-      collection: collection
-    };
-    let history = wx.getStorageSync('wordLearnHistory') || [];
-    // 按 wordId+collection 去重
-    history = history.filter(item => !(item.wordId === wordId && item.collection === collection));
-    history.unshift(record);
-    wx.setStorageSync('wordLearnHistory', history);
+  
+  // 设置反馈提示定时器
+  setFeedbackTimer: function() {
+    // 清除已有的定时器
+    if (this.data.feedbackTimeout) {
+      clearTimeout(this.data.feedbackTimeout);
+    }
+    
+    // 设置新的定时器
+    const timeout = setTimeout(() => {
+      this.hideFeedbackAndGoNext();
+    }, 1500); // 1.5秒后自动关闭提示并前进
+    
+    this.setData({ feedbackTimeout: timeout });
   },
+
+  // 隐藏反馈提示并前进到下一个词条
+  hideFeedbackAndGoNext: function() {
+    // 清除定时器
+    if (this.data.feedbackTimeout) {
+      clearTimeout(this.data.feedbackTimeout);
+    }
+    
+    // 隐藏反馈提示
+      this.setData({
+      showFeedback: false
+      }, () => {
+      // 等待动画结束后再跳转
+      setTimeout(() => {
+        this.goToNextWord();
+      }, 300);
+    });
+  },
+
+  // 由于不再保存本地数据，此函数已删除
 
   // 返回首页
   goBack: function() {
@@ -954,12 +1348,12 @@ Page({
       
       // 继续尝试使用字段查询
       // 查询数据库 - 优先使用word_id字段查询
-      db.collection('xushici').where({
+    db.collection('xushici').where({
         word_id: wordId
-      }).get().then(res => {
+    }).get().then(res => {
         console.log('通过word_id查询结果:', res);
         
-        if (res.data && res.data.length > 0) {
+      if (res.data && res.data.length > 0) {
           console.log('通过word_id找到词条:', res.data[0]);
           
           // 获取词条所属的分类
@@ -972,9 +1366,9 @@ Page({
           } else {
             // 如果没有找到分类，只处理当前词条
             console.log('未找到词条所属分类，只处理当前词条');
-            this.processWordData(res.data);
+        this.processWordData(res.data);
           }
-        } else {
+      } else {
           console.log('通过word_id未找到词条，尝试使用例词id查询:', wordId);
           
           // 尝试使用例词id字段查询
@@ -1036,14 +1430,14 @@ Page({
               error: `查询失败: ${err2.message || JSON.stringify(err2)}`,
               loaded: true
             });
-          });
-        }
-      }).catch(err => {
-        console.error('加载词条失败:', err);
-        wx.showToast({
-          title: '加载失败，请重试',
-          icon: 'none'
         });
+      }
+    }).catch(err => {
+      console.error('加载词条失败:', err);
+      wx.showToast({
+        title: '加载失败，请重试',
+        icon: 'none'
+      });
         this.setData({ 
           loading: false,
           error: `加载失败: ${err.message || JSON.stringify(err)}`,
@@ -1668,105 +2062,7 @@ Page({
     });
   },
 
-  // 云端同步用户学习进度
-  updateUserWordProgressCloud: function(wordId, collection, status) {
-    if (!wordId) {
-      // 尝试从currentWord获取wordId
-      const { currentWord, currentIndex, wordList } = this.data;
-      console.error('wordId不能为空，尝试从currentWord获取');
-      
-      // 从wordList的当前索引获取
-      let wordFromList = null;
-      if (wordList && wordList.length > 0 && currentIndex >= 0 && currentIndex < wordList.length) {
-        wordFromList = wordList[currentIndex];
-      }
-      
-      // 尝试获取wordId
-      let retrievedWordId = '';
-      
-      if (currentWord && currentWord.wordId) {
-        retrievedWordId = currentWord.wordId;
-      } else if (currentWord && (currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id)) {
-        retrievedWordId = currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id;
-      } else if (wordFromList && wordFromList.wordId) {
-        retrievedWordId = wordFromList.wordId;
-      } else if (wordFromList && (wordFromList.word_id || wordFromList['例词id'] || wordFromList.id)) {
-        retrievedWordId = wordFromList.word_id || wordFromList['例词id'] || wordFromList.id;
-      }
-      
-      if (!retrievedWordId) {
-        console.error('无法获取到有效的wordId，无法同步云端进度');
-        return;
-      }
-      
-      wordId = retrievedWordId;
-    }
-    
-    // 确保集合名称是有效的字符串
-    if (!collection) {
-      const { currentWord } = this.data;
-      if (currentWord && currentWord.collection) {
-        collection = currentWord.collection;
-      } else if (this.data.category) {
-        collection = this.data.category;
-      } else if (this.data.examType) {
-        collection = this.data.examType;
-      } else {
-        collection = '未分类';
-      }
-    }
-    
-    // 检查集合名称是否已经是URL编码格式，如果是则解码
-    if (/%[0-9A-F]{2}/.test(collection)) {
-      try {
-        collection = decodeURIComponent(collection);
-        console.log('集合名称已解码:', collection);
-      } catch (e) {
-        console.error('解码集合名称失败:', e);
-      }
-    }
-    
-    console.log('======= 同步云端进度 =======');
-    console.log('wordId:', wordId);
-    console.log('collection:', collection);
-    console.log('status:', status);
-    
-    let userId = '';
-    // 优先从 userInfo 获取 openid
-    const userInfo = wx.getStorageSync('userInfo');
-    if (userInfo && userInfo.openid) {
-      userId = userInfo.openid;
-    } else if (app.globalData && app.globalData.openid) {
-      userId = app.globalData.openid;
-    }
-    
-    if (!userId) {
-      console.warn('未获取到用户openid，无法同步云端进度');
-      return;
-    }
-    
-    // 添加防抖，防止短时间内重复调用
-    if (this.updateCloudTimer) clearTimeout(this.updateCloudTimer);
-    
-    this.updateCloudTimer = setTimeout(() => {
-      // 确保collection是原始字符串，不要进行URL编码
-      wx.cloud.callFunction({
-        name: 'updateUserWordProgress',
-        data: {
-          userId,
-          wordId,
-          collection, // 直接传递原始集合名称，云函数会处理解码
-          status
-        },
-        success: res => {
-          console.log('云端进度同步成功', res);
-        },
-        fail: err => {
-          console.error('云端进度同步失败', err);
-        }
-      });
-    }, 300); // 300ms防抖延迟
-  },
+    // 此函数已删除，改为直接调用云函数
 
   // 添加onShow函数，在页面显示时更新计数器
   onShow: function() {

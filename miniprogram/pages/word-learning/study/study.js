@@ -35,10 +35,14 @@ Page({
     error: null, // 添加错误信息字段
     categoryInfo: null, // 添加分类信息字段
     loaded: false,
+    isProcessing: false,
   },
 
   onLoad: function (options) {
     console.log('学习页面加载，参数:', options);
+    
+    // 初始化防抖计时器
+    this.updateCloudTimer = null;
     
     // 检查云环境是否正确初始化
     if (!wx.cloud) {
@@ -64,8 +68,9 @@ Page({
     let category = options.category || '';
     let examType = options.examType || '';
     let mode = options.mode || 'normal';
+    let wordId = options.wordId || '';
     
-    console.log('解析后的参数: 分类=', category, '考试类型=', examType, '模式=', mode);
+    console.log('解析后的参数: 分类=', category, '考试类型=', examType, '模式=', mode, '词条ID=', wordId);
     
     this.setData({
       category: category,
@@ -77,7 +82,14 @@ Page({
     // 获取用户学习进度
     this.loadUserProgress();
 
-    // 根据参数加载不同数据
+    // 优先处理wordId参数
+    if (wordId) {
+      console.log('根据词条ID加载:', wordId);
+      this.loadWordById(wordId);
+      return;
+    }
+
+    // 根据其他参数加载不同数据
     if (category) {
       // 分类学习模式
       this.loadWordsByCategory(category);
@@ -98,8 +110,13 @@ Page({
       this.loadAllWords();
     }
 
-    // 只加载唯一词条
-    this.loadUniqueWordsByCategory(category || examType);
+    // 只在没有wordId参数时加载唯一词条
+    if (!wordId) {
+      this.loadUniqueWordsByCategory(category || examType);
+    }
+    
+    // 确保计数器显示正确
+    this.updateWordCounter();
   },
 
   // 加载用户学习进度
@@ -136,24 +153,25 @@ Page({
       error: `正在加载分类: ${category}`
     });
 
-    // 先获取该分类的总数量和第一条数据
+    // 调用云函数获取该分类的所有词条
     wx.cloud.callFunction({
       name: 'getXushiciData',
       data: {
-        type: 'getCategoryInfo',
+        type: 'groupByWordId',
         category: category
       }
     })
     .then(res => {
-      console.log('获取分类信息成功:', res);
+      console.log('获取分类词条成功:', res);
       
       if (res.result && res.result.success) {
-        const totalCount = res.result.total || 0;
-        const firstItem = res.result.firstItem;
+        const wordList = res.result.data || [];
+        const totalCount = wordList.length;
         
-        if (totalCount > 0 && firstItem) {
+        if (totalCount > 0) {
           // 设置总数量和当前索引
           this.setData({
+            wordList: wordList,
             totalCount: totalCount,
             currentIndex: 0,
             // 保存分类信息，用于后续加载
@@ -166,81 +184,149 @@ Page({
           });
           
           // 处理第一条数据
-          this.processWordData([firstItem]);
+          this.processWordData(wordList);
+          
+          // 更新计数器显示
+          this.updateWordCounter();
         } else {
-          // 尝试加载默认数据
-          console.log('未找到该分类的词条，尝试加载默认数据');
-          this.loadAllWords();
+          // 无词条数据，显示错误
+          console.log('未找到该分类的词条');
+          this.setData({
+            loading: false,
+            error: `未找到分类 "${category}" 的词条数据`,
+            wordList: [],
+            totalCount: 0
+          });
+          wx.showToast({
+            title: '未找到词条数据',
+            icon: 'none'
+          });
         }
       } else {
-        // 显示错误信息，但同时尝试加载默认数据
+        // 显示错误信息
+        console.error('获取分类数据失败:', res.result);
         this.setData({ 
           loading: false,
-          error: `获取数据失败: ${res.result ? (res.result.error || '未知错误') : '返回结果格式错误'}`
+          error: `获取数据失败: ${res.result ? (res.result.error || '未知错误') : '返回结果格式错误'}`,
+          wordList: [],
+          totalCount: 0
         });
         
-        // 尝试加载默认数据
-        console.log('加载失败，尝试加载默认数据');
-        this.loadAllWords();
+        wx.showToast({
+          title: '获取数据失败',
+          icon: 'none'
+        });
       }
     })
     .catch(err => {
       console.error('云函数调用失败:', err);
       this.setData({
         loading: false,
-        error: '调用云函数失败: ' + (err.message || JSON.stringify(err))
+        error: '调用云函数失败: ' + (err.message || JSON.stringify(err)),
+        wordList: [],
+        totalCount: 0
       });
       
-      // 尝试加载默认数据
-      console.log('调用失败，尝试加载默认数据');
-      this.loadAllWords();
+      wx.showToast({
+        title: '数据加载失败',
+        icon: 'none'
+      });
     });
   },
 
-  // 加载指定索引的词条
-  loadWordByIndex: function(index) {
-    const categoryInfo = this.data.categoryInfo;
-    
-    if (!categoryInfo || !categoryInfo.category) {
-      console.error('没有分类信息，无法加载指定索引的词条');
-      return;
-    }
-    
-    // 设置加载状态
-    this.setData({
-      loading: true,
-      error: `正在加载第 ${index + 1}/${categoryInfo.totalCount} 条词条...`
-    });
-    
-    // 调用云函数获取指定索引的词条
-    wx.cloud.callFunction({
-      name: 'getXushiciData',
-      data: {
-        type: 'byIndex',
-        category: categoryInfo.category,
-        index: index
-      }
-    })
-    .then(res => {
-      console.log(`获取索引 ${index} 的词条成功:`, res);
-      
-      if (res.result && res.result.success && res.result.data) {
-        // 处理数据
-        this.processWordData([res.result.data]);
-      } else {
-        this.setData({
-          loading: false,
-          error: `获取词条失败: ${res.result ? (res.result.error || '未知错误') : '返回结果格式错误'}`
-        });
-      }
-    })
-    .catch(err => {
-      console.error(`获取索引 ${index} 的词条失败:`, err);
+  // 更新词条计数器显示
+  updateWordCounter: function() {
+    const { currentIndex, wordList } = this.data;
+    if (wordList && wordList.length > 0) {
       this.setData({
-        loading: false,
-        error: '获取词条失败: ' + (err.message || JSON.stringify(err))
+        wordCounter: `${currentIndex + 1}/${wordList.length}`
       });
-    });
+    }
+  },
+
+  // 前往下一个词条
+  goToNextWord: function() {
+    const { currentIndex, wordList } = this.data;
+    console.log('======= 切换到下一个词条 =======');
+    console.log('当前索引:', currentIndex, '总词条数:', wordList.length);
+    
+    if (currentIndex < wordList.length - 1) {
+      const newIndex = currentIndex + 1;
+      const nextWord = wordList[newIndex];
+      
+      // 确保nextWord有wordId属性
+      if (!nextWord.wordId && (nextWord.word_id || nextWord['例词id'] || nextWord._id)) {
+        nextWord.wordId = nextWord.word_id || nextWord['例词id'] || nextWord._id;
+      }
+      
+      console.log('新索引:', newIndex);
+      console.log('切换到词条:', nextWord.word);
+      
+      const nextWordWithId = {
+        ...nextWord,
+        wordId: nextWord.wordId || nextWord.word_id || nextWord._id || nextWord.id || ''
+      };
+      
+      this.setData({
+        currentIndex: newIndex,
+        currentWord: nextWordWithId,
+        currentPronunciationIndex: 0,
+        currentUsageIndex: 0,
+        currentExampleIndex: 0,
+        showMeaning: false,
+        isProcessing: false // 解锁操作
+      }, () => {
+        this.processExamplesHighlight();
+        this.updateWordCounter(); // 更新计数器显示
+      });
+    } else {
+      console.log('已经是最后一个词条');
+      wx.showToast({ title: '已完成所有词条学习', icon: 'success' });
+      setTimeout(() => { wx.navigateBack(); }, 1500);
+      this.setData({ isProcessing: false });
+    }
+  },
+
+  // 前往上一个词条
+  goToPrevWord: function() {
+    const { currentIndex, wordList } = this.data;
+    console.log('======= 切换到上一个词条 =======');
+    console.log('当前索引:', currentIndex, '总词条数:', wordList.length);
+    
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      const prevWord = wordList[newIndex];
+      
+      // 确保prevWord有wordId属性
+      if (!prevWord.wordId && (prevWord.word_id || prevWord['例词id'] || prevWord._id)) {
+        prevWord.wordId = prevWord.word_id || prevWord['例词id'] || prevWord._id;
+      }
+      
+      console.log('新索引:', newIndex);
+      console.log('切换到词条:', prevWord.word);
+      
+      const prevWordWithId = {
+        ...prevWord,
+        wordId: prevWord.wordId || prevWord.word_id || prevWord._id || prevWord.id || ''
+      };
+      
+      this.setData({
+        currentIndex: newIndex,
+        currentWord: prevWordWithId,
+        currentPronunciationIndex: 0,
+        currentUsageIndex: 0,
+        currentExampleIndex: 0,
+        showMeaning: false,
+        isProcessing: false // 解锁操作
+      }, () => {
+        this.processExamplesHighlight();
+        this.updateWordCounter(); // 更新计数器显示
+      });
+    } else {
+      console.log('已经是第一个词条');
+      wx.showToast({ title: '已经是第一个词条', icon: 'none' });
+      this.setData({ isProcessing: false });
+    }
   },
 
   // 加载待复习词条
@@ -332,7 +418,7 @@ Page({
     
     // 构建查询条件
     const query = {
-      例词id: _.in(batchIds)
+      word_id: _.in(batchIds)
     };
     
     // 调用数据库查询
@@ -428,155 +514,184 @@ Page({
         if (data.length > 0) {
           this.processWordData(data);
         } else {
-          // 如果没有数据，创建一些示例数据
-          const sampleData = this.createSampleData();
-          this.processWordData(sampleData);
+          this.setData({
+            loading: false,
+            error: '没有找到词条数据'
+          });
         }
       } else {
         console.error('获取所有词条失败:', res.result);
-        // 创建示例数据
-        const sampleData = this.createSampleData();
-        this.processWordData(sampleData);
+        this.setData({
+          loading: false,
+          error: '获取词条数据失败: ' + (res.result ? res.result.error || '未知错误' : '返回结果格式错误')
+        });
       }
     })
     .catch(err => {
       console.error('获取所有词条失败:', err);
-      // 创建示例数据
-      const sampleData = this.createSampleData();
-      this.processWordData(sampleData);
+      this.setData({
+        loading: false,
+        error: '获取词条数据失败: ' + (err.message || JSON.stringify(err))
+      });
     });
-  },
-  
-  // 创建示例数据，用于在数据库连接失败时显示
-  createSampleData: function() {
-    return [
-      {
-        _id: 'sample1',
-        例词id: 'sample1',
-        例词: '之',
-        读音: '[zhī]',
-        词性: '助词',
-        词义: '的，助词，表示修饰、领属关系',
-        例句: '不识庐山真面目，只缘身在此山中。',
-        出处: '宋·苏轼《题西林壁》',
-        释义: '看不清庐山的真实面目，只因为自己身在此山中。',
-        合集: '高考虚词合集'
-      },
-      {
-        _id: 'sample2',
-        例词id: 'sample2',
-        例词: '乎',
-        读音: '[hū]',
-        词性: '助词',
-        词义: '表示疑问、反问的语气词',
-        例句: '人之初，性本善。性相近，习相远。',
-        出处: '《三字经》',
-        释义: '人刚出生的时候，本性都是善良的。人的本性是相近的，但因为后天的习染不同而相距甚远。',
-        合集: '高考虚词合集'
-      },
-      {
-        _id: 'sample3',
-        例词id: 'sample3',
-        例词: '也',
-        读音: '[yě]',
-        词性: '助词',
-        词义: '表示判断、肯定的语气词',
-        例句: '学而时习之，不亦说乎？',
-        出处: '《论语·学而》',
-        释义: '学习了，按时复习，不也很高兴吗？',
-        合集: '高考虚词合集'
-      }
-    ];
   },
 
   // 处理词条数据
   processWordData: function(words) {
-    console.log('处理词条数据，原始数据:', words);
-    
-    if (!words || words.length === 0) {
-      this.setData({ 
-        loading: false,
-        error: '未收到有效的词条数据'
-      });
-      wx.showToast({
-        title: '未找到词条',
-        icon: 'none'
-      });
-      return;
-    }
-
     try {
-      // 记录第一条原始数据，用于调试
-      const firstOriginal = words[0];
-      console.log('第一条原始数据:', firstOriginal);
-      
-      // 处理词条数据，转换为页面需要的格式
+      // 处理词条数据，转换为页面需要的格式，兼容中英文字段
       const processedWords = words.map(word => {
         try {
-          return {
-            id: word._id,
-            wordId: word.例词id || '',
-            word: word.例词 || '',
-            pinyin: word.读音 || '',
-            usageId: word.用法id || '',
-            wordType: word.词性 || '',
-            meaning: word.词义 || '',
-            example: word.例句 || '',
-            source: word.出处 || '',
-            translation: word.释义 || '',
-            collection: word.合集 || ''
+          // 优先使用word_id作为唯一标识，确保wordId不为空
+          const wordId = word.word_id || word['例词id'] || word._id || '';
+          
+          // 确保collection字段存在
+          let collection = word['合集'] || word.collection || this.data.category || this.data.examType || '';
+          
+          if (!wordId) {
+            console.error('警告：检测到wordId为空的数据:', word);
+          }
+          
+          // 构建基本词条对象
+          const processedWord = {
+            id: word._id || wordId || '',
+            wordId: wordId, // 明确设置wordId优先级
+            word: word.word || word['例词'] || '',
+            pinyin: word.pronunciation || word['读音'] || '',
+            usageId: word.usage_id || word['用法id'] || '',
+            wordType: word.part_of_speech || word['词性'] || '',
+            meaning: word.meaning || word['词义'] || '',
+            example: word.example_sentence || word['例句'] || '',
+            source: word.source || word['出处'] || '',
+            translation: word.explanation || word['释义'] || '',
+            collection: collection // 确保collection字段存在
           };
-        } catch (mapErr) {
-          console.error('处理单个词条数据出错:', mapErr, word);
-          return {
-            id: word._id || 'unknown',
-            word: '数据错误',
-            error: mapErr.message
-          };
+          
+          // 检查是否已有pronunciations字段
+          if (!word.pronunciations || !Array.isArray(word.pronunciations) || word.pronunciations.length === 0) {
+            // 创建默认的pronunciations结构
+            processedWord.pronunciations = [{
+              pronunciation: processedWord.pinyin,
+              usages: [{
+                part_of_speech: processedWord.wordType,
+                meaning: processedWord.meaning,
+                usage_id: processedWord.usageId || 'default_usage',
+                examples: [{
+                  example_sentence: processedWord.example,
+                  source: processedWord.source,
+                  explanation: processedWord.translation,
+                  example_sentence_id: 'default_example'
+                }]
+              }]
+            }];
+            
+            // 生成高亮处理后的例句
+            if (processedWord.pronunciations[0].usages[0].examples[0].example_sentence) {
+              processedWord.pronunciations[0].usages[0].examples[0].highlightedSentence = 
+                this.highlightKeyword(
+                  processedWord.pronunciations[0].usages[0].examples[0].example_sentence, 
+                  processedWord.word
+                );
+            }
+          } else {
+            // 已有pronunciations结构，保留原有结构
+            processedWord.pronunciations = word.pronunciations;
+            
+            // 确保每个pronunciation都有usages
+            processedWord.pronunciations.forEach((pron, pronIndex) => {
+              if (!pron.usages || !Array.isArray(pron.usages) || pron.usages.length === 0) {
+                pron.usages = [{
+                  part_of_speech: processedWord.wordType,
+                  meaning: processedWord.meaning,
+                  usage_id: `usage_${pronIndex}_0`,
+                  examples: [{
+                    example_sentence: processedWord.example,
+                    source: processedWord.source,
+                    explanation: processedWord.translation,
+                    example_sentence_id: `example_${pronIndex}_0_0`
+                  }]
+                }];
+              } else {
+                // 确保每个usage都有examples
+                pron.usages.forEach((usage, usageIndex) => {
+                  if (!usage.examples || !Array.isArray(usage.examples) || usage.examples.length === 0) {
+                    usage.examples = [{
+                      example_sentence: processedWord.example,
+                      source: processedWord.source,
+                      explanation: processedWord.translation,
+                      example_sentence_id: `example_${pronIndex}_${usageIndex}_0`
+                    }];
+                  }
+                  
+                  // 生成高亮处理后的例句
+                  usage.examples.forEach(example => {
+                    if (example.example_sentence && !example.highlightedSentence) {
+                      example.highlightedSentence = this.highlightKeyword(example.example_sentence, processedWord.word);
+                    }
+                  });
+                });
+              }
+            });
+          }
+          
+          return processedWord;
+        } catch (innerErr) {
+          console.error('处理单个词条数据出错:', innerErr, word);
+          // 返回原始数据，避免整个列表失败
+          return word;
         }
       });
-
-      // 记录第一条处理后的数据，用于调试
-      const firstProcessed = processedWords[0];
-      console.log('第一条处理后数据:', firstProcessed);
-
-      // 统计学习进度（如果有categoryInfo）
-      const progress = this.data.userProgress;
-      let learned = 0;
-      let toReview = 0;
-      let remaining = 0;
       
-      if (this.data.categoryInfo && this.data.categoryInfo.totalCount) {
-        const totalCount = this.data.categoryInfo.totalCount;
+      // 如果只有一个词条，则直接设置为当前词条
+      if (processedWords.length === 1) {
+        const currentWord = processedWords[0];
         
-        // 计算已学习和待复习的数量
-        const learnedIds = Object.keys(progress).filter(id => progress[id].status === 'learned');
-        const reviewIds = Object.keys(progress).filter(id => progress[id].status === 'review');
+        // 检查是否已收藏
+        const isBookmarked = this.checkIfBookmarked(currentWord.wordId);
         
-        learned = learnedIds.length;
-        toReview = reviewIds.length;
-        remaining = totalCount - learned - toReview;
+        this.setData({
+          wordList: processedWords,
+          currentWord: currentWord,
+          currentIndex: 0,
+          isBookmarked: isBookmarked,
+          loading: false,
+          loaded: true,
+          error: null
+        }, () => {
+          // 处理例句高亮
+          this.processExamplesHighlight();
+          // 更新计数器显示
+          this.updateWordCounter();
+        });
+      } else {
+        // 如果有多个词条，则设置整个列表，并显示当前索引的词条
+        const currentIndex = this.data.currentIndex || 0;
+        const currentWord = processedWords[currentIndex] || processedWords[0];
+        
+        // 检查是否已收藏
+        const isBookmarked = this.checkIfBookmarked(currentWord.wordId);
+        
+        this.setData({
+          wordList: processedWords,
+          currentWord: currentWord,
+          currentIndex: currentIndex,
+          isBookmarked: isBookmarked,
+          loading: false,
+          loaded: true,
+          error: null
+        }, () => {
+          // 处理例句高亮
+          this.processExamplesHighlight();
+          // 更新计数器显示
+          this.updateWordCounter();
+        });
       }
-
-      // 更新UI
-      this.setData({
-        currentWord: processedWords[0],
-        loading: false,
-        progress: {
-          learned: learned,
-          toReview: toReview,
-          remaining: remaining
-        },
-        showMeaning: false,
-        error: null // 清除错误信息
-      });
-      
-      console.log(`处理完成，当前词条:`, processedWords[0]);
     } catch (err) {
       console.error('处理词条数据出错:', err);
       this.setData({
         loading: false,
-        error: '处理数据出错: ' + err.message
+        error: '处理数据出错: ' + err.message,
+        loaded: true
       });
     }
   },
@@ -608,77 +723,182 @@ Page({
 
   // 标记为已掌握
   markAsLearned: function() {
-    if (this.data.currentWord) {
-      const wordId = this.data.currentWord.wordId;
-      const progress = this.data.userProgress;
+    if (this.data.isProcessing) return;
+    this.setData({ isProcessing: true });
+    
+    const { currentIndex, wordList } = this.data;
+    
+    // 添加调试日志
+    console.log('======= 标记为已掌握 =======');
+    console.log('当前索引:', currentIndex);
+    console.log('总词条数:', wordList.length);
+    
+    if (wordList && wordList.length > 0 && currentIndex >= 0 && currentIndex < wordList.length) {
+      const wordFromList = wordList[currentIndex];
       
-      progress[wordId] = {
-        ...progress[wordId],
-        status: 'learned',
-        lastStudied: new Date().getTime()
-      };
+      // 确保词条有wordId字段
+      if (!wordFromList.wordId) {
+        wordFromList.wordId = wordFromList.word_id || wordFromList['例词id'] || wordFromList._id || wordFromList.id || '';
+      }
       
-      this.setData({ userProgress: progress });
-      this.saveUserProgress();
-      this.goToNextWord();
+      // 确保currentWord与wordList中的当前词一致
+      this.setData({ currentWord: wordFromList }, () => {
+        const currentWord = this.data.currentWord;
+        console.log('当前词条:', currentWord.word);
+        
+        // 获取有效的wordId
+        let wordId = currentWord.wordId;
+        if (!wordId) {
+          wordId = currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id || '';
+          console.log('从其他字段获取wordId:', wordId);
+        }
+        
+        if (!wordId) {
+          console.error('无法获取有效的wordId，无法标记学习状态');
+          this.setData({ isProcessing: false });
+          wx.showToast({
+            title: '操作失败，词条ID无效',
+            icon: 'none'
+          });
+          return;
+        }
+        
+        // 获取当前词条的合集/分类
+        let collection = '';
+        if (currentWord.collection) {
+          collection = currentWord.collection;
+        } else if (this.data.category) {
+          collection = this.data.category;
+        } else if (this.data.examType) {
+          collection = this.data.examType;
+        }
+        
+        console.log('当前词条合集:', collection);
+        
+        const progress = this.data.userProgress;
+        
+        progress[wordId] = {
+          ...progress[wordId],
+          status: 'learned',
+          lastStudied: new Date().getTime(),
+          collection: collection
+        };
+      
+        this.setData({ userProgress: progress });
+        this.saveUserProgress();
+        this.saveRecentLearnHistory(wordId, 'learned', collection);
+        this.updateUserWordProgressCloud(wordId, collection, 'learned');
+        
+        // 调用goToNextWord函数跳转到下一个词条
+        this.goToNextWord();
+      });
+    } else {
+      this.setData({ isProcessing: false });
+      console.error('wordList无效或currentIndex超出范围，无法标记学习状态');
+      wx.showToast({
+        title: '操作失败，请重试',
+        icon: 'none'
+      });
     }
   },
 
   // 标记为需要复习
   markForReview: function() {
-    if (this.data.currentWord) {
-      const wordId = this.data.currentWord.wordId;
-      const progress = this.data.userProgress;
-      
-      progress[wordId] = {
-        ...progress[wordId],
-        status: 'review',
-        lastStudied: new Date().getTime()
-      };
-      
-      this.setData({ userProgress: progress });
-      this.saveUserProgress();
-      this.goToNextWord();
-    }
-  },
-
-  // 前往下一个词条
-  goToNextWord: function() {
+    if (this.data.isProcessing) return;
+    this.setData({ isProcessing: true });
+    
     const { currentIndex, wordList } = this.data;
-    if (currentIndex < wordList.length - 1) {
-      this.setData({
-        currentIndex: currentIndex + 1,
-        currentPronunciationIndex: 0,
-        currentUsageIndex: 0,
-        currentExampleIndex: 0,
-        showMeaning: false
-      }, () => {
-        // 处理例句高亮
-        this.processExamplesHighlight();
+    
+    // 添加调试日志
+    console.log('======= 标记为需要复习 =======');
+    console.log('当前索引:', currentIndex);
+    console.log('总词条数:', wordList.length);
+    
+    if (wordList && wordList.length > 0 && currentIndex >= 0 && currentIndex < wordList.length) {
+      const wordFromList = wordList[currentIndex];
+      
+      // 确保词条有wordId字段
+      if (!wordFromList.wordId) {
+        wordFromList.wordId = wordFromList.word_id || wordFromList['例词id'] || wordFromList._id || wordFromList.id || '';
+      }
+      
+      // 确保currentWord与wordList中的当前词一致
+      this.setData({ currentWord: wordFromList }, () => {
+        const currentWord = this.data.currentWord;
+        console.log('当前词条:', currentWord.word);
+        
+        // 获取有效的wordId
+        let wordId = currentWord.wordId;
+        if (!wordId) {
+          wordId = currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id || '';
+          console.log('从其他字段获取wordId:', wordId);
+        }
+        
+        if (!wordId) {
+          console.error('无法获取有效的wordId，无法标记学习状态');
+          this.setData({ isProcessing: false });
+          wx.showToast({
+            title: '操作失败，词条ID无效',
+            icon: 'none'
+          });
+          return;
+        }
+        
+        // 获取当前词条的合集/分类
+        let collection = '';
+        if (currentWord.collection) {
+          collection = currentWord.collection;
+        } else if (this.data.category) {
+          collection = this.data.category;
+        } else if (this.data.examType) {
+          collection = this.data.examType;
+        }
+        
+        console.log('当前词条合集:', collection);
+        
+        const progress = this.data.userProgress;
+        
+        progress[wordId] = {
+          ...progress[wordId],
+          status: 'review',
+          lastStudied: new Date().getTime(),
+          collection: collection
+        };
+      
+        this.setData({ userProgress: progress });
+        this.saveUserProgress();
+        this.saveRecentLearnHistory(wordId, 'review', collection);
+        this.updateUserWordProgressCloud(wordId, collection, 'review');
+        
+        // 调用goToNextWord函数跳转到下一个词条
+        this.goToNextWord();
       });
     } else {
-      wx.showToast({ title: '已完成所有词条学习', icon: 'success' });
-      setTimeout(() => { wx.navigateBack(); }, 1500);
+      this.setData({ isProcessing: false });
+      console.error('wordList无效或currentIndex超出范围，无法标记学习状态');
+      wx.showToast({
+        title: '操作失败，请重试',
+        icon: 'none'
+      });
     }
   },
 
-  // 前往上一个词条
-  goToPrevWord: function() {
-    const { currentIndex } = this.data;
-    if (currentIndex > 0) {
-      this.setData({
-        currentIndex: currentIndex - 1,
-        currentPronunciationIndex: 0,
-        currentUsageIndex: 0,
-        currentExampleIndex: 0,
-        showMeaning: false
-      }, () => {
-        // 处理例句高亮
-        this.processExamplesHighlight();
-      });
-    } else {
-      wx.showToast({ title: '已经是第一个词条', icon: 'none' });
-    }
+  // 保存最近学习记录，带合集字段
+  saveRecentLearnHistory: function(wordId, status, collection) {
+    const word = this.data.currentWord;
+    if (!word) return;
+    const record = {
+      wordId: wordId,
+      word: word.word,
+      status: status,
+      learnTime: new Date().toISOString(),
+      collection: collection
+    };
+    let history = wx.getStorageSync('wordLearnHistory') || [];
+    // 按 wordId+collection 去重
+    history = history.filter(item => !(item.wordId === wordId && item.collection === collection));
+    history.unshift(record);
+    wx.setStorageSync('wordLearnHistory', history);
   },
 
   // 返回首页
@@ -690,28 +910,288 @@ Page({
   loadWordById: function(wordId) {
     if (!wordId) return;
     
-    this.setData({ loading: true });
+    // 尝试解码URL编码的wordId
+    try {
+      if (/%[0-9A-F]{2}/.test(wordId)) {
+        wordId = decodeURIComponent(wordId);
+      }
+    } catch (e) {
+      console.error('解码wordId失败:', e);
+    }
     
-    // 查询数据库
-    db.collection('xushici').where({
-      例词id: wordId
-    }).get().then(res => {
-      if (res.data && res.data.length > 0) {
-        this.processWordData(res.data);
+    this.setData({ 
+      loading: true,
+      error: `正在加载词条ID: ${wordId}...`
+    });
+    
+    console.log('======= 通过ID加载词条 =======');
+    console.log('词条ID:', wordId);
+    
+    // 尝试直接通过ID查询，不指定字段名
+    db.collection('xushici').doc(wordId).get().then(res => {
+      console.log('直接通过ID查询结果:', res);
+      
+      if (res.data) {
+        console.log('直接通过ID找到词条:', res.data);
+        
+        // 获取词条所属的分类
+        const category = res.data['合集'] || res.data.collection || this.data.category || '';
+        
+        // 如果找到分类，加载该分类的所有词条
+        if (category) {
+          console.log('找到词条所属分类:', category);
+          this.loadCategoryAndSetCurrentWord(category, res.data);
+        } else {
+          // 如果没有找到分类，只处理当前词条
+          console.log('未找到词条所属分类，只处理当前词条');
+          this.processWordData([res.data]);
+        }
+        
+        return; // 查询成功，直接返回
+      }
+    }).catch(err => {
+      console.log('直接通过ID查询失败，尝试使用字段查询:', err);
+      
+      // 继续尝试使用字段查询
+      // 查询数据库 - 优先使用word_id字段查询
+      db.collection('xushici').where({
+        word_id: wordId
+      }).get().then(res => {
+        console.log('通过word_id查询结果:', res);
+        
+        if (res.data && res.data.length > 0) {
+          console.log('通过word_id找到词条:', res.data[0]);
+          
+          // 获取词条所属的分类
+          const category = res.data[0]['合集'] || res.data[0].collection || this.data.category || '';
+          
+          // 如果找到分类，加载该分类的所有词条
+          if (category) {
+            console.log('找到词条所属分类:', category);
+            this.loadCategoryAndSetCurrentWord(category, res.data[0]);
+          } else {
+            // 如果没有找到分类，只处理当前词条
+            console.log('未找到词条所属分类，只处理当前词条');
+            this.processWordData(res.data);
+          }
+        } else {
+          console.log('通过word_id未找到词条，尝试使用例词id查询:', wordId);
+          
+          // 尝试使用例词id字段查询
+          db.collection('xushici').where({
+            例词id: wordId
+          }).get().then(res2 => {
+            if (res2.data && res2.data.length > 0) {
+              console.log('通过例词id找到词条:', res2.data[0]);
+              
+              // 获取词条所属的分类
+              const category = res2.data[0]['合集'] || res2.data[0].collection || this.data.category || '';
+              
+              // 如果找到分类，加载该分类的所有词条
+              if (category) {
+                console.log('找到词条所属分类:', category);
+                this.loadCategoryAndSetCurrentWord(category, res2.data[0]);
+              } else {
+                // 如果没有找到分类，只处理当前词条
+                console.log('未找到词条所属分类，只处理当前词条');
+                this.processWordData(res2.data);
+              }
+            } else {
+              console.log('通过例词id未找到词条，尝试使用_id查询:', wordId);
+              
+              // 再尝试使用_id字段查询
+              db.collection('xushici').where({
+                _id: wordId
+              }).get().then(res3 => {
+                if (res3.data && res3.data.length > 0) {
+                  console.log('通过_id找到词条:', res3.data[0]);
+                  
+                  // 获取词条所属的分类
+                  const category = res3.data[0]['合集'] || res3.data[0].collection || this.data.category || '';
+                  
+                  // 如果找到分类，加载该分类的所有词条
+                  if (category) {
+                    console.log('找到词条所属分类:', category);
+                    this.loadCategoryAndSetCurrentWord(category, res3.data[0]);
+                  } else {
+                    // 如果没有找到分类，只处理当前词条
+                    console.log('未找到词条所属分类，只处理当前词条');
+                    this.processWordData(res3.data);
+                  }
+                } else {
+                  // 尝试使用模糊查询
+                  console.log('尝试使用模糊查询:', wordId);
+                  this.tryFuzzySearch(wordId);
+                }
+              }).catch(err3 => {
+                console.error('三次查询失败:', err3);
+                // 尝试使用模糊查询
+                this.tryFuzzySearch(wordId);
+              });
+            }
+          }).catch(err2 => {
+            console.error('二次查询失败:', err2);
+            this.setData({ 
+              loading: false,
+              error: `查询失败: ${err2.message || JSON.stringify(err2)}`,
+              loaded: true
+            });
+          });
+        }
+      }).catch(err => {
+        console.error('加载词条失败:', err);
+        wx.showToast({
+          title: '加载失败，请重试',
+          icon: 'none'
+        });
+        this.setData({ 
+          loading: false,
+          error: `加载失败: ${err.message || JSON.stringify(err)}`,
+          loaded: true
+        });
+      });
+    });
+  },
+  
+  // 加载分类并设置当前词条
+  loadCategoryAndSetCurrentWord: function(category, currentWordData) {
+    console.log('加载分类并设置当前词条:', category);
+    
+    // 调用云函数获取该分类的所有词条
+    wx.cloud.callFunction({
+      name: 'getXushiciData',
+      data: {
+        type: 'groupByWordId',
+        category: category
+      }
+    })
+    .then(res => {
+      console.log('获取分类词条成功:', res);
+      
+      if (res.result && res.result.success) {
+        const wordList = res.result.data || [];
+        const totalCount = wordList.length;
+        
+        if (totalCount > 0) {
+          // 处理词条数据
+          const processedWords = this.processAllWords(wordList);
+          
+          // 找到当前词条在列表中的索引
+          const currentWordId = currentWordData.word_id || currentWordData['例词id'] || currentWordData._id || '';
+          let currentIndex = 0;
+          
+          if (currentWordId) {
+            const foundIndex = processedWords.findIndex(word => 
+              word.wordId === currentWordId || 
+              word.word_id === currentWordId || 
+              word['例词id'] === currentWordId || 
+              word._id === currentWordId
+            );
+            
+            if (foundIndex !== -1) {
+              currentIndex = foundIndex;
+            }
+          }
+          
+          console.log('当前词条在列表中的索引:', currentIndex);
+          
+          // 设置数据
+          this.setData({
+            wordList: processedWords,
+            totalCount: totalCount,
+            currentIndex: currentIndex,
+            currentWord: processedWords[currentIndex],
+            categoryInfo: {
+              category: category,
+              totalCount: totalCount
+            },
+            loading: false,
+            error: null,
+            loaded: true
+          }, () => {
+            // 处理例句高亮
+            this.processExamplesHighlight();
+            // 更新计数器显示
+            this.updateWordCounter();
+          });
+        } else {
+          // 如果没有找到分类词条，只处理当前词条
+          console.log('未找到该分类的词条，只处理当前词条');
+          this.processWordData([currentWordData]);
+        }
+      } else {
+        // 如果获取分类词条失败，只处理当前词条
+        console.log('获取分类词条失败，只处理当前词条');
+        this.processWordData([currentWordData]);
+      }
+    })
+    .catch(err => {
+      console.error('加载分类词条失败:', err);
+      // 如果加载分类词条失败，只处理当前词条
+      this.processWordData([currentWordData]);
+    });
+  },
+
+  // 尝试模糊搜索词条ID
+  tryFuzzySearch: function(wordId) {
+    // 使用云函数进行模糊查询
+    wx.cloud.callFunction({
+      name: 'getXushiciData',
+      data: {
+        type: 'byFuzzyId',
+        wordId: wordId
+      }
+    }).then(res => {
+      if (res.result && res.result.success && res.result.data && res.result.data.length > 0) {
+        console.log('通过模糊匹配找到词条:', res.result.data[0]);
+        
+        // 处理数据前先检查数据结构
+        const matchedData = res.result.data;
+        
+        // 检查是否有词条数据
+        if (matchedData.length > 0) {
+          // 获取词条所属的分类
+          const firstWord = matchedData[0];
+          const category = firstWord['合集'] || firstWord.collection || this.data.category || '';
+          
+          // 如果找到分类，加载该分类的所有词条
+          if (category) {
+            console.log('找到词条所属分类:', category);
+            this.loadCategoryAndSetCurrentWord(category, firstWord);
+          } else {
+            // 如果没有找到分类，只处理当前词条
+            console.log('未找到词条所属分类，只处理当前词条');
+            this.processWordData(matchedData);
+          }
+        } else {
+          wx.showToast({
+            title: '未找到词条',
+            icon: 'none'
+          });
+          this.setData({ 
+            loading: false,
+            error: `未找到ID为 ${wordId} 的词条`,
+            loaded: true
+          });
+        }
       } else {
         wx.showToast({
           title: '未找到词条',
           icon: 'none'
         });
+        this.setData({ 
+          loading: false,
+          error: `未找到ID为 ${wordId} 的词条`,
+          loaded: true
+        });
       }
     }).catch(err => {
-      console.error('加载词条失败:', err);
-      wx.showToast({
-        title: '加载失败，请重试',
-        icon: 'none'
+      console.error('模糊查询失败:', err);
+      this.setData({ 
+        loading: false,
+        error: `查询失败: ${err.message || JSON.stringify(err)}`,
+        loaded: true
       });
-    }).finally(() => {
-      this.setData({ loading: false });
     });
   },
 
@@ -723,14 +1203,33 @@ Page({
     
     // 查询数据库
     db.collection('xushici').where({
-      例词: wordText
+      word: wordText // 优先使用英文字段名
     }).get().then(res => {
       if (res.data && res.data.length > 0) {
         this.processWordData(res.data);
+        this.setData({ loading: false, error: null });
+      } else {
+        // 如果使用英文字段名查询失败，尝试使用中文字段名
+        db.collection('xushici').where({
+          例词: wordText
+        }).get().then(res2 => {
+          if (res2.data && res2.data.length > 0) {
+            this.processWordData(res2.data);
+            this.setData({ loading: false, error: null });
       } else {
         wx.showToast({
           title: '未找到词条',
           icon: 'none'
+            });
+            this.setData({ loading: false, error: '未找到匹配的词条' });
+          }
+        }).catch(err2 => {
+          console.error('使用中文字段名加载词条失败:', err2);
+          wx.showToast({
+            title: '加载失败，请重试',
+            icon: 'none'
+          });
+          this.setData({ loading: false, error: `加载失败: ${err2.message || JSON.stringify(err2)}` });
         });
       }
     }).catch(err => {
@@ -739,8 +1238,7 @@ Page({
         title: '加载失败，请重试',
         icon: 'none'
       });
-    }).finally(() => {
-      this.setData({ loading: false });
+      this.setData({ loading: false, error: `加载失败: ${err.message || JSON.stringify(err)}` });
     });
   },
 
@@ -845,7 +1343,7 @@ Page({
     if (currentWord) {
       return {
         title: `我正在学习"${currentWord.word}"，一起来学习吧！`,
-        path: `/pages/word-learning/study/study?wordId=${currentWord.id}&examType=${examType}`
+        path: `/pages/word-learning/study/study?wordId=${currentWord.wordId}&examType=${examType}`
       };
     }
     
@@ -859,6 +1357,9 @@ Page({
   loadUniqueWordsByCategory: function(category) {
     if (!category) return;
     this.setData({ loading: true, error: null, loaded: false });
+    console.log('======= 加载分类词条 =======');
+    console.log('分类:', category);
+    
     wx.cloud.callFunction({
       name: 'getXushiciData',
       data: {
@@ -869,32 +1370,103 @@ Page({
       if (res.result && res.result.success) {
         let wordList = res.result.data || [];
         
+        console.log('获取到词条数量:', wordList.length);
+        
+        // 先确保所有词条都有wordId字段
+        wordList = wordList.map(word => {
+          if (!word.wordId) {
+            word.wordId = word.word_id || word['例词id'] || word._id || '';
+          }
+          
+          // 确保collection字段正确
+          if (!word.collection) {
+            word.collection = word['合集'] || category;
+          }
+          
+          return word;
+        });
+        
+        // 过滤掉没有wordId的词条
+        const filteredList = wordList.filter(word => word.wordId);
+        if (filteredList.length < wordList.length) {
+          console.warn(`过滤掉了${wordList.length - filteredList.length}个没有wordId的词条`);
+          wordList = filteredList;
+        }
+        
         // 处理读音和用法合并
         wordList = this.processPronunciationsAndUsages(wordList);
+        
+        // 确保有词条存在
+        if (wordList.length === 0) {
+          this.setData({
+            loading: false, 
+            error: '该分类下没有词条',
+            loaded: true,
+            totalCount: 0
+          });
+          return;
+        }
+        
+        // 确保第一个词条有wordId和collection
+        const firstWord = wordList[0];
+        const firstWordWithId = {
+          ...firstWord,
+          wordId: firstWord.wordId || firstWord.word_id || firstWord['例词id'] || firstWord._id || '',
+          collection: firstWord.collection || firstWord['合集'] || category
+        };
+        
+        // 更新第一个词条
+        wordList[0] = firstWordWithId;
         
         this.setData({
           wordList,
           currentIndex: 0,
+          currentWord: firstWordWithId,
           currentPronunciationIndex: 0,
           currentUsageIndex: 0,
           currentExampleIndex: 0,
           loading: false,
-          loaded: true
+          loaded: true,
+          totalCount: wordList.length, // 设置总数量
+          categoryInfo: {
+            category: category,
+            totalCount: wordList.length
+          }
         }, () => {
           // 处理例句高亮
           this.processExamplesHighlight();
+          
+          // 添加调试日志
+          console.log('======= 设置词条完成 =======');
         });
       } else {
-        this.setData({ loading: false, error: res.result.error || '获取数据失败', loaded: true });
+        this.setData({ 
+          loading: false, 
+          error: res.result.error || '获取数据失败', 
+          loaded: true 
+        });
       }
     }).catch(err => {
-      this.setData({ loading: false, error: err.message || '云函数调用失败', loaded: true });
+      console.error('加载词条失败:', err);
+      this.setData({ 
+        loading: false, 
+        error: err.message || '云函数调用失败', 
+        loaded: true 
+      });
     });
   },
   
   // 新增：处理读音和用法合并
   processPronunciationsAndUsages: function(wordList) {
     return wordList.map(word => {
+      // 先保留原始的ID字段，避免后面处理中丢失
+      const backupId = word.word_id || word['例词id'] || word._id || '';
+      
+      if (!word.wordId && backupId) {
+        // 如果没有wordId字段但有其他ID字段，则添加wordId字段
+        word.wordId = backupId;
+      }
+      
       if (!word.pronunciations || word.pronunciations.length === 0) {
         return word;
       }
@@ -971,8 +1543,6 @@ Page({
         
         // 替换原有的读音列表
         word.pronunciations = [mergedPronunciation];
-        
-        console.log(`词条 ${word.word} 的读音已合并，共有 ${mergedPronunciation.usages.length} 个用法`);
       } else {
         // 有多个不同读音，则对每个读音内的用法进行去重和合并
         word.pronunciations.forEach(pron => {
@@ -1023,8 +1593,6 @@ Page({
             pron.usages = Array.from(usageMap.values());
           }
         });
-        
-        console.log(`词条 ${word.word} 有多个不同读音，每个读音内的用法已合并`);
       }
       
       return word;
@@ -1049,9 +1617,7 @@ Page({
   // 新增：处理所有例句的高亮
   processExamplesHighlight: function() {
     if (!this.data.wordList || !this.data.wordList.length) return;
-    
     const wordList = [...this.data.wordList];
-    
     // 遍历所有例句，添加高亮处理后的文本
     wordList.forEach((wordItem, wordIndex) => {
       if (wordItem.pronunciations && wordItem.pronunciations.length) {
@@ -1062,7 +1628,6 @@ Page({
                 usage.examples.forEach(example => {
                   // 添加高亮处理后的例句
                   example.highlightedSentence = this.highlightKeyword(example.example_sentence, wordItem.word);
-                  console.log('高亮处理后的例句:', example.highlightedSentence);
                 });
               }
             });
@@ -1070,7 +1635,6 @@ Page({
         });
       }
     });
-    
     this.setData({ wordList });
   },
 
@@ -1102,5 +1666,223 @@ Page({
     this.setData({
       currentExampleIndex: e.currentTarget.dataset.index
     });
+  },
+
+  // 云端同步用户学习进度
+  updateUserWordProgressCloud: function(wordId, collection, status) {
+    if (!wordId) {
+      // 尝试从currentWord获取wordId
+      const { currentWord, currentIndex, wordList } = this.data;
+      console.error('wordId不能为空，尝试从currentWord获取');
+      
+      // 从wordList的当前索引获取
+      let wordFromList = null;
+      if (wordList && wordList.length > 0 && currentIndex >= 0 && currentIndex < wordList.length) {
+        wordFromList = wordList[currentIndex];
+      }
+      
+      // 尝试获取wordId
+      let retrievedWordId = '';
+      
+      if (currentWord && currentWord.wordId) {
+        retrievedWordId = currentWord.wordId;
+      } else if (currentWord && (currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id)) {
+        retrievedWordId = currentWord.word_id || currentWord['例词id'] || currentWord._id || currentWord.id;
+      } else if (wordFromList && wordFromList.wordId) {
+        retrievedWordId = wordFromList.wordId;
+      } else if (wordFromList && (wordFromList.word_id || wordFromList['例词id'] || wordFromList.id)) {
+        retrievedWordId = wordFromList.word_id || wordFromList['例词id'] || wordFromList.id;
+      }
+      
+      if (!retrievedWordId) {
+        console.error('无法获取到有效的wordId，无法同步云端进度');
+        return;
+      }
+      
+      wordId = retrievedWordId;
+    }
+    
+    // 确保集合名称是有效的字符串
+    if (!collection) {
+      const { currentWord } = this.data;
+      if (currentWord && currentWord.collection) {
+        collection = currentWord.collection;
+      } else if (this.data.category) {
+        collection = this.data.category;
+      } else if (this.data.examType) {
+        collection = this.data.examType;
+      } else {
+        collection = '未分类';
+      }
+    }
+    
+    // 检查集合名称是否已经是URL编码格式，如果是则解码
+    if (/%[0-9A-F]{2}/.test(collection)) {
+      try {
+        collection = decodeURIComponent(collection);
+        console.log('集合名称已解码:', collection);
+      } catch (e) {
+        console.error('解码集合名称失败:', e);
+      }
+    }
+    
+    console.log('======= 同步云端进度 =======');
+    console.log('wordId:', wordId);
+    console.log('collection:', collection);
+    console.log('status:', status);
+    
+    let userId = '';
+    // 优先从 userInfo 获取 openid
+    const userInfo = wx.getStorageSync('userInfo');
+    if (userInfo && userInfo.openid) {
+      userId = userInfo.openid;
+    } else if (app.globalData && app.globalData.openid) {
+      userId = app.globalData.openid;
+    }
+    
+    if (!userId) {
+      console.warn('未获取到用户openid，无法同步云端进度');
+      return;
+    }
+    
+    // 添加防抖，防止短时间内重复调用
+    if (this.updateCloudTimer) clearTimeout(this.updateCloudTimer);
+    
+    this.updateCloudTimer = setTimeout(() => {
+      // 确保collection是原始字符串，不要进行URL编码
+      wx.cloud.callFunction({
+        name: 'updateUserWordProgress',
+        data: {
+          userId,
+          wordId,
+          collection, // 直接传递原始集合名称，云函数会处理解码
+          status
+        },
+        success: res => {
+          console.log('云端进度同步成功', res);
+        },
+        fail: err => {
+          console.error('云端进度同步失败', err);
+        }
+      });
+    }, 300); // 300ms防抖延迟
+  },
+
+  // 添加onShow函数，在页面显示时更新计数器
+  onShow: function() {
+    console.log('页面显示');
+    // 更新计数器显示
+    this.updateWordCounter();
+  },
+
+  // 处理所有词条数据
+  processAllWords: function(words) {
+    if (!words || words.length === 0) {
+      console.error('没有词条数据可处理');
+      return [];
+    }
+    
+    try {
+      // 处理词条数据，转换为页面需要的格式
+      const processedWords = words.map(word => this.processSingleWord(word));
+      console.log('处理完成，词条数量:', processedWords.length);
+      return processedWords;
+    } catch (err) {
+      console.error('处理所有词条数据出错:', err);
+      return [];
+    }
+  },
+
+  // 处理单个词条
+  processSingleWord: function(word) {
+    // 优先使用word_id作为唯一标识，确保wordId不为空
+    const wordId = word.word_id || word['例词id'] || word._id || '';
+    
+    // 确保collection字段存在
+    let collection = word['合集'] || word.collection || this.data.category || this.data.examType || '';
+    
+    // 构建基本词条对象
+    const processedWord = {
+      id: word._id || wordId || '',
+      wordId: wordId, // 明确设置wordId优先级
+      word: word.word || word['例词'] || '',
+      pinyin: word.pronunciation || word['读音'] || '',
+      usageId: word.usage_id || word['用法id'] || '',
+      wordType: word.part_of_speech || word['词性'] || '',
+      meaning: word.meaning || word['词义'] || '',
+      example: word.example_sentence || word['例句'] || '',
+      source: word.source || word['出处'] || '',
+      translation: word.explanation || word['释义'] || '',
+      collection: collection // 确保collection字段存在
+    };
+    
+    // 检查是否已有pronunciations字段
+    if (!word.pronunciations || !Array.isArray(word.pronunciations) || word.pronunciations.length === 0) {
+      // 创建默认的pronunciations结构
+      processedWord.pronunciations = [{
+        pronunciation: processedWord.pinyin,
+        usages: [{
+          part_of_speech: processedWord.wordType,
+          meaning: processedWord.meaning,
+          usage_id: processedWord.usageId || 'default_usage',
+          examples: [{
+            example_sentence: processedWord.example,
+            source: processedWord.source,
+            explanation: processedWord.translation,
+            example_sentence_id: 'default_example'
+          }]
+        }]
+      }];
+      
+      // 生成高亮处理后的例句
+      if (processedWord.pronunciations[0].usages[0].examples[0].example_sentence) {
+        processedWord.pronunciations[0].usages[0].examples[0].highlightedSentence = 
+          this.highlightKeyword(
+            processedWord.pronunciations[0].usages[0].examples[0].example_sentence, 
+            processedWord.word
+          );
+      }
+    } else {
+      // 已有pronunciations结构，保留原有结构
+      processedWord.pronunciations = word.pronunciations;
+      
+      // 确保每个pronunciation都有usages
+      processedWord.pronunciations.forEach((pron, pronIndex) => {
+        if (!pron.usages || !Array.isArray(pron.usages) || pron.usages.length === 0) {
+          pron.usages = [{
+            part_of_speech: processedWord.wordType,
+            meaning: processedWord.meaning,
+            usage_id: `usage_${pronIndex}_0`,
+            examples: [{
+              example_sentence: processedWord.example,
+              source: processedWord.source,
+              explanation: processedWord.translation,
+              example_sentence_id: `example_${pronIndex}_0_0`
+            }]
+          }];
+        } else {
+          // 确保每个usage都有examples
+          pron.usages.forEach((usage, usageIndex) => {
+            if (!usage.examples || !Array.isArray(usage.examples) || usage.examples.length === 0) {
+              usage.examples = [{
+                example_sentence: processedWord.example,
+                source: processedWord.source,
+                explanation: processedWord.translation,
+                example_sentence_id: `example_${pronIndex}_${usageIndex}_0`
+              }];
+            }
+            
+            // 生成高亮处理后的例句
+            usage.examples.forEach(example => {
+              if (example.example_sentence && !example.highlightedSentence) {
+                example.highlightedSentence = this.highlightKeyword(example.example_sentence, processedWord.word);
+              }
+            });
+          });
+        }
+      });
+    }
+    
+    return processedWord;
   },
 });

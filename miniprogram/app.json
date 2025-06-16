@@ -6,12 +6,12 @@
     "pages/word-learning/index/index",
     "pages/word-learning/study/study",
     "pages/word-learning/review/review",
+    "pages/word-learning/word-list/word-list",
     "pages/ai/index/index",
     "pages/my/index/index",
     "pages/my/history/history",
     "pages/my/favorites/favorites",
-    "pages/logs/logs",
-    "pages/word-learning/test-db/test-db"
+    "pages/logs/logs"
   ],
   "window": {
     "backgroundTextStyle": "light",

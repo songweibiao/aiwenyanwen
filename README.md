@@ -531,7 +531,7 @@ wenyanwen/
 #### 10. user_word_records（用户虚实词学习记录表）
 - `_id`: 记录唯一标识符
 - `user_id`: 用户ID（关联用户的openid）
-- `word_id`: 词条ID
+- `word_id`: 词条ID，词条唯一标识符
 - `word`: 词条名称
 - `exam_type`: 考试类型（中考/高考）
 - `is_mastered`: 是否已掌握
@@ -540,6 +540,19 @@ wenyanwen/
 - `review_times`: 复习次数
 - `created_at`: 创建时间
 - `updated_at`: 更新时间
+
+#### 11. xushici（虚实词数据表）
+- `word_id` : 例词id，词条唯一标识符
+- `word` : 例词
+- `pronunciation` (读音): 词条读音
+- `usage_id` (用法id): 用法唯一标识符
+- `part_of_speech` (词性): 词性（动词/名词/助词等）
+- `meaning` (词义): 词条含义
+- `example_sentence_id` (例句id): 例句唯一标识符
+- `example_sentence` (例句): 例句内容
+- `source` (出处): 例句出处
+- `explanation` (释义): 例句释义
+- `collection` (合集): 所属合集（如"高考虚词合集"、"高考实词合集"等）
 
 ## 核心业务逻辑
 

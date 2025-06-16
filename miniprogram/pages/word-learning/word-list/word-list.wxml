@@ -1,0 +1,70 @@
+<view class="container">
+  <!-- 搜索框 -->
+  <view class="search-box">
+    <input 
+      class="search-input" 
+      placeholder="搜索例词..." 
+      value="{{searchKeyword}}"
+      bindinput="onSearchInput"
+      confirm-type="search"
+      bindconfirm="onSearchConfirm"
+    />
+    <view class="search-btn" bindtap="onSearchConfirm">
+      <view class="search-icon"></view>
+    </view>
+  </view>
+
+  <!-- 顶部状态切换栏 -->
+  <view class="status-tabs">
+    <view class="status-tab {{currentStatus === 'all' ? 'active' : ''}}" data-status="all" bindtap="switchStatus">
+      全部 ({{stats.total || 0}})
+    </view>
+    <view class="status-tab {{currentStatus === 'unlearned' ? 'active' : ''}}" data-status="unlearned" bindtap="switchStatus">
+      未学习 ({{stats.unlearned || 0}})
+    </view>
+    <view class="status-tab {{currentStatus === 'learning' ? 'active' : ''}}" data-status="learning" bindtap="switchStatus">
+      已浏览 ({{stats.learning || 0}})
+    </view>
+    <view class="status-tab {{currentStatus === 'learned' ? 'active' : ''}}" data-status="learned" bindtap="switchStatus">
+      已掌握 ({{stats.learned || 0}})
+    </view>
+    <view class="status-tab {{currentStatus === 'review' ? 'active' : ''}}" data-status="review" bindtap="switchStatus">
+      需复习 ({{stats.review || 0}})
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在加载词条...</text>
+  </view>
+
+  <!-- 错误信息 -->
+  <view class="error-message" wx:if="{{error}}">
+    <text class="error-title">错误:</text>
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <!-- 无数据提示 -->
+  <view class="no-data" wx:if="{{!loading && loaded && (!wordList || wordList.length === 0)}}">
+    <view class="no-data-icon">!</view>
+    <text class="no-data-text">暂无词条数据</text>
+  </view>
+
+  <!-- 词条列表 -->
+  <view class="word-grid" wx:if="{{!loading && wordList && wordList.length > 0}}">
+    <view class="word-item {{getWordStatus(item) === 'learned' ? 'learned' : getWordStatus(item) === 'review' ? 'review' : getWordStatus(item) === 'learning' ? 'learning' : ''}}" 
+          wx:for="{{wordList}}" 
+          wx:key="wordId" 
+          data-word-id="{{item.wordId}}"
+          data-category="{{category}}"
+          bindtap="goToWordDetail">
+      <text class="word-text">{{item.word}}</text>
+      <view class="word-status-icon" wx:if="{{getWordStatus(item) !== 'unlearned'}}">
+        <view class="status-dot {{getWordStatus(item)}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 已经显示全部数据，不需要加载更多按钮 -->
+</view> 

@@ -1,11 +1,7 @@
 <!-- miniprogram/pages/word-learning/index/index.wxml -->
 <view class="container">
-  <view class="header">
-    <image class="header-icon" src="/images/icons/word-learning.png" mode="aspectFit"></image>
-    <view class="header-text">
-      <text class="header-title">虚实词学习</text>
-      <text class="header-subtitle">提高文言文阅读能力的基础</text>
-    </view>
+  <view class="search-section">
+    <input class="search-input" placeholder="搜索虚实词..." value="{{searchValue}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" />
   </view>
 
   <!-- 错误信息 -->
@@ -20,11 +16,11 @@
     <text class="loading-text">正在加载数据...</text>
   </view>
 
-  <!-- 主要内容区域 -->
-  <block wx:else>
+  <!-- 登录/未登录分支 -->
+  <block wx:if="{{isLoggedIn}}">
     <!-- 学习进度 -->
     <view class="section progress-section">
-      <view class="section-title">学习进度</view>
+      <view class="section-title">学习进度（{{selectedCollection}}）</view>
       <view class="section-content progress-content">
         <text class="progress-text">已学习 {{learned}} / {{learned + toReview + inProgress}}</text>
         <view class="progress-stats">
@@ -48,7 +44,7 @@
     <view class="section category-section">
       <view class="section-title">学习分类</view>
       <view class="section-content category-grid">
-        <view class="category-item" wx:for="{{categories}}" wx:key="type" data-type="{{item.type}}" bindtap="onCategoryTap">
+        <view class="category-item {{selectedCollection == item.type ? 'selected' : ''}}" wx:for="{{categories}}" wx:key="type" data-type="{{item.type}}" bindtap="onCategoryTap">
           <view class="category-icon category-icon-{{index}}"></view>
           <view class="category-info">
             <text class="category-name">{{item.name}}</text>
@@ -58,26 +54,48 @@
       </view>
     </view>
 
-    <!-- 快捷功能 -->
-    <view class="section function-section">
-      <view class="section-title">快捷功能</view>
-      <view class="section-content function-grid">
-        <view class="function-item" bindtap="continueStudy">
-          <view class="function-icon continue-icon"></view>
-          <text class="function-name">继续学习</text>
+    <!-- 最近学习 -->
+    <view class="section recent-section">
+      <view class="section-title">最近学习</view>
+      <view class="section-content recent-list">
+        <block wx:if="{{recentWords.length > 0}}">
+          <view class="recent-item" wx:for="{{recentWords}}" wx:key="wordId">
+            <text class="recent-word">{{item.word}}</text>
+            <text class="recent-status">{{item.statusText}}</text>
+            <text class="recent-time">{{item.timeStr}}</text>
+          </view>
+        </block>
+        <block wx:else>
+          <text class="recent-empty">暂无最近学习记录</text>
+        </block>
+      </view>
+    </view>
+  </block>
+
+  <!-- 未登录状态 -->
+  <block wx:else>
+    <view class="section progress-section">
+      <view class="section-title">学习进度</view>
+      <view class="section-content progress-content">
+        <text class="progress-text">请登录后查看学习进度</text>
         </view>
-        <view class="function-item" bindtap="startStudy">
-          <view class="function-icon start-icon"></view>
-          <text class="function-name">开始复习</text>
         </view>
-        <view class="function-item" bindtap="reviewWords">
-          <view class="function-icon review-icon"></view>
-          <text class="function-name">收藏词条</text>
+    <view class="section category-section">
+      <view class="section-title">学习分类</view>
+      <view class="section-content category-grid">
+        <view class="category-item" wx:for="{{categories}}" wx:key="type" data-type="{{item.type}}" bindtap="onCategoryTap">
+          <view class="category-icon category-icon-{{index}}"></view>
+          <view class="category-info">
+            <text class="category-name">{{item.name}}</text>
+            <text class="category-count">{{item.count}}个词条</text>
         </view>
-        <view class="function-item" bindtap="viewStats">
-          <view class="function-icon stats-icon"></view>
-          <text class="function-name">学习统计</text>
         </view>
+      </view>
+    </view>
+    <view class="section recent-section">
+      <view class="section-title">最近学习</view>
+      <view class="section-content recent-list">
+        <text class="recent-empty">请登录后查看最近学习</text>
       </view>
     </view>
   </block>

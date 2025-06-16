@@ -38,7 +38,11 @@ Page({
       { name: '中考虚词', count: 0, type: '中考虚词合集' }
     ],
     isLoading: true,
-    error: null
+    error: null,
+    isLoggedIn: false, // 是否已登录
+    selectedCollection: '高考实词合集', // 当前选中合集
+    searchValue: '', // 搜索框内容
+    searchResults: [], // 搜索结果
   },
 
   onLoad: function(options) {
@@ -57,11 +61,11 @@ Page({
     const currentEnv = wx.cloud.DYNAMIC_CURRENT_ENV || '未获取到环境ID';
     console.log('当前云环境:', currentEnv);
     
-    this.loadCategoryCounts();
-    this.loadUserProgress();
+    this.checkLoginStatus();
   },
   
   onShow: function() {
+    this.checkLoginStatus();
     // 刷新最近学习记录
     this.loadRecentWords();
     
@@ -70,6 +74,9 @@ Page({
     
     // 每次页面显示时刷新数据
     this.loadUserProgress();
+    
+    // 刷新分类数量
+    this.loadCategoryCounts();
   },
   
   // 加载页面数据
@@ -96,89 +103,210 @@ Page({
   loadCategoryCounts: function() {
     console.log('开始加载分类数量');
     
-    // 调用云函数获取分类数据
-    wx.cloud.callFunction({
-      name: 'getXushiciData',
-      data: {
-        type: 'categories'
-      }
-    })
-    .then(res => {
-      console.log('获取分类数量成功:', res);
-      
-      if (res.result && res.result.success && res.result.data) {
-        const categoriesData = res.result.data;
-        console.log('分类数据:', categoriesData);
-        
-        this.setData({
-          categories: categoriesData,
-          isLoading: false
+    const categories = [
+      { name: '高考实词', type: '高考实词合集' },
+      { name: '高考虚词', type: '高考虚词合集' },
+      { name: '中考实词', type: '中考实词合集' },
+      { name: '中考虚词', type: '中考虚词合集' }
+    ];
+    
+    // 使用Promise.all并行获取各个分类的数据
+    Promise.all(categories.map(category => {
+      return new Promise((resolve) => {
+        wx.cloud.callFunction({
+          name: 'getXushiciData',
+          data: {
+            type: 'getCategoryInfo',
+            category: category.type
+          }
+        })
+        .then(res => {
+          if (res.result && res.result.success && res.result.total) {
+            console.log(`分类 ${category.name} 词条数: ${res.result.total}`);
+            resolve({ ...category, count: res.result.total });
+          } else {
+            console.warn(`获取分类 ${category.name} 数量失败:`, res.result);
+            resolve({ ...category, count: 0 });
+          }
+        })
+        .catch(err => {
+          console.error(`获取分类 ${category.name} 数量出错:`, err);
+          resolve({ ...category, count: 0 });
         });
-      } else {
-        this.setData({
-          isLoading: false,
-          error: '获取分类数据失败'
-        });
-      }
+      });
+    }))
+    .then(results => {
+      console.log('所有分类数量获取完成:', results);
+      this.setData({
+        categories: results,
+        isLoading: false
+      }, () => {
+        console.log('分类数据已设置到页面:', this.data.categories);
+      });
     })
     .catch(err => {
-      console.error('调用云函数失败:', err);
-      
+      console.error('获取分类数量出错:', err);
       this.setData({
+        categories: categories.map(cat => ({ ...cat, count: 0 })),
         isLoading: false,
-        error: '调用云函数失败: ' + (err.message || JSON.stringify(err))
+        error: '获取分类数量失败'
       });
     });
   },
   
-  // 加载用户学习进度
+  // 加载用户学习进度（优先云端）
   loadUserProgress: function() {
-    // 从本地缓存获取学习进度
+    const selectedCollection = this.data.selectedCollection;
+    const userInfo = wx.getStorageSync('userInfo');
+    if (this.data.isLoggedIn && userInfo && userInfo.openid) {
+      // 云端拉取
+      wx.cloud.callFunction({
+        name: 'getUserWordProgress',
+        data: {
+          userId: userInfo.openid,
+          collection: selectedCollection
+        },
+        success: res => {
+          if (res.result && res.result.success) {
+            // 云端数据
+            const progressArr = res.result.data || [];
+            // 同步写入本地缓存
+            const allProgress = wx.getStorageSync('wordLearningProgress') || {};
+            progressArr.forEach(item => {
+              allProgress[item.wordId] = {
+                status: item.status,
+                lastStudied: new Date(item.lastStudied).getTime(),
+                collection: item.collection
+              };
+            });
+            wx.setStorageSync('wordLearningProgress', allProgress);
+            // 只统计当前分类
+            const filtered = progressArr.filter(item => item.collection === selectedCollection);
+            const learned = filtered.filter(item => item.status === 'learned').length;
+            const toReview = filtered.filter(item => item.status === 'review').length;
+            const inProgress = filtered.filter(item => item.status === 'learning').length;
+            this.setData({
+              learned,
+              toReview,
+              inProgress,
+              isLoading: false
+            });
+          } else {
+            this.loadUserProgressLocal();
+          }
+        },
+        fail: err => {
+          this.loadUserProgressLocal();
+        }
+      });
+    } else {
+      this.loadUserProgressLocal();
+    }
+  },
+  
+  // 本地加载学习进度
+  loadUserProgressLocal: function() {
     const progress = wx.getStorageSync('wordLearningProgress') || {};
-    
-    // 计算已掌握、待复习和连续学习的词条数量
-    const learned = Object.values(progress).filter(item => item.status === 'learned').length;
-    const toReview = Object.values(progress).filter(item => item.status === 'review').length;
-    const inProgress = Object.values(progress).filter(item => 
-      item.status === 'learning' && item.lastStudied && 
-      (new Date().getTime() - item.lastStudied) < 24 * 60 * 60 * 1000
-    ).length;
-
+    const selectedCollection = this.data.selectedCollection;
+    const filtered = Object.values(progress).filter(item => item.collection === selectedCollection);
+    const learned = filtered.filter(item => item.status === 'learned').length;
+    const toReview = filtered.filter(item => item.status === 'review').length;
+    const inProgress = filtered.filter(item => item.status === 'learning').length;
     this.setData({
-      learned: learned,
-      toReview: toReview,
-      inProgress: inProgress
+      learned,
+      toReview,
+      inProgress,
+      isLoading: false
     });
   },
   
-  // 加载最近学习的词
+  // 加载最近学习的词（优先云端）
   loadRecentWords: function() {
     return new Promise((resolve) => {
-      // 从本地存储获取学习历史
+      const selectedCollection = this.data.selectedCollection;
+      const userInfo = wx.getStorageSync('userInfo');
+      if (this.data.isLoggedIn && userInfo && userInfo.openid) {
+        wx.cloud.callFunction({
+          name: 'getUserWordProgress',
+          data: {
+            userId: userInfo.openid,
+            collection: selectedCollection
+          },
+          success: res => {
+            if (res.result && res.result.success) {
+              const progressArr = res.result.data || [];
+              // 同步写入本地缓存
+              let history = wx.getStorageSync('wordLearnHistory') || [];
+              progressArr.forEach(item => {
+                // 只保留最近学习时间
+                history = history.filter(h => !(h.wordId === item.wordId && h.collection === item.collection));
+                history.unshift({
+                  wordId: item.wordId,
+                  word: item.word, // 这里需要后端返回 word 字段，或前端补全
+                  status: item.status,
+                  learnTime: item.lastStudied,
+                  collection: item.collection
+                });
+              });
+              wx.setStorageSync('wordLearnHistory', history);
+              // 只展示当前分类
+              const filtered = history.filter(item => item.collection === selectedCollection);
+              filtered.sort((a, b) => new Date(b.learnTime) - new Date(a.learnTime));
+              const recentWords = filtered.slice(0, 5).map(item => {
+                const time = item.learnTime;
+                const date = time ? new Date(time) : new Date();
+                const timeStr = this.formatTime(date);
+                let statusText = '学习中';
+                if (item.status === 'mastered' || item.status === 'learned') {
+                  statusText = '已掌握';
+                } else if (item.status === 'review') {
+                  statusText = '待复习';
+                }
+                return {
+                  wordId: item.wordId,
+                  word: item.word,
+                  timeStr,
+                  status: item.status || 'studying',
+                  statusText
+                };
+              });
+              this.setData({ recentWords, isLoading: false });
+              resolve();
+            } else {
+              this.loadRecentWordsLocal().then(resolve);
+            }
+          },
+          fail: err => {
+            this.loadRecentWordsLocal().then(resolve);
+          }
+        });
+      } else {
+        this.loadRecentWordsLocal().then(resolve);
+      }
+    });
+  },
+  
+  // 本地加载最近学习
+  loadRecentWordsLocal: function() {
+    return new Promise((resolve) => {
       const learnHistory = wx.getStorageSync('wordLearnHistory') || [];
-      
-      // 按最后学习时间排序
-      learnHistory.sort((a, b) => {
+      const selectedCollection = this.data.selectedCollection;
+      const filtered = learnHistory.filter(item => item.collection === selectedCollection);
+      filtered.sort((a, b) => {
         const timeA = a.updateTime || a.learnTime || '';
         const timeB = b.updateTime || b.learnTime || '';
         return new Date(timeB) - new Date(timeA);
       });
-      
-      // 只取前5个
-      const recentWords = learnHistory.slice(0, 5).map(item => {
-        // 格式化时间
+      const recentWords = filtered.slice(0, 5).map(item => {
         const time = item.updateTime || item.learnTime || '';
         const date = time ? new Date(time) : new Date();
         const timeStr = this.formatTime(date);
-        
-        // 状态显示文本
         let statusText = '学习中';
-        if (item.status === 'mastered') {
+        if (item.status === 'mastered' || item.status === 'learned') {
           statusText = '已掌握';
         } else if (item.status === 'review') {
           statusText = '待复习';
         }
-        
         return {
           wordId: item.wordId,
           word: item.word,
@@ -187,8 +315,7 @@ Page({
           statusText
         };
       });
-      
-      this.setData({ recentWords });
+      this.setData({ recentWords, isLoading: false });
       resolve();
     });
   },
@@ -391,12 +518,41 @@ Page({
     };
   },
   
-  // 点击分类跳转到学习页面
+  // 点击分类跳转到词条列表页面
   onCategoryTap: function(e) {
-    const { type } = e.currentTarget.dataset;
+    const type = e.currentTarget.dataset.type;
     console.log('点击分类:', type);
+    
+    if (!this.data.isLoggedIn) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none'
+      });
+      return;
+    }
+    // 切换分类
+    this.setData({ selectedCollection: type }, () => {
+      this.loadUserProgress();
+      this.loadRecentWords();
+    });
+    
+    // 跳转到词条列表页面，带上 category 参数
+    const url = `/pages/word-learning/word-list/word-list?category=${encodeURIComponent(type)}`;
+    console.log('准备跳转到:', url);
+    
     wx.navigateTo({
-      url: '../study/study?examType=' + type
+      url: url,
+      success: () => {
+        console.log('跳转成功');
+      },
+      fail: (err) => {
+        console.error('跳转失败:', err);
+        // 尝试使用switchTab（如果是tabBar页面）
+        wx.showToast({
+          title: '页面跳转失败',
+          icon: 'none'
+        });
+      }
     });
   },
   
@@ -425,6 +581,48 @@ Page({
   viewStats: function() {
     wx.navigateTo({
       url: '../stats/stats'
+    });
+  },
+  
+  checkLoginStatus: function() {
+    const userInfo = wx.getStorageSync('userInfo');
+    this.setData({
+      isLoggedIn: !!userInfo
+    });
+    if (!!userInfo) {
+      this.loadCategoryCounts();
+      this.loadUserProgress();
+      this.loadRecentWords();
+    } else {
+      this.setData({ isLoading: false });
+    }
+  },
+  
+  onSearchInput: function(e) {
+    this.setData({ searchValue: e.detail.value });
+  },
+  
+  onSearchConfirm: function(e) {
+    const value = e.detail.value.trim();
+    if (!value) return;
+    // 搜索 xushici 集合
+    wx.cloud.callFunction({
+      name: 'getXushiciData',
+      data: { type: 'search', keyword: value }
+    }).then(res => {
+      this.setData({ searchResults: res.result.data || [] });
+    });
+  },
+  
+  getProgressByCollection: function(collection) {
+    // 以当前合集统计学习进度
+    if (!this.data.isLoggedIn) return;
+    wx.cloud.callFunction({
+      name: 'getUserProgress',
+      data: { collection }
+    }).then(res => {
+      const { learned, toReview, inProgress } = res.result;
+      this.setData({ learned, toReview, inProgress });
     });
   }
 });

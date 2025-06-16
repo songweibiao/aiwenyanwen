@@ -16,11 +16,11 @@
   <view class="no-data" wx:if="{{!loading && loaded && !wordList.length}}">
     <view class="no-data-icon">!</view>
     <text class="no-data-text">暂无词条数据</text>
-    <button class="no-data-button" bindtap="goBack">返回首页</button>
+    <button class="no-data-button" bindtap="goBack">返回</button>
   </view>
 
   <!-- 页面顶部区域 - 优化布局 -->
-  <view class="page-header">
+  <view class="page-header" wx:if="{{!(!loading && loaded && !wordList.length)}}">
     <!-- 词条计数器 -->
     <view class="word-counter-container">
       <view class="collection-name">{{wordList[currentIndex].collection || '词条学习'}}</view>
@@ -85,7 +85,7 @@
   </view>
 
   <!-- 内容区域 -->
-  <view class="content-area">
+  <view class="content-area" wx:if="{{!(!loading && loaded && !wordList.length)}}">
     <!-- 词义标题 - 无论单个还是多个用法都显示 -->
     <view class="single-usage-title">
       <text class="usage-label">词义</text>
@@ -123,8 +123,9 @@
   </view>
   
   <!-- 操作按钮 - 悬浮在底部 -->
-  <view class="fixed-action-buttons">
-    <button class="action-button review-button" bindtap="markForReview">需要复习</button>
+  <view class="fixed-action-buttons" wx:if="{{!(!loading && loaded && !wordList.length)}}">
+    
     <button class="action-button learned-button" bindtap="markAsLearned">已掌握</button>
+    <button class="action-button review-button" bindtap="markForReview">待复习</button>
   </view>
 </view>

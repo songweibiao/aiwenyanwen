@@ -26,28 +26,23 @@ function tryDecode(str) {
 async function getCategoryData(category) {
   try {
     // 获取所有数据，然后在内存中过滤 - 这种方式更可靠
-    const allResults = await db.collection('xushici').limit(100).get();
+    const allResults = await db.collection('xushici').limit(1000).get();
     
     if (!allResults.data || allResults.data.length === 0) {
       return { success: false, error: '数据库集合为空' };
     }
     
-    // 在内存中过滤匹配的数据 - 精确匹配
+    // 在内存中过滤匹配的数据 - 允许多种字段名和模糊匹配
     let filteredData = allResults.data.filter(item => {
-      if (!item.合集) return false;
-      return item.合集 === category;
-    });
-    
-    // 如果精确匹配没有结果，尝试模糊匹配
-    if (filteredData.length === 0) {
-      console.log('精确匹配无结果，尝试模糊匹配');
-      filteredData = allResults.data.filter(item => {
-        if (!item.合集) return false;
-        return item.合集.includes(category) || category.includes(item.合集);
+      const itemCollection = item['合集'] || item.collection || '';
+      return itemCollection === category || 
+            itemCollection.includes(category) || 
+            category.includes(itemCollection);
       });
-    }
     
-    return { success: true, data: filteredData };
+    console.log(`分类【${category}】过滤后的数据条数:`, filteredData.length);
+    
+    return { success: true, data: filteredData, total: filteredData.length };
   } catch (err) {
     console.error('获取分类数据出错:', err);
     return { success: false, error: err.message };
@@ -256,9 +251,103 @@ exports.main = async (event, context) => {
     } else if (type === 'byWordId') {
       // 按词条ID获取
       const result = await db.collection('xushici')
-        .where({ 例词id: wordId })
+        .where({ word_id: wordId })
         .get()
       return { success: true, data: result.data, total: result.data.length }
+    } else if (type === 'byFuzzyId') {
+      // 模糊匹配ID
+      if (!wordId) {
+        return { success: false, error: '缺少词条ID参数' }
+      }
+      
+      try {
+        console.log(`开始模糊匹配ID: ${wordId}`);
+        
+        // 获取所有数据
+        const allResults = await db.collection('xushici').limit(1000).get()
+        
+        if (!allResults.data || allResults.data.length === 0) {
+          console.log('数据库无数据');
+          return { success: true, data: [] }
+        }
+        
+        console.log(`获取到数据库记录: ${allResults.data.length}条`);
+        
+        // 检查第一条记录的字段
+        const firstItem = allResults.data[0];
+        console.log('数据库记录字段示例:', Object.keys(firstItem).join(', '));
+        
+        // 在内存中进行模糊匹配
+        const filteredResults = allResults.data.filter(item => {
+          // 检查多个可能的ID字段
+          const idFields = ['word_id', '例词id', '_id', 'id', 'code', '编码', '例词'];
+          
+          // 检查是否有任何字段匹配
+          const fieldMatch = idFields.some(field => {
+            if (item[field] && typeof item[field] === 'string' && item[field].includes(wordId)) {
+              console.log(`在字段 ${field} 中找到匹配: ${item[field]}`);
+              return true;
+            }
+            return false;
+          });
+          
+          // 如果没有字段匹配，检查所有字符串字段
+          if (!fieldMatch) {
+            return Object.entries(item).some(([key, value]) => {
+              if (typeof value === 'string' && value.includes(wordId)) {
+                console.log(`在字段 ${key} 中找到匹配: ${value}`);
+                return true;
+              }
+              return false;
+            });
+          }
+          
+          return fieldMatch;
+        });
+        
+        console.log(`模糊匹配ID "${wordId}" 找到 ${filteredResults.length} 条结果`);
+        
+        // 如果找到多个结果，优先返回ID完全匹配的
+        if (filteredResults.length > 1) {
+          // 检查是否有完全匹配的
+          const exactMatch = filteredResults.find(item => {
+            return Object.values(item).some(value => 
+              typeof value === 'string' && 
+              value === wordId
+            );
+          });
+          
+          if (exactMatch) {
+            console.log('找到完全匹配的结果:', exactMatch);
+            return { success: true, data: [exactMatch] };
+          }
+          
+          // 如果没有完全匹配，但有多个结果，检查是否有例词字段匹配的
+          const wordMatch = filteredResults.find(item => {
+            const word = item.word || item['例词'] || '';
+            return word === wordId;
+          });
+          
+          if (wordMatch) {
+            console.log('找到例词完全匹配的结果:', wordMatch);
+            return { success: true, data: [wordMatch] };
+          }
+        }
+        
+        // 如果找到结果，记录第一条结果的详细信息
+        if (filteredResults.length > 0) {
+          const firstResult = filteredResults[0];
+          console.log('第一条匹配结果详情:');
+          console.log('- ID:', firstResult._id);
+          console.log('- 例词:', firstResult.word || firstResult['例词'] || '无');
+          console.log('- 词义:', firstResult.meaning || firstResult['词义'] || '无');
+        }
+        
+        return { success: true, data: filteredResults };
+      } catch (err) {
+        console.error('模糊匹配ID出错:', err);
+        return { success: false, error: err.message };
+      }
     } else if (type === 'categories') {
       // 获取所有分类及数量
       const categories = [
@@ -272,6 +361,7 @@ exports.main = async (event, context) => {
         // 检查集合是否存在
         const collections = await db.listCollections().get()
         if (!collections.data.some(col => col.name === 'xushici')) {
+          console.error('xushici集合不存在');
           return {
             success: true,
             data: categories.map(cat => ({ ...cat, count: 0 })),
@@ -279,9 +369,15 @@ exports.main = async (event, context) => {
           }
         }
         
-        // 获取所有数据
-        const allData = await db.collection('xushici').get()
+        // 获取所有数据，确保能检索到足够的数据
+        const allData = await db.collection('xushici')
+          .limit(1000) // 增大获取数量上限
+          .get()
+        
+        console.log('获取到总词条数量:', allData.data ? allData.data.length : 0);
+        
         if (!allData.data || allData.data.length === 0) {
+          console.error('xushici集合为空');
           return {
             success: true,
             data: categories.map(cat => ({ ...cat, count: 0 })),
@@ -289,18 +385,78 @@ exports.main = async (event, context) => {
           }
         }
         
-        // 在内存中计算每个分类的数量
+        // 检查每个项目的所有字段
+        const sampleItem = allData.data[0];
+        console.log('第一个项目的字段:', Object.keys(sampleItem).join(', '));
+        
+        // 检查每个项目中可能的"合集"字段
+        console.log('检查可能的合集字段值:');
+        for (const field of ['合集', 'collection', '集合', 'category']) {
+          const values = allData.data
+            .map(item => item[field])
+            .filter(Boolean); // 过滤掉undefined和null
+          if (values.length > 0) {
+            console.log(`字段 '${field}' 的值示例:`, [...new Set(values.slice(0, 5))]);
+          }
+        }
+        
+        // 检查前5个项目的所有字段值
+        console.log('前5个项目的详细信息:');
+        for (let i = 0; i < Math.min(5, allData.data.length); i++) {
+          const item = allData.data[i];
+          console.log(`项目${i+1}:`, {
+            id: item._id,
+            word: item.例词 || item.word || '未知词',
+            collection: item.合集 || item.collection || '未知合集'
+          });
+        }
+        
+        // 检查词条是否有合集字段
+        const firstItem = allData.data[0];
+        const hasCollection = firstItem && ('合集' in firstItem);
+        if (!hasCollection) {
+          console.error('词条数据缺少"合集"字段');
+          console.log('词条字段:', Object.keys(firstItem));
+        }
+        
+        // 记录所有可用的合集值
+        const uniqueCollections = [...new Set(allData.data
+          .map(item => item['合集'] || item.collection || '')
+          .filter(Boolean))];
+          
+        console.log('可用的合集值:', uniqueCollections);
+        
+        // 在内存中计算每个分类的数量，支持合集/collection两种字段名
         const results = categories.map(category => {
-          const count = allData.data.filter(item => 
-            item.合集 === category.type
-          ).length
+          // 匹配合集字段、collection字段，允许部分匹配
+          const matchedItems = allData.data.filter(item => {
+            const itemCollection = item['合集'] || item.collection || '';
+            return itemCollection === category.type || 
+                  itemCollection.includes(category.type) || 
+                  category.type.includes(itemCollection);
+          });
+          
+          const count = matchedItems.length;
+          
+          // 输出前几个匹配到的项目，方便调试
+          if (count > 0) {
+            console.log(`匹配到${category.name}的项目示例:`, 
+              matchedItems.slice(0, 3).map(item => ({
+                id: item._id, 
+                word: item.例词 || item.word || '未知词',
+                collection: item['合集'] || item.collection || '未知合集'
+              }))
+            );
+          }
+          
+          console.log(`分类"${category.name}"的词条数量: ${count}`);
           
           return { 
             name: category.name, 
             type: category.type, 
             count: count 
           }
-        })
+        });
         
         return { success: true, data: results }
       } catch (err) {
@@ -322,12 +478,33 @@ exports.main = async (event, context) => {
       if (!queryCategory) {
         return { success: false, error: '缺少分类参数' };
       }
-      // 直接返回所有符合条件的词条（每个词条就是唯一 word_id）
-      const allResults = await db.collection('xushici').where({ collection: queryCategory }).limit(500).get();
+      // 支持合集和collection两个字段名
+      console.log('获取分类词条:', queryCategory);
+      
+      try {
+        // 获取所有数据
+        const allResults = await db.collection('xushici').limit(1000).get();
       if (!allResults.data || allResults.data.length === 0) {
+          console.log('数据库无数据');
         return { success: true, data: [] };
       }
-      return { success: true, data: allResults.data };
+        
+        console.log('数据库总词条数:', allResults.data.length);
+        
+        // 根据合集或collection字段过滤
+        const filteredResults = allResults.data.filter(item => {
+          const itemCollection = item['合集'] || item.collection || '';
+          return itemCollection === queryCategory || 
+                itemCollection.includes(queryCategory) || 
+                queryCategory.includes(itemCollection);
+        });
+        
+        console.log('符合条件的词条数:', filteredResults.length);
+        return { success: true, data: filteredResults };
+      } catch (err) {
+        console.error('获取分类词条出错:', err);
+        return { success: false, error: err.message };
+      }
     } else {
       return { success: false, error: '未知的查询类型' }
     }

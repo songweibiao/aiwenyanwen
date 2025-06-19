@@ -14,8 +14,6 @@ Page({
     gradeLevels: [],
     currentGrade: '一年级上',
     currentLesson: '李白《将进酒》',
-    currentWordType: '中考',
-    currentWordTypeName: '中考必背虚实词',
     noticeList: [],
     currentNoticeIndex: 0,
     currentNotice: {},
@@ -641,33 +639,7 @@ Page({
   
   // 刷新名句
   refreshQuote: function() {
-    // 调用云函数获取名句数据
-    wx.cloud.callFunction({
-      name: 'getRandomQuote',
-      data: {},
-      success: res => {
-        console.log('云函数获取名句结果:', res.result);
-        
-        if (res.result && res.result.success && res.result.data) {
-          this.setData({
-            famousQuote: res.result.data
-          });
-          
-          // 检查是否已收藏
-          if (res.result.data._id) {
-            this.checkQuoteCollectionStatus(res.result.data._id);
-          }
-        } else {
-          // 获取失败，尝试直接从数据库获取
-          this.getQuoteFromDatabase();
-        }
-      },
-      fail: err => {
-        console.error('云函数获取名句失败:', err);
-        // 获取失败，尝试直接从数据库获取
-        this.getQuoteFromDatabase();
-      }
-    });
+    this.getRandomFamousQuote();
   },
 
   // 切换年级
@@ -692,7 +664,7 @@ Page({
   // 更换课程
   changeCourse: function() {
     wx.navigateTo({
-      url: '/pages/course/select/select?fromHome=true'
+      url: '/pages/course/select/select'
     });
   },
   
@@ -971,52 +943,10 @@ Page({
     });
   },
 
-  // 中考必背虚实词
-  goToMiddleExamWords: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/word/middle'
-    });
-  },
-
-  // 高考必背虚实词
-  goToHighExamWords: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/word/high'
-    });
-  },
-
-  // 打卡页面
-  goToCheckin: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/user/checkin'
-    });
-  },
-
-  // 学习页面
-  goToStudy: function() {
-    wx.navigateTo({
-      url: '/miniprogram/pages/study/index'
-    });
-  },
-
   // 前往课文选择页
   goToArticleList: function () {
     wx.navigateTo({
       url: '/pages/course/select/select'
-    })
-  },
-
-  // 前往虚词实词学习页
-  goToWordStudy: function () {
-    wx.navigateTo({
-      url: '/miniprogram/pages/word/index'
-    })
-  },
-  
-  // 前往虚词实词练习页
-  goToWordPractice: function () {
-    wx.navigateTo({
-      url: '/miniprogram/pages/word/practice'
     })
   },
   

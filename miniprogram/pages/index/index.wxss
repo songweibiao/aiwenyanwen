@@ -1177,10 +1177,11 @@ page {
   z-index: 1;
 }
 
-/* 开发测试工具卡片 - 删除 */
-
-/* 课文列表页面样式 */
-/* ... existing code ... */
+.course-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
 .icon-title {
   width: 40rpx;
@@ -1362,7 +1363,6 @@ page {
   line-height: 1.2;
   height: auto;
 } 
-
 /* 添加数据库测试入口按钮样式 */
 .test-db-link {
   margin: 30rpx 0;

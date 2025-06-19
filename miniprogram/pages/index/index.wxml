@@ -197,38 +197,6 @@
     </view>
   </view>
 
-  <!-- 虚实词学习区域 -->
-  <view class="word-card card">
-    <view class="card-header">
-      <view class="card-title">
-        <image class="icon-title" src="/images/icons/word.svg" mode="aspectFit"/>
-        <text class="title-text">虚实词学习</text>
-      </view>
-      <view class="word-selector" bindtap="changeWordType">
-        <text class="word-type text-primary-color">{{currentWordType}}</text>
-        <view class="dropdown-icon">
-          <view class="arrow-down"></view>
-        </view>
-      </view>
-    </view>
-    
-    <view class="word-type-info">
-      <view class="word-type-content">
-        <text class="word-type-name text-bold">{{currentWordTypeName}}</text>
-        <text class="word-count text-tertiary">{{currentWordType === '中考' ? '共124个' : '共186个'}}</text>
-      </view>
-      <view class="btn btn-secondary btn-xs change-btn" bindtap="changeWordType">
-        <image class="change-icon" src="/images/icons/refresh.svg" mode="aspectFit"></image>
-        <text>更换课程</text>
-      </view>
-    </view>
-    
-    <view class="word-actions">
-      <view class="btn btn-primary word-btn" bindtap="goToWordStudy">学习</view>
-      <view class="btn btn-secondary word-btn" bindtap="goToWordPractice">练习</view>
-    </view>
-  </view>
-
   <!-- 名句赏析卡片 -->
   <view class="quote-card card" wx:if="{{famousQuote}}">
     <view class="card-header">
@@ -263,9 +231,4 @@
       <view class="btn btn-light promo-btn">立即领取</view>
     </view>
   </view>
-
-  <!-- 在适当位置添加一个导航按钮链接到测试页面 -->
-  <navigator url="/pages/word-learning/test-db/test-db" class="test-db-link">
-    <button class="test-btn">数据库连接测试</button>
-  </navigator>
 </view> 

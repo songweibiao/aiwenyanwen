@@ -6,25 +6,6 @@
     <text class="error-text">{{error}}</text>
   </view>
 
-  <!-- 加载状态 -->
-  <view class="loading" wx:if="{{isLoading}}">
-    <view class="loading-spinner"></view>
-    <text class="loading-text">正在加载数据...</text>
-  </view>
-
-  <!-- 欢迎卡片 -->
-  <view class="welcome-card card">
-    <view class="welcome-content">
-      <view class="welcome-header">
-        <text class="welcome-title">虚实词学习</text>
-        <text class="welcome-subtitle">掌握文言文关键词汇</text>
-      </view>
-      <view class="welcome-decoration">
-        <image class="decoration-image" src="/images/icons/word.svg" mode="aspectFit"></image>
-      </view>
-    </view>
-  </view>
-
   <!-- 登录/未登录分支 -->
   <block wx:if="{{isLoggedIn}}">
     <!-- 学习进度卡片 -->

@@ -35,7 +35,7 @@ Page({
       { name: '中考实词', count: 0, type: '中考实词合集' },
       { name: '中考虚词', count: 0, type: '中考虚词合集' }
     ],
-    isLoading: true,
+    isLoading: false, // 改为默认不显示加载状态
     error: null,
     isLoggedIn: false, // 是否已登录
     selectedCollection: '高考实词合集' // 当前选中合集
@@ -75,20 +75,17 @@ Page({
   
   // 加载页面数据
   loadData: function() {
-    this.setData({ loading: true });
-    
     Promise.all([
       this.loadCategoryCounts(),
       this.updateLearningStats()
     ]).then(() => {
-      this.setData({ loading: false });
+      console.log('数据加载完成');
     }).catch(err => {
       console.error('加载数据失败:', err);
       wx.showToast({
         title: '加载失败，请重试',
         icon: 'none'
       });
-      this.setData({ loading: false });
     });
   },
   
@@ -97,10 +94,10 @@ Page({
     console.log('开始加载分类数量');
     
     const categories = [
-      { name: '高考实词', type: '高考实词合集' },
-      { name: '高考虚词', type: '高考虚词合集' },
       { name: '中考实词', type: '中考实词合集' },
-      { name: '中考虚词', type: '中考虚词合集' }
+      { name: '中考虚词', type: '中考虚词合集' },
+      { name: '高考实词', type: '高考实词合集' },
+      { name: '高考虚词', type: '高考虚词合集' }
     ];
     
     // 使用Promise.all并行获取各个分类的数据
@@ -131,8 +128,7 @@ Page({
     .then(results => {
       console.log('所有分类数量获取完成:', results);
         this.setData({
-        categories: results,
-        isLoading: false
+        categories: results
       }, () => {
         console.log('分类数据已设置到页面:', this.data.categories);
         });
@@ -141,7 +137,6 @@ Page({
       console.error('获取分类数量出错:', err);
       this.setData({
         categories: categories.map(cat => ({ ...cat, count: 0 })),
-        isLoading: false,
         error: '获取分类数量失败'
       });
     });
@@ -224,8 +219,7 @@ Page({
       learned,
       toReview,
       inProgress,
-      toLearn: Math.max(0, toLearn), // 确保不为负数
-      isLoading: false
+      toLearn: Math.max(0, toLearn) // 确保不为负数
     });
   },
   
@@ -404,8 +398,6 @@ Page({
     if (!!userInfo) {
       this.loadCategoryCounts();
       this.loadUserProgress();
-    } else {
-      this.setData({ isLoading: false });
     }
   },
   

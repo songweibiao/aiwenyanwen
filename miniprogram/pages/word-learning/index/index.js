@@ -38,7 +38,8 @@ Page({
     isLoading: false, // 改为默认不显示加载状态
     error: null,
     isLoggedIn: false, // 是否已登录
-    selectedCollection: '高考实词合集' // 当前选中合集
+    selectedCollection: '高考实词合集', // 当前选中合集
+    dailyWord: null // 每日一词数据
   },
 
   onLoad: function(options) {
@@ -58,6 +59,9 @@ Page({
     console.log('当前云环境:', currentEnv);
     
     this.checkLoginStatus();
+    
+    // 加载每日一词
+    this.loadDailyWord();
   },
   
   onShow: function() {
@@ -86,6 +90,94 @@ Page({
         title: '加载失败，请重试',
         icon: 'none'
       });
+    });
+  },
+  
+  // 加载每日一词
+  loadDailyWord: function() {
+    // 根据登录状态和选择的分类获取词条
+    const category = this.data.isLoggedIn ? this.data.selectedCollection : '中考实词合集';
+    
+    wx.cloud.callFunction({
+      name: 'getXushiciData',
+      data: {
+        type: 'getRandomWord',
+        category: category
+      }
+    })
+    .then(res => {
+      console.log('获取每日一词成功:', res.result);
+      if (res.result && res.result.success && res.result.data) {
+        this.setData({
+          dailyWord: res.result.data
+        });
+      } else {
+        console.warn('获取每日一词失败:', res.result);
+        wx.showToast({
+          title: '获取词条失败',
+          icon: 'none'
+        });
+      }
+    })
+    .catch(err => {
+      console.error('获取每日一词出错:', err);
+      wx.showToast({
+        title: '获取词条出错',
+        icon: 'none'
+      });
+    });
+  },
+  
+  // 刷新每日一词
+  refreshDailyWord: function(e) {
+    // 阻止事件冒泡，避免触发卡片的点击事件
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    this.loadDailyWord();
+    wx.showToast({
+      title: '已更新',
+      icon: 'success',
+      duration: 1000
+    });
+  },
+  
+  // 查看词条详情
+  viewWordDetail: function(e) {
+    const wordId = e.currentTarget.dataset.wordId;
+    const category = this.data.dailyWord.collection || this.data.selectedCollection;
+    
+    console.log('点击每日一词:', {
+      wordId: wordId,
+      category: category
+    });
+    
+    if (!wordId) {
+      console.error('词条ID无效');
+      wx.showToast({
+        title: '词条ID无效',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 跳转到study页面，与word-list页面的跳转逻辑保持一致
+    const url = `/pages/word-learning/study/study?wordId=${encodeURIComponent(wordId)}&category=${encodeURIComponent(category)}`;
+    console.log('准备跳转到:', url);
+    
+    wx.navigateTo({
+      url: url,
+      success: () => {
+        console.log('跳转成功');
+      },
+      fail: (err) => {
+        console.error('跳转失败:', err);
+        wx.showToast({
+          title: '跳转失败，请重试',
+          icon: 'none'
+        });
+      }
     });
   },
   
@@ -352,6 +444,8 @@ Page({
     // 切换分类
     this.setData({ selectedCollection: type }, () => {
       this.loadUserProgress();
+      // 更新每日一词
+      this.loadDailyWord();
     });
     
     // 跳转到词条列表页面，带上 category 参数

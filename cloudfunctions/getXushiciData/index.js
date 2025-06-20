@@ -49,6 +49,13 @@ async function getCategoryData(category) {
   }
 }
 
+// 辅助函数：从数组中随机获取一个元素
+function getRandomItem(array) {
+  if (!array || array.length === 0) return null;
+  const randomIndex = Math.floor(Math.random() * array.length);
+  return array[randomIndex];
+}
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   const { type, category, examType, limit = 20, offset = 0, wordId, index } = event
@@ -98,6 +105,98 @@ exports.main = async (event, context) => {
         return {
           success: false,
           error: '获取分类信息出错: ' + err.message
+        };
+      }
+    } else if (type === 'getRandomWord') {
+      // 获取随机词条
+      if (!queryCategory) {
+        return { success: false, error: '缺少分类参数' };
+      }
+      
+      console.log('获取随机词条，分类:', queryCategory);
+      
+      try {
+        // 获取该分类的所有数据
+        const result = await getCategoryData(queryCategory);
+        
+        if (!result.success) {
+          return result;
+        }
+        
+        const filteredData = result.data;
+        console.log('过滤后的数据条数:', filteredData.length);
+        
+        if (filteredData.length === 0) {
+          return {
+            success: false,
+            error: '未找到匹配的数据',
+            total: 0
+          };
+        }
+        
+        // 随机选择一个词条
+        const randomWord = getRandomItem(filteredData);
+        console.log('随机选择的词条:', randomWord);
+        
+        // 处理词义和例句
+        let explanation = '';
+        let example = '';
+        let exampleSource = '';
+        let exampleTranslation = '';
+        
+        // 尝试从不同的数据结构中获取词义
+        if (randomWord.pronunciations && randomWord.pronunciations.length > 0) {
+          // 新数据结构
+          const firstPronunciation = randomWord.pronunciations[0];
+          if (firstPronunciation.usages && firstPronunciation.usages.length > 0) {
+            const firstUsage = firstPronunciation.usages[0];
+            explanation = firstUsage.meaning || '';
+            
+            if (firstUsage.examples && firstUsage.examples.length > 0) {
+              const firstExample = firstUsage.examples[0];
+              example = firstExample.example_sentence || '';
+              exampleSource = firstExample.source || '';
+              exampleTranslation = firstExample.explanation || '';
+            }
+          }
+        } else {
+          // 旧数据结构
+          explanation = randomWord.explanation || randomWord.词义 || randomWord.meaning || '';
+          example = randomWord.example || randomWord.例句 || '';
+          exampleSource = randomWord.source || randomWord.出处 || '';
+          exampleTranslation = randomWord.translation || randomWord.译文 || randomWord.例句译文 || '';
+        }
+        
+        // 标准化词条字段，确保返回格式一致
+        const normalizedWord = {
+          _id: randomWord._id,
+          word: randomWord.word || randomWord.例词 || '',
+          pinyin: randomWord.pinyin || randomWord.拼音 || '',
+          explanation: explanation,
+          example: example,
+          exampleSource: exampleSource,
+          exampleTranslation: exampleTranslation,
+          collection: randomWord.collection || randomWord.合集 || queryCategory
+        };
+        
+        console.log('处理后的词条数据:', {
+          word: normalizedWord.word,
+          pinyin: normalizedWord.pinyin,
+          explanation: normalizedWord.explanation,
+          exampleLength: normalizedWord.example ? normalizedWord.example.length : 0,
+          hasSource: !!normalizedWord.exampleSource,
+          hasTranslation: !!normalizedWord.exampleTranslation
+        });
+        
+        return {
+          success: true,
+          data: normalizedWord
+        };
+      } catch (err) {
+        console.error('获取随机词条出错:', err);
+        return {
+          success: false,
+          error: '获取随机词条出错: ' + err.message
         };
       }
     } else if (type === 'byIndex') {

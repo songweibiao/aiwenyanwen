@@ -72,6 +72,60 @@
         </view>
       </view>
     </view>
+    
+    <!-- 每日一词 -->
+    <view class="daily-word-card card" bindtap="viewWordDetail" data-word-id="{{dailyWord._id}}">
+      <view class="card-header">
+        <view class="card-title">
+          <image class="icon-title" src="/images/icons/word.svg" mode="aspectFit"/>
+          <text class="title-text">每日一词</text>
+        </view>
+        <view class="refresh-btn" catchtap="refreshDailyWord">
+          <text class="refresh-text">换一个</text>
+        </view>
+      </view>
+      
+      <view class="daily-word-content">
+        <view class="daily-word-loading" wx:if="{{!dailyWord}}">
+          <text>加载中...</text>
+        </view>
+        <block wx:else>
+          <!-- 词语展示区 -->
+          <view class="word-row">
+            <view class="word-container">
+              <text class="daily-word-text">{{dailyWord.word}}</text>
+              <view class="word-decoration"></view>
+            </view>
+            <view class="word-info">
+              <text class="daily-word-pinyin" wx:if="{{dailyWord.pinyin}}">{{dailyWord.pinyin}}</text>
+              <view class="tag-meaning">
+                <text class="tag">词义</text>
+                <text class="meaning-text">{{dailyWord.explanation}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 例句展示区 -->
+          <view class="example-section" wx:if="{{dailyWord.example}}">
+            <view class="example-content">
+              <text class="tag example-tag">例</text>
+              <text class="example-text">{{dailyWord.example}}</text>
+            </view>
+            
+            <!-- 出处 -->
+            <view class="source-line" wx:if="{{dailyWord.exampleSource}}">
+              <text>—— {{dailyWord.exampleSource}}</text>
+            </view>
+            
+            <!-- 译文 -->
+            <view class="translation" wx:if="{{dailyWord.exampleTranslation}}">
+              <text class="translation-prefix">译</text>
+              <text class="translation-text">{{dailyWord.exampleTranslation}}</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
   </block>
 
   <!-- 未登录状态 -->
@@ -110,6 +164,64 @@
             <text class="category-count">{{item.count}}个词条</text>
           </view>
         </view>
+      </view>
+    </view>
+    
+    <!-- 未登录状态的每日一词 -->
+    <view class="daily-word-card card" bindtap="viewWordDetail" data-word-id="{{dailyWord._id}}">
+      <view class="card-header">
+        <view class="card-title">
+          <image class="icon-title" src="/images/icons/word.svg" mode="aspectFit"/>
+          <text class="title-text">每日一词</text>
+        </view>
+        <view class="refresh-btn" catchtap="refreshDailyWord">
+          <text class="refresh-text">换一个</text>
+        </view>
+      </view>
+      
+      <view class="daily-word-content">
+        <view class="daily-word-loading" wx:if="{{!dailyWord}}">
+          <text>加载中...</text>
+        </view>
+        <block wx:else>
+          <!-- 词语展示区 -->
+          <view class="word-row">
+            <view class="word-container">
+              <text class="daily-word-text">{{dailyWord.word}}</text>
+              <view class="word-decoration"></view>
+            </view>
+            <view class="word-info">
+              <text class="daily-word-pinyin" wx:if="{{dailyWord.pinyin}}">{{dailyWord.pinyin}}</text>
+              <view class="tag-meaning">
+                <text class="tag">词义</text>
+                <text class="meaning-text">{{dailyWord.explanation}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 例句展示区 -->
+          <view class="example-section" wx:if="{{dailyWord.example}}">
+            <view class="example-content">
+              <text class="tag example-tag">例</text>
+              <text class="example-text">{{dailyWord.example}}</text>
+            </view>
+            
+            <!-- 出处 -->
+            <view class="source-line" wx:if="{{dailyWord.exampleSource}}">
+              <text>—— {{dailyWord.exampleSource}}</text>
+            </view>
+            
+            <!-- 译文 -->
+            <view class="translation" wx:if="{{dailyWord.exampleTranslation}}">
+              <text class="translation-prefix">译</text>
+              <text class="translation-text">{{dailyWord.exampleTranslation}}</text>
+            </view>
+          </view>
+          
+          <view class="daily-word-footer">
+            <text class="login-tip">登录后可查看更多分类词条</text>
+          </view>
+        </block>
       </view>
     </view>
   </block>

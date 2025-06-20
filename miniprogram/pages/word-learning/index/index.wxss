@@ -34,7 +34,9 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
+  padding-bottom: 10rpx;
+  border-bottom: 1rpx solid rgba(139, 110, 79, 0.06);
 }
 
 .card-title {
@@ -43,13 +45,13 @@ page {
 }
 
 .icon-title {
-  width: 36rpx;
-  height: 36rpx;
-  margin-right: 12rpx;
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 8rpx;
 }
 
 .title-text {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: bold;
   color: var(--primary-color);
 }
@@ -184,6 +186,192 @@ page {
 .category-count {
   font-size: 26rpx;
   color: var(--text-secondary);
+}
+
+/* 每日一词卡片 */
+.daily-word-card {
+  padding: 22rpx 20rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 10rpx rgba(139, 110, 79, 0.06);
+  position: relative;
+  border: 1rpx solid rgba(139, 110, 79, 0.08);
+}
+
+.refresh-btn {
+  background-color: rgba(139, 110, 79, 0.06);
+  padding: 4rpx 16rpx;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+}
+
+.refresh-text {
+  font-size: 22rpx;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.daily-word-content {
+  padding: 4rpx 2rpx;
+}
+
+.daily-word-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40rpx 0;
+  color: var(--text-secondary);
+  font-size: 28rpx;
+}
+
+/* 词语展示区 */
+.word-row {
+  display: flex;
+  margin-bottom: 16rpx;
+  align-items: flex-end;
+}
+
+.word-container {
+  position: relative;
+  margin-left: 10rpx;
+  margin-right: 45rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.daily-word-text {
+  font-size: 60rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+  line-height: 1.1;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.word-decoration {
+  position: absolute;
+  bottom: -4rpx;
+  left: -6rpx;
+  right: -6rpx;
+  height: 16rpx;
+  background-color: rgba(139, 110, 79, 0.15);
+  border-radius: 8rpx;
+  z-index: 1;
+}
+
+.word-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 0rpx;
+}
+
+.daily-word-pinyin {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 6rpx;
+}
+
+.tag-meaning {
+  display: flex;
+  align-items: center;
+}
+
+.tag {
+  font-size: 22rpx;
+  color: #FFFFFF;
+  background-color: var(--primary-color);
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.meaning-text {
+  font-size: 26rpx;
+  color: var(--text-main);
+  line-height: 1.5;
+  flex: 1;
+}
+
+/* 例句展示区 */
+.example-section {
+  background-color: rgba(139, 110, 79, 0.04);
+  padding: 16rpx 18rpx;
+  border-radius: 10rpx;
+  margin-top: 8rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.example-content {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10rpx;
+}
+
+.example-tag {
+  background-color:#E6B56B;
+  margin-top: 2rpx;
+}
+
+.example-text {
+  font-size: 26rpx;
+  color: var(--text-main);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.source-line {
+  text-align: right;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 8rpx 0;
+  padding-right: 4rpx;
+}
+
+.translation {
+  display: flex;
+  align-items: center;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx dashed rgba(139, 110, 79, 0.15);
+}
+
+.translation-prefix {
+  font-size: 22rpx;
+  color: #FFFFFF;
+  background-color: #6B8E4E;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.translation-text {
+  font-size: 26rpx;
+  color: #6B8E4E;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.daily-word-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20rpx;
+}
+
+.login-tip {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  margin-top: 16rpx;
+  text-align: center;
 }
 
 /* 登录卡片 */

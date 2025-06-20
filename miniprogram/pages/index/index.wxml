@@ -5,15 +5,16 @@
   <view class="notice-bar" wx:if="{{noticeList.length > 0}}">
     <text class="notice-icon">📢</text>
     <view class="marquee-wrap">
-      <view
-        class="marquee-content"
-        style="transform: translateX({{marqueeTranslateX}}rpx); transition: all {{marqueeState === 'scroll' ? marqueeDuration : 0}}s linear;"
-        bindtap="onNoticeTap"
-        data-url="{{currentNotice.url}}"
-      >
-        <text class="notice-content">{{currentNotice.content}}</text>
-        <text class="notice-detail" wx:if="{{currentNotice.detail}}" catchtap="showNoticeDetail">【查看详情】</text>
-        <text class="notice-gap"> </text>
+      <view class="notice-content-container">
+        <view 
+          class="marquee-content {{isNoticeScrolling ? 'scrolling' : ''}}"
+          style="animation-duration: {{noticeAnimationDuration}}s;"
+          bindtap="onNoticeTap"
+          data-url="{{currentNotice.url}}"
+        >
+          <text class="notice-content">{{currentNotice.content}}</text>
+          <text class="notice-detail" wx:if="{{currentNotice.detail}}" catchtap="showNoticeDetail">【查看详情】</text>
+        </view>
       </view>
     </view>
   </view>
@@ -23,13 +24,11 @@
     <view class="notice-modal-content" catchtap="stopPropagation">
       <view class="notice-modal-header">
         <text class="notice-modal-title">{{currentNotice.title || '公告详情'}}</text>
+        <view class="notice-close-btn" catchtap="closeNoticeDetail">×</view>
       </view>
-      <scroll-view scroll-y class="notice-modal-body">
-        <text class="notice-modal-text">{{currentNotice.detail}}</text>
+      <scroll-view scroll-y enable-flex class="notice-modal-body">
+        <rich-text class="notice-modal-text" nodes="{{currentNotice.detailHtml}}"></rich-text>
       </scroll-view>
-      <view class="notice-modal-footer">
-        <view class="notice-modal-btn" bindtap="closeNoticeDetail">关闭</view>
-      </view>
     </view>
   </view>
 
@@ -198,7 +197,7 @@
   </view>
 
   <!-- 名句赏析卡片 -->
-  <view class="quote-card card" wx:if="{{famousQuote}}">
+  <view class="quote-card card">
     <view class="card-header">
       <view class="card-title">
         <image class="icon-title" src="/images/icons/quote.svg" mode="aspectFit"/>
@@ -208,13 +207,20 @@
         <view class="icon-btn" bindtap="refreshQuote">
           <image src="/images/icons/refresh.svg" mode="aspectFit" class="action-icon"></image>
         </view>
-        <view class="icon-btn" bindtap="collectQuote">
+        <view class="icon-btn" bindtap="collectQuote" wx:if="{{!quoteLoading && famousQuote}}">
           <image src="{{famousQuote.isCollected ? '/images/icons/star-filled.svg' : '/images/icons/star.svg'}}" mode="aspectFit" class="action-icon {{famousQuote.isCollected ? 'collected' : ''}}"></image>
         </view>
       </view>
     </view>
     
-    <view class="quote-content" bindtap="goToQuoteDetail">
+    <!-- 加载状态 -->
+    <view class="loading-section" wx:if="{{quoteLoading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <!-- 名句内容 -->
+    <view class="quote-content" bindtap="goToQuoteDetail" wx:elif="{{famousQuote}}">
       <text class="quote-text">{{famousQuote.content}}</text>
       <view class="quote-source text-tertiary">——{{famousQuote.dynasty}} · {{famousQuote.author}}《{{famousQuote.source}}》</view>
       <view class="quote-translation">{{famousQuote.translation}}</view>

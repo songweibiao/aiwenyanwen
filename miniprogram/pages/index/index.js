@@ -11,12 +11,15 @@ Page({
     hasUserInfo: false,
     lastStudy: null,
     famousQuote: null,
+    quoteLoading: true, // 添加名句加载状态
     gradeLevels: [],
     currentGrade: '一年级上',
     currentLesson: '李白《将进酒》',
     noticeList: [],
     currentNoticeIndex: 0,
+    nextNoticeIndex: 0,
     currentNotice: {},
+    nextNotice: {},
     marqueeState: 'pause', // 'pause' or 'scroll'
     marqueeDuration: 0,
     marqueeTranslateX: 0,
@@ -35,7 +38,10 @@ Page({
     audioDuration: 0,
     audioSpeed: 1.0,
     audioSpeedList: [0.75, 1.0, 1.25, 1.5],
-    audioSeeking: false
+    audioSeeking: false,
+    noticeAnimationDuration: 15, // 动画持续时间(秒)
+    isNoticeScrolling: false, // 是否正在滚动
+    noticeAnimation: false, // 是否开启动画
   },
 
   onLoad: function () {
@@ -57,27 +63,7 @@ Page({
     this.getRandomFamousQuote()
 
     // 拉取公告
-    const db = wx.cloud.database();
-    db.collection('notices')
-      .where({ status: 1 })
-      .orderBy('createTime', 'desc')
-      .get()
-      .then(res => {
-        const list = res.data || [];
-        
-        this.setData({
-          noticeList: list,
-          currentNoticeIndex: 0,
-          currentNotice: list[0] || {}
-        }, () => {
-          if (list.length > 0) {
-            // 延迟启动公告循环，确保DOM已渲染
-            setTimeout(() => {
-              this.startNoticeLoop();
-            }, 300);
-          }
-        });
-      });
+    this.fetchNotices();
   },
 
   onShow: function () {
@@ -556,6 +542,11 @@ Page({
 
   // 获取随机名句
   getRandomFamousQuote: function () {
+    // 设置加载状态为true
+    this.setData({
+      quoteLoading: true
+    });
+    
     // 调用云函数获取名句数据
     wx.cloud.callFunction({
       name: 'getRandomQuote',
@@ -565,7 +556,8 @@ Page({
         
         if (res.result && res.result.success && res.result.data) {
           this.setData({
-            famousQuote: res.result.data
+            famousQuote: res.result.data,
+            quoteLoading: false
           });
           
           // 检查是否已收藏
@@ -594,6 +586,9 @@ Page({
       .then(res => {
         if (res.total <= 0) {
           console.error('数据库中没有名句数据');
+          this.setData({
+            quoteLoading: false
+          });
           wx.showToast({
             title: '暂无名句数据',
             icon: 'none'
@@ -614,7 +609,8 @@ Page({
         if (res && res.data && res.data.length > 0) {
           console.log('成功从数据库获取名句:', res.data[0]);
           this.setData({
-            famousQuote: res.data[0]
+            famousQuote: res.data[0],
+            quoteLoading: false
           });
           
           // 检查是否已收藏
@@ -622,6 +618,9 @@ Page({
         } else if (res) {
           // 数据库中没有数据
           console.error('数据库中没有名句数据');
+          this.setData({
+            quoteLoading: false
+          });
           wx.showToast({
             title: '暂无名句数据',
             icon: 'none'
@@ -630,6 +629,9 @@ Page({
       })
       .catch(err => {
         console.error('获取名句失败:', err);
+        this.setData({
+          quoteLoading: false
+        });
         wx.showToast({
           title: '获取名句失败',
           icon: 'none'
@@ -639,6 +641,9 @@ Page({
   
   // 刷新名句
   refreshQuote: function() {
+    this.setData({
+      quoteLoading: true
+    });
     this.getRandomFamousQuote();
   },
 
@@ -1183,16 +1188,34 @@ Page({
       e.preventDefault();
     }
     
+    // 处理公告详情中的换行符和段落
+    let currentNotice = {...this.data.currentNotice};
+    if (currentNotice.detail) {
+      // 首先处理换行符
+      let detailText = currentNotice.detail.replace(/\\n/g, '\n');
+      
+      // 将文本转换为HTML，为段落添加<p>标签
+      // 根据换行符拆分文本为段落
+      let paragraphs = detailText.split('\n');
+      
+      // 过滤掉空段落并添加<p>标签
+      let htmlParagraphs = paragraphs
+        .map(p => p.trim())
+        .filter(p => p)
+        .map(p => `<p style="margin-bottom: 1em;">${p}</p>`)
+        .join('');
+      
+      // 保存HTML格式的内容
+      currentNotice.detailHtml = htmlParagraphs;
+    }
+    
     // 显示详情弹窗
     this.setData({
+      currentNotice: currentNotice,
       showNoticeDetail: true
     });
     
-    // 暂停公告滚动
-    if (this.data.marqueeTimer) {
-      clearTimeout(this.data.marqueeTimer);
-      this.data.marqueeTimer = null;
-    }
+    // 不暂停公告滚动，让公告继续在背景滚动
   },
   
   // 关闭公告详情
@@ -1201,8 +1224,7 @@ Page({
       showNoticeDetail: false
     });
     
-    // 恢复公告滚动
-    this.showCurrentNotice();
+    // 不需要重新启动公告滚动，因为我们没有暂停它
   },
   
   // 阻止事件冒泡
@@ -1212,115 +1234,119 @@ Page({
     return false;
   },
 
-  // 启动公告循环
-  startNoticeLoop() {
+  // 获取公告
+  fetchNotices: function() {
+    const db = wx.cloud.database();
+    db.collection('notices')
+      .where({ status: 1 })
+      .orderBy('createTime', 'desc')
+      .get()
+      .then(res => {
+        const list = res.data || [];
+        
+        if (list.length > 0) {
+          let nextIndex = list.length > 1 ? 1 : 0;
+          
+          this.setData({
+            noticeList: list,
+            currentNoticeIndex: 0,
+            nextNoticeIndex: nextIndex,
+            currentNotice: list[0] || {},
+            nextNotice: list[nextIndex] || list[0] || {}
+          }, () => {
+            // 立即启动公告显示，不延迟
+            this.startNoticeScroll();
+          });
+        }
+      });
+  },
+
+  // 启动公告滚动
+  startNoticeScroll() {
     if (this.data.noticeList.length === 0) return;
-    this.showCurrentNotice();
+    
+    // 计算当前公告的滚动时间
+    const content = this.data.currentNotice.content || '';
+    const detail = this.data.currentNotice.detail ? '【查看详情】' : '';
+    const totalLength = content.length + detail.length;
+    const duration = Math.max(8, Math.min(20, totalLength * 0.5));
+    
+    this.setData({
+      noticeAnimationDuration: duration,
+      isNoticeScrolling: true
+    });
+    
+    // 设置下一条准备
+    if (this.data.marqueeTimer) {
+      clearTimeout(this.data.marqueeTimer);
+    }
+    
+    // 当前公告滚动结束后切换到下一条
+    this.data.marqueeTimer = setTimeout(() => {
+      this.prepareNextNotice();
+    }, duration * 1000);
+  },
+  
+  // 准备下一条公告
+  prepareNextNotice() {
+    let nextIndex = this.data.nextNoticeIndex;
+    let currentIndex = this.data.currentNoticeIndex;
+    
+    // 更新索引
+    nextIndex = (nextIndex + 1) % this.data.noticeList.length;
+    currentIndex = this.data.nextNoticeIndex;
+    
+    this.setData({
+      currentNoticeIndex: currentIndex,
+      nextNoticeIndex: nextIndex,
+      currentNotice: this.data.nextNotice,
+      nextNotice: this.data.noticeList[nextIndex] || this.data.noticeList[0],
+      isNoticeScrolling: false
+    }, () => {
+      // 短暂延迟后开始下一条滚动
+      setTimeout(() => {
+        this.startNoticeScroll();
+      }, 100);
+    });
   },
 
   // 显示当前公告
   showCurrentNotice() {
+    // 先停止动画
     this.setData({
+      noticeAnimation: false,
       currentNotice: this.data.noticeList[this.data.currentNoticeIndex]
     }, () => {
-      this.checkAndScroll();
+      // 短暂延迟后开始动画，让DOM有时间更新
+      setTimeout(() => {
+        this.setData({
+          noticeAnimation: true
+        });
+
+        // 根据当前公告内容长度计算大致动画持续时间
+        // 每个字符大约需要0.5秒
+        const content = this.data.currentNotice.content || '';
+        const detail = this.data.currentNotice.detail ? '【查看详情】' : '';
+        const totalLength = content.length + detail.length;
+        const duration = Math.max(8, Math.min(20, totalLength * 0.5));
+
+        // 动画结束后处理
+        if (this.data.marqueeTimer) {
+          clearTimeout(this.data.marqueeTimer);
+        }
+        
+        this.data.marqueeTimer = setTimeout(() => {
+          // 根据公告条数决定是重复当前公告还是切换到下一条
+          if (this.data.noticeList.length <= 1) {
+            // 只有一条公告，重复显示
+            this.showCurrentNotice();
+          } else {
+            // 有多条公告，切换到下一条
+            this.nextNotice();
+          }
+        }, (duration + 2) * 1000); // 动画时间 + 2秒停留时间
+      }, 100);
     });
-  },
-
-  // 检查并滚动公告
-  checkAndScroll() {
-    // 如果只有一条公告，并且已显示完成，则2秒后重新显示
-    if (this.data.noticeList.length === 1) {
-      // 获取公告内容宽度
-      const query = wx.createSelectorQuery();
-      query.select('.marquee-content').boundingClientRect();
-      query.select('.notice-bar').boundingClientRect();
-
-      query.exec(res => {
-        if (!res[0] || !res[1]) return;
-        
-        const contentWidth = res[0].width;
-        const containerWidth = res[1].width - 40; // 减去图标和间距的宽度（移除关闭按钮后从60改为40）
-        
-        if (contentWidth > containerWidth) {
-          // 计算需要滚动的距离，确保"查看详情"按钮完全显示
-          // 比实际需要的距离少滚动一些，保留更多空间（大约80rpx的余量）
-          const distance = -(contentWidth - containerWidth + 50);
-          
-          // 计算滚动时间，保持速度一致
-          const duration = Math.abs(distance) / 50; // 50rpx/s的速度
-          
-          this.setData({
-            marqueeState: 'scroll',
-            marqueeDuration: duration,
-            marqueeTranslateX: distance
-          });
-          
-          // 滚动结束后，停留2秒，然后重置位置重新开始
-          this.data.marqueeTimer = setTimeout(() => {
-            this.setData({
-              marqueeState: 'pause',
-              marqueeTranslateX: 0
-            }, () => {
-              // 等待2秒后再次滚动
-              this.data.marqueeTimer = setTimeout(() => {
-                this.showCurrentNotice();
-              }, 4000);
-            });
-          }, duration * 1000 + 2000); // 滚动时间加上2秒停留时间
-        } else {
-          // 内容不需要滚动，2秒后重置
-          this.data.marqueeTimer = setTimeout(() => {
-            this.setData({
-              marqueeState: 'pause',
-              marqueeTranslateX: 0
-            }, () => {
-              // 等待2秒后再次显示
-              this.data.marqueeTimer = setTimeout(() => {
-                this.showCurrentNotice();
-              }, 2000);
-            });
-          }, 2000);
-        }
-      });
-    } else {
-      // 多条公告时的处理
-      const query = wx.createSelectorQuery();
-      query.select('.marquee-content').boundingClientRect();
-      query.select('.notice-bar').boundingClientRect();
-
-      query.exec(res => {
-        if (!res[0] || !res[1]) return;
-        
-        const contentWidth = res[0].width;
-        const containerWidth = res[1].width - 40; // 减去图标和间距的宽度（移除关闭按钮后从60改为40）
-        
-        if (contentWidth > containerWidth) {
-          // 计算需要滚动的距离，确保"查看详情"按钮完全显示
-          // 比实际需要的距离少滚动一些，保留更多空间（大约80rpx的余量）
-          const distance = -(contentWidth - containerWidth - 80);
-          
-          // 计算滚动时间，保持速度一致
-          const duration = Math.abs(distance) / 50; // 50rpx/s的速度
-          
-          this.setData({
-            marqueeState: 'scroll',
-            marqueeDuration: duration,
-            marqueeTranslateX: distance
-          });
-          
-          // 滚动结束后，停留2秒，然后切换到下一条
-          this.data.marqueeTimer = setTimeout(() => {
-            this.nextNotice();
-          }, duration * 1000 + 2000); // 滚动时间加上2秒停留时间
-        } else {
-          // 内容不需要滚动，2秒后切换到下一条
-          this.data.marqueeTimer = setTimeout(() => {
-            this.nextNotice();
-          }, 2000);
-        }
-      });
-    }
   },
 
   // 切换到下一条公告
@@ -1337,9 +1363,9 @@ Page({
     
     this.setData({
       currentNoticeIndex: nextIndex,
-      marqueeState: 'pause',
-      marqueeTranslateX: 0
+      noticeAnimation: false
     }, () => {
+      // 短暂延迟后显示下一条
       setTimeout(() => {
         this.showCurrentNotice();
       }, 100);

@@ -131,7 +131,7 @@
   </view>
   
   <!-- 操作按钮 - 悬浮在底部 -->
-  <view class="fixed-action-buttons" wx:if="{{!(!loading && loaded && !wordList.length)}}">
+  <view class="fixed-action-buttons" wx:if="{{!loading && loaded && wordList.length > 0 && currentWord}}">
     
     <button class="action-button learned-button {{currentWordStatus === 'learned' ? 'disabled' : ''}}" bindtap="{{currentWordStatus === 'learned' ? '' : 'markAsLearned'}}">已掌握</button>
     <button class="action-button review-button {{currentWordStatus === 'review' ? 'disabled' : ''}}" bindtap="{{currentWordStatus === 'review' ? '' : 'markForReview'}}">待复习</button>

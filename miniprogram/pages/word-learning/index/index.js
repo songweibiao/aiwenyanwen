@@ -136,11 +136,6 @@ Page({
     }
     
     this.loadDailyWord();
-    wx.showToast({
-      title: '已更新',
-      icon: 'success',
-      duration: 1000
-    });
   },
   
   // 查看词条详情

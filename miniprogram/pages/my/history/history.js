@@ -5,10 +5,12 @@ const util = require('../../../utils/util')
 Page({
   data: {
     historyList: [],
+    wordHistoryList: [],
     loading: true,
     empty: false,
     userInfo: null,
-    isLoggedIn: false
+    isLoggedIn: false,
+    activeTab: 'article' // 'article' or 'word'
   },
 
   onLoad: function (options) {
@@ -20,7 +22,7 @@ Page({
     });
     if (userInfo) {
       // 加载历史记录
-      this.loadHistoryRecords();
+      this.loadDataForCurrentTab();
     }
   },
   
@@ -32,7 +34,7 @@ Page({
       isLoggedIn: !!userInfo
     });
     if (userInfo) {
-      this.loadHistoryRecords();
+      this.loadDataForCurrentTab();
     }
   },
   
@@ -108,6 +110,79 @@ Page({
       }
     })
   },
+
+  // 根据当前激活的tab加载数据
+  loadDataForCurrentTab: function() {
+    if (this.data.activeTab === 'article') {
+      this.loadHistoryRecords();
+    } else {
+      this.loadWordHistory();
+    }
+  },
+
+  // 切换Tab
+  onTabChange: function(e) {
+    const newTab = e.currentTarget.dataset.tab;
+    if (newTab !== this.data.activeTab) {
+      this.setData({
+        activeTab: newTab,
+        loading: true, // 重置加载状态
+        empty: false,
+        historyList: [], // 清空旧数据
+        wordHistoryList: []
+      });
+      this.loadDataForCurrentTab();
+    }
+  },
+
+  // 加载虚实词学习历史
+  loadWordHistory: function() {
+    this.setData({ loading: true });
+    wx.cloud.callFunction({
+      name: 'getUserWordProgress',
+      data: {
+        userId: this.data.userInfo.openid
+      },
+      success: res => {
+        if (res.result.success && res.result.data && res.result.data.length > 0) {
+          const wordHistoryList = res.result.data.map(item => {
+            const updateTime = new Date(item.updateTime);
+            const timeStr = util.timeAgo(updateTime);
+            let statusText = '学习中';
+            if (item.status === 'learned') {
+              statusText = '已掌握';
+            } else if (item.status === 'review') {
+              statusText = '待复习';
+            }
+            return {
+              ...item,
+              timeStr: timeStr,
+              statusText: statusText
+            };
+          });
+          this.setData({
+            wordHistoryList: wordHistoryList,
+            loading: false,
+            empty: false
+          });
+        } else {
+          this.setData({
+            wordHistoryList: [],
+            loading: false,
+            empty: true
+          });
+        }
+      },
+      fail: err => {
+        console.error('获取虚实词学习历史失败:', err);
+        this.setData({ loading: false, empty: true });
+        wx.showToast({
+          title: '加载失败，请重试',
+          icon: 'none'
+        });
+      }
+    });
+  },
   
   // 跳转到文章详情页
   goToArticleDetail: function (e) {
@@ -158,5 +233,19 @@ Page({
     wx.switchTab({
       url: '/pages/my/index/index'
     });
+  },
+
+  goToWordDetail: function(e) {
+    const { wordid, category } = e.currentTarget.dataset;
+    if (wordid && category) {
+      wx.navigateTo({
+        url: `/pages/word-learning/study/study?wordId=${wordid}&category=${category}`
+      });
+    } else {
+      wx.showToast({
+        title: '词条信息有误',
+        icon: 'none'
+      });
+    }
   }
-}) 
+})

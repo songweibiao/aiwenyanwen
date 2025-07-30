@@ -3,6 +3,12 @@
     <view class="title">学习历史</view>
     <view class="clear-btn" bindtap="clearHistory" wx:if="{{!empty && isLoggedIn}}">清空</view>
   </view>
+
+  <!-- Tab切换 -->
+  <view class="tab-container" wx:if="{{isLoggedIn}}">
+    <view class="tab-item {{activeTab === 'article' ? 'active' : ''}}" data-tab="article" bindtap="onTabChange">课文学习</view>
+    <view class="tab-item {{activeTab === 'word' ? 'active' : ''}}" data-tab="word" bindtap="onTabChange">虚实词学习</view>
+  </view>
   
   <!-- 未登录状态 -->
   <view class="not-login-container" wx:if="{{!isLoggedIn}}">
@@ -31,22 +37,48 @@
     </view>
     
     <!-- 历史列表 -->
-    <view class="history-list" wx:else>
-      <view class="history-item" wx:for="{{historyList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.article.article_id || item.article_id}}">
-        <view class="article-info">
-          <view class="article-title">{{item.article.title || '未知文章'}}</view>
-          <view class="article-author">{{item.article.author || '未知作者'}}{{item.article.dynasty ? ' · ' + item.article.dynasty : ''}}</view>
-        </view>
-        
-        <view class="study-info">
-          <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}">
-            {{item.statusText}}
+    <view wx:else>
+      <!-- 课文学习历史 -->
+      <view class="history-list" wx:if="{{activeTab === 'article'}}">
+        <view class="history-item" wx:for="{{historyList}}" wx:key="_id" bindtap="goToArticleDetail" data-id="{{item.article.article_id || item.article_id}}">
+          <view class="article-info">
+            <view class="article-title">{{item.article.title || '未知文章'}}</view>
+            <view class="article-author">{{item.article.author || '未知作者'}}{{item.article.dynasty ? ' · ' + item.article.dynasty : ''}}</view>
           </view>
           
-          <view class="study-time">
-            <text class="duration">学习时长: {{item.durationText}}</text>
-            <text class="time">{{item.timeStr}}</text>
+          <view class="study-info">
+            <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : ''}}">
+              {{item.statusText}}
+            </view>
+            
+            <view class="study-time">
+              <text class="duration">学习时长: {{item.durationText}}</text>
+              <text class="time">{{item.timeStr}}</text>
+            </view>
           </view>
+        </view>
+      </view>
+
+      <!-- 虚实词学习历史 -->
+      <view class="history-list" wx:if="{{activeTab === 'word'}}">
+        <block wx:if="{{wordHistoryList.length > 0}}">
+          <view class="word-history-item" wx:for="{{wordHistoryList}}" wx:key="_id" bindtap="goToWordDetail" data-wordid="{{item.wordId}}" data-category="{{item.collection}}">
+            <view class="word-info">
+              <view class="word-main">
+                <text class="word-text">{{item.word}}</text>
+                <text class="word-pinyin" wx:if="{{item.pinyin}}">{{item.pinyin}}</text>
+              </view>
+              <view class="word-collection">{{item.collection}}</view>
+            </view>
+            <view class="word-study-info">
+              <view class="word-status {{item.status}}">{{item.statusText}}</view>
+              <view class="word-time">{{item.timeStr}}</view>
+            </view>
+          </view>
+        </block>
+        <view class="empty-container" wx:else>
+          <image class="empty-image" src="/images/icons/empty.png" mode="aspectFit"></image>
+          <view class="empty-text">暂无虚实词学习记录</view>
         </view>
       </view>
     </view>

@@ -168,7 +168,7 @@
     </view>
     
     <!-- 未登录状态的每日一词 -->
-    <view class="daily-word-card card" bindtap="viewWordDetail" data-word-id="{{dailyWord._id}}">
+    <view class="daily-word-card card" bindtap="handleLoginPrompt" data-word-id="{{dailyWord._id}}">
       <view class="card-header">
         <view class="card-title">
           <image class="icon-title" src="/images/icons/word.svg" mode="aspectFit"/>
@@ -218,9 +218,6 @@
             </view>
           </view>
           
-          <view class="daily-word-footer">
-            <text class="login-tip">登录后可查看更多分类词条</text>
-          </view>
         </block>
       </view>
     </view>

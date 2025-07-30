@@ -11,12 +11,13 @@
     "pages/my/index/index",
     "pages/my/history/history",
     "pages/my/favorites/favorites",
+    "pages/my/profile/profile",
     "pages/logs/logs"
   ],
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#fff",
-    "navigationBarTitleText": "AI学文言文",
+    "navigationBarTitleText": "蜗牛学诗文",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
@@ -53,5 +54,8 @@
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
-  "cloud": true
-} 
+  "cloud": true,
+  "navigateToMiniProgramAppIdList": [
+    "wx8abaf00ee8c3202e"
+  ]
+}

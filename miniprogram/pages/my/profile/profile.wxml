@@ -1,0 +1,53 @@
+<view class="container">
+  <view class="profile-card card">
+    <view class="profile-item flex-between" style="padding: 16rpx 0;">
+      <view class="item-label">头像</view>
+      <view class="item-content">
+        <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        </button>
+        <view class="arrow"></view>
+      </view>
+    </view>
+    <view class="profile-item flex-between" bindtap="showEditNicknameModal">
+      <view class="item-label">昵称</view>
+      <view class="item-content">
+        <text class="nickname">{{userInfo.nickname || '文言用户'}}</text>
+        <view class="arrow"></view>
+      </view>
+    </view>
+    <view class="profile-item flex-between">
+      <view class="item-label">用户ID</view>
+      <view class="item-content">
+        <text class="openid">{{maskedOpenid}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="logout-btn-container">
+    <button class="btn btn-danger" bindtap="handleLogout">退出登录</button>
+  </view>
+
+  <!-- 修改昵称弹窗 -->
+  <view class="modal" wx:if="{{showNicknameModal}}">
+    <view class="modal-mask" bindtap="hideEditNicknameModal"></view>
+    <view class="modal-content">
+      <view class="modal-header">
+        <view class="modal-title">修改昵称</view>
+        <view class="modal-close" bindtap="hideEditNicknameModal">×</view>
+      </view>
+      <view class="modal-body">
+        <form bindsubmit="updateNickname">
+          <view class="input-wrapper">
+            <input type="nickname" name="nickname" class="input" placeholder="请输入昵称" value="{{userInfo.nickname}}" bindinput="onNicknameInput" focus="{{showNicknameModal}}"/>
+          </view>
+          <view class="input-error" wx:if="{{nicknameError}}">{{nicknameError}}</view>
+          <view class="modal-btns">
+            <button class="btn btn-outline" bindtap="hideEditNicknameModal">取消</button>
+            <button class="btn btn-primary" form-type="submit">确定</button>
+          </view>
+        </form>
+      </view>
+    </view>
+  </view>
+</view>

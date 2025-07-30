@@ -530,50 +530,6 @@ wenyanwen/
   - `time`: 点击时间
 - `create_time`: 记录创建时间
 
-#### 5. user_study_records（用户学习数据统计表）
-- `_id`: 记录唯一标识符
-- `user_id`: 关联用户ID
-- `total_study_time`: 累计学习时长(分钟)
-- `total_articles_count`: 已学习文章数
-- `total_words_mastered`: 已掌握字词数
-- `correct_rate`: 答题正确率
-- `last_study_time`: 最后学习时间
-- `study_days`: 连续学习天数
-- `last_study_position`: 最近学习位置
-  - `article_id`: 最近学习的文章ID
-  - `section_type`: 最近学习的位置类型（原文/翻译/逐句解析/练习）
-  - `section_index`: 最近学习的位置索引（第几句或第几题）
-
-#### 6. user_exercise_records（用户练习记录表）
-- `_id`: 记录唯一标识符
-- `user_id`: 关联用户ID
-- `article_id`: 关联文章ID
-- `exercise_batch_id`: 练习批次ID
-- `exercises`: 练习题数组
-  - `exercise_id`: 练习题ID
-  - `question`: 题目内容
-  - `options`: 选项数组
-  - `answer`: 正确答案
-  - `user_answer`: 用户回答
-  - `is_correct`: 是否回答正确
-- `total_score`: 总分
-- `finish_time`: 完成时间
-- `created_at`: 创建时间
-- `updated_at`: 更新时间
-
-#### 7. user_wrong_exercises（用户错题集）
-- `_id`: 记录唯一标识符
-- `user_id`: 关联用户ID
-- `article_id`: 关联文章ID
-- `exercise_id`: 练习题ID
-- `question`: 题目内容
-- `options`: 选项数组
-- `answer`: 正确答案
-- `user_answers`: 用户错误回答历史数组
-- `wrong_times`: 错误次数
-- `last_practice_time`: 最后练习时间
-- `is_mastered`: 是否已掌握
-
 #### 8. famous_quotes（名句数据表）
 - `_id`: 名句唯一标识符
 - `content`: 名句内容
@@ -599,18 +555,14 @@ wenyanwen/
   - `dynasty`: 朝代
 - `createTime`: 收藏时间
 
-#### 10. user_word_records（用户虚实词学习记录表）
+#### 10. user_word_progress（用户虚实词学习进度表）
 - `_id`: 记录唯一标识符
-- `user_id`: 用户ID（关联用户的openid）
-- `word_id`: 词条ID，词条唯一标识符
-- `word`: 词条名称
-- `exam_type`: 考试类型（中考/高考）
-- `is_mastered`: 是否已掌握
-- `need_review`: 是否需要复习
-- `last_study_time`: 最后学习时间
-- `review_times`: 复习次数
-- `created_at`: 创建时间
-- `updated_at`: 更新时间
+- `userId`: 用户ID（关联用户的openid）
+- `wordId`: 词条ID（关联xushici表的word_id）
+- `collection`: 所属合集（如"高考实词合集"）
+- `status`: 学习状态（'learning', 'learned', 'review'）
+- `lastStudied`: 最后学习时间
+- `updateTime`: 记录更新时间
 
 #### 11. xushici（虚实词数据表）
 - `word_id` : 例词id，词条唯一标识符

@@ -26,6 +26,34 @@
   padding: 10rpx 20rpx;
 }
 
+/* Tab样式 */
+.tab-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20rpx 0;
+  background-color: #f7f7f7;
+  border-radius: 30rpx;
+  padding: 5rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 15rpx 0;
+  font-size: 28rpx;
+  color: #666;
+  border-radius: 25rpx;
+  transition: all 0.3s ease;
+}
+
+.tab-item.active {
+  background-color: #fff;
+  color: #8B6E4F;
+  font-weight: bold;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
 /* 加载中样式 - 使用微信原生加载组件样式 */
 .loading-wrapper {
   display: flex;
@@ -213,4 +241,82 @@
   text-align: center;
   font-weight: bold;
   border: none;
-} 
+}
+
+/* 虚实词历史列表项样式 */
+.word-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  background-color: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.word-history-item:active {
+  background-color: #f9f9f9;
+  transform: scale(0.98);
+}
+
+.word-info {
+  flex: 1;
+}
+
+.word-main {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 10rpx;
+}
+
+.word-text {
+  font-size: 34rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.word-pinyin {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 15rpx;
+}
+
+.word-collection {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.word-study-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.word-status {
+  font-size: 26rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  margin-bottom: 10rpx;
+}
+
+.word-status.learning {
+  color: #ff9c00;
+  background-color: rgba(255, 156, 0, 0.1);
+}
+
+.word-status.learned {
+  color: #52c41a;
+  background-color: rgba(82, 196, 26, 0.1);
+}
+
+.word-status.review {
+  color: #f5222d;
+  background-color: rgba(245, 34, 45, 0.1);
+}
+
+.word-time {
+  font-size: 24rpx;
+  color: #bbb;
+}

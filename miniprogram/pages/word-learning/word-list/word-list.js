@@ -30,7 +30,12 @@ Page({
       learning: 0,
       learned: 0,
       review: 0
-    }
+    },
+    
+    // 缓存控制
+    lastFetchTime: 0,
+    cacheExpireTime: 5 * 60 * 1000, // 缓存过期时间，默认5分钟
+    progressUpdated: false // 标记用户进度是否有更新
   },
 
   onLoad: function(options) {
@@ -65,11 +70,44 @@ Page({
     
     console.log('设置分类:', category);
     
-    // 加载用户学习进度
-    this.loadUserProgress().then(() => {
-      // 加载词条列表
-      this.loadWordList();
-    });
+    // 尝试从缓存加载数据
+    this.loadDataWithCache();
+  },
+  
+  // 使用缓存加载数据
+  loadDataWithCache: function() {
+    // 先尝试从缓存加载词条列表
+    const cacheKey = `wordList_${this.data.category}`;
+    const wordListCache = wx.getStorageSync(cacheKey);
+    const now = Date.now();
+    
+    // 检查是否有有效缓存
+    if (wordListCache && 
+        wordListCache.timestamp && 
+        now - wordListCache.timestamp < this.data.cacheExpireTime) {
+      console.log('从缓存加载词条列表');
+      
+      // 从缓存加载词条列表
+      this.setData({
+        allWordList: wordListCache.data || [],
+        lastFetchTime: wordListCache.timestamp
+      });
+      
+      // 加载用户进度
+      this.loadUserProgress().then(() => {
+        // 使用缓存的词条数据和最新的用户进度进行筛选和显示
+        this.filterAndDisplayWords();
+      });
+    } else {
+      // 缓存不存在或已过期，从云端加载
+      console.log('缓存不存在或已过期，从云端加载');
+      
+      // 加载用户学习进度
+      this.loadUserProgress().then(() => {
+        // 加载词条列表
+        this.loadWordList();
+      });
+    }
   },
   
   // 加载用户学习进度
@@ -80,6 +118,26 @@ Page({
       if (!userId) {
         console.warn('未获取到用户openid，无法获取云端进度');
         this.setData({ userProgress: {} }, () => {
+          resolve();
+        });
+        return;
+      }
+      
+      // 检查是否有进度缓存
+      const progressCacheKey = `userProgress_${this.data.category}_${userId}`;
+      const progressCache = wx.getStorageSync(progressCacheKey);
+      const now = Date.now();
+      
+      // 如果有缓存且未标记为需要更新，则使用缓存
+      if (progressCache && 
+          progressCache.timestamp && 
+          now - progressCache.timestamp < this.data.cacheExpireTime && 
+          !this.data.progressUpdated) {
+        console.log('从缓存加载用户进度');
+        this.setData({ 
+          userProgress: progressCache.data || {},
+          progressUpdated: false
+        }, () => {
           resolve();
         });
         return;
@@ -108,7 +166,16 @@ Page({
               };
             });
             
-            this.setData({ userProgress: progress }, () => {
+            // 缓存用户进度
+            wx.setStorageSync(progressCacheKey, {
+              data: progress,
+              timestamp: now
+            });
+            
+            this.setData({ 
+              userProgress: progress,
+              progressUpdated: false
+            }, () => {
               resolve();
             });
           } else {
@@ -130,7 +197,7 @@ Page({
   
   // 加载词条列表
   loadWordList: function() {
-    const { category, currentStatus, searchKeyword } = this.data;
+    const { category } = this.data;
     
     // 设置加载状态
     this.setData({
@@ -149,34 +216,28 @@ Page({
       if (res.result && res.result.success) {
         let allWordList = res.result.data || [];
         const total = allWordList.length;
+        const now = Date.now();
         
         console.log(`获取到词条数量: ${allWordList.length}`);
         
         // 处理词条数据
         allWordList = this.processWordData(allWordList);
         
-        // 保存所有词条数据，用于搜索
-        this.setData({ allWordList });
-        
-        // 先根据搜索关键词筛选
-        let searchedList = this.filterWordsByKeyword(allWordList, searchKeyword);
-        
-        // 再根据当前状态筛选
-        let filteredList = this.filterWordsByStatus(searchedList, currentStatus);
-        
-        console.log(`筛选后数据: ${currentStatus}状态，搜索"${searchKeyword}"，共${filteredList.length}条`);
-        
-        // 更新数据
-        this.setData({
-          wordList: filteredList,
-          hasMore: false, // 不需要分页，没有更多数据
-          loading: false,
-          loaded: true,
-          'stats.total': total
+        // 缓存词条数据
+        const cacheKey = `wordList_${category}`;
+        wx.setStorageSync(cacheKey, {
+          data: allWordList,
+          timestamp: now
         });
         
-        // 统计各状态数量
-        this.calculateStats(searchedList);
+        // 保存所有词条数据，用于搜索
+        this.setData({ 
+          allWordList,
+          lastFetchTime: now
+        });
+        
+        // 筛选并显示词条
+        this.filterAndDisplayWords();
       } else {
         this.setData({
           loading: false,
@@ -192,6 +253,41 @@ Page({
         error: err.message || '加载失败，请重试'
       });
     });
+  },
+  
+  // 筛选并显示词条
+  filterAndDisplayWords: function() {
+    const { allWordList, currentStatus, searchKeyword } = this.data;
+    
+    if (!allWordList || allWordList.length === 0) {
+      this.setData({
+        loading: false,
+        loaded: true,
+        wordList: [],
+        'stats.total': 0
+      });
+      return;
+    }
+    
+    // 先根据搜索关键词筛选
+    let searchedList = this.filterWordsByKeyword(allWordList, searchKeyword);
+    
+    // 再根据当前状态筛选
+    let filteredList = this.filterWordsByStatus(searchedList, currentStatus);
+    
+    console.log(`筛选后数据: ${currentStatus}状态，搜索"${searchKeyword}"，共${filteredList.length}条`);
+    
+    // 更新数据
+    this.setData({
+      wordList: filteredList,
+      hasMore: false, // 不需要分页，没有更多数据
+      loading: false,
+      loaded: true,
+      'stats.total': allWordList.length
+    });
+    
+    // 统计各状态数量
+    this.calculateStats(searchedList);
   },
   
   // 处理词条数据
@@ -286,8 +382,8 @@ Page({
       currentStatus: status
     });
     
-    // 重新加载词条列表
-    this.loadWordList();
+    // 只需要重新筛选数据，不需要重新加载
+    this.filterAndDisplayWords();
   },
   
   // 跳转到词条详情页
@@ -331,6 +427,11 @@ Page({
   
   // 下拉刷新
   onPullDownRefresh: function() {
+    // 强制刷新，不使用缓存
+    this.setData({
+      progressUpdated: true // 标记需要更新进度
+    });
+    
     this.loadUserProgress().then(() => {
       this.loadWordList();
       wx.stopPullDownRefresh();
@@ -339,9 +440,19 @@ Page({
   
   // 页面显示时刷新数据
   onShow: function() {
-    // 页面从学习页面返回时，刷新学习进度
+    // 页面从学习页面返回时，只更新学习进度，不重新加载词条列表
+    this.setData({
+      progressUpdated: true // 标记需要更新进度
+    });
+    
     this.loadUserProgress().then(() => {
-      this.loadWordList();
+      // 如果已经有词条数据，只需要重新筛选显示
+      if (this.data.allWordList && this.data.allWordList.length > 0) {
+        this.filterAndDisplayWords();
+      } else {
+        // 如果没有词条数据，则需要加载
+        this.loadDataWithCache();
+      }
     });
   },
   
@@ -354,31 +465,8 @@ Page({
   
   // 处理搜索确认
   onSearchConfirm: function() {
-    const { searchKeyword, allWordList } = this.data;
-    
-    console.log(`执行搜索: "${searchKeyword}"`);
-    
-    if (!allWordList || allWordList.length === 0) {
-      // 如果还没有加载数据，先加载数据
-      this.loadWordList();
-      return;
-    }
-    
-    // 先根据搜索关键词筛选
-    const searchedList = this.filterWordsByKeyword(allWordList, searchKeyword);
-    
-    // 再根据当前状态筛选
-    const filteredList = this.filterWordsByStatus(searchedList, this.data.currentStatus);
-    
-    console.log(`搜索结果: ${filteredList.length}条`);
-    
-    // 更新列表和统计数据
-    this.setData({
-      wordList: filteredList
-    });
-    
-    // 统计各状态数量
-    this.calculateStats(searchedList);
+    // 直接使用当前数据筛选，不需要重新加载
+    this.filterAndDisplayWords();
   },
 
   // 清空搜索
@@ -389,22 +477,7 @@ Page({
     });
     
     // 重新筛选数据
-    const { allWordList } = this.data;
-    
-    if (!allWordList || allWordList.length === 0) {
-      return;
-    }
-    
-    // 根据当前状态筛选
-    const filteredList = this.filterWordsByStatus(allWordList, this.data.currentStatus);
-    
-    // 更新列表和统计数据
-    this.setData({
-      wordList: filteredList
-    });
-    
-    // 统计各状态数量
-    this.calculateStats(allWordList);
+    this.filterAndDisplayWords();
     
     console.log('已清空搜索');
   }

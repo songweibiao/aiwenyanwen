@@ -8,7 +8,7 @@ const request = require('./request')
  * OpenAI兼容API配置
  */
 const OPENAI_CONFIG = {
-  API_URL: 'https://zeaezsezfddc.ap-southeast-1.clawcloudrun.com/v1/chat/completions',
+  API_URL: 'https://gemini.wiii.site:51/v1/chat/completions',
   API_KEY: 'sk-wiibil',
   MODEL: 'gemini-2.5-flash-preview-05-20',
 }

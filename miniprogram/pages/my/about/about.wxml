@@ -1,0 +1,41 @@
+<view class="container">
+  <view class="content-card">
+    <view class="logo-section">
+      <image class="logo" src="/images/tabbar/tab-home-active.png" mode="aspectFit"></image>
+      <view class="app-name">文言悦读</view>
+      <view class="version">Version 1.0.0</view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">关于产品</view>
+      <view class="section-content">
+        <text>“文言悦读”是一款专为中小学生设计的文言文学习微信小程序，致力于通过先进的AI技术，让古老的文言经典焕发新的活力，帮助学生轻松跨越语言的障碍。</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">核心价值</view>
+      <view class="section-content">
+        <text>我们利用人工智能提供精准的全文翻译、详尽的逐句解析、丰富的背景知识和智能的互动问答，旨在降低文言文学习的门槛，激发学生的学习兴趣，全面提升他们的古文阅读能力与应试技巧。</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">我们的出发点</view>
+      <view class="section-content">
+        <text>我们深知文言文是中华传统文化的瑰宝，但也看到了当代学生在学习过程中的普遍困惑。我们的初衷是打造一座连接古代智慧与现代科技的桥梁，让每一个孩子都能无障碍地品读经典，感受中华文化的博大精深。</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">适用人群</view>
+      <view class="section-content">
+        <text>本小程序主要服务于小学高年级、初中及高中阶段的学生，同样也适合所有对中国古典文学和历史感兴趣的文言文爱好者。</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <text>文言悦读 &copy; 2025</text>
+  </view>
+</view>

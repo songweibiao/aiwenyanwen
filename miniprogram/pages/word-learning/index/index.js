@@ -542,6 +542,20 @@ Page({
       url: '/pages/my/index/index'
     });
   },
+
+  handleLoginPrompt: function() {
+    wx.showModal({
+      title: '提示',
+      content: '请登录，以便记录学习状态',
+      showCancel: true,
+      confirmText: '去登录',
+      success: (res) => {
+        if (res.confirm) {
+          this.navigateToMyPage();
+        }
+      }
+    });
+  },
   
   getProgressByCollection: function(collection) {
     // 以当前合集统计学习进度

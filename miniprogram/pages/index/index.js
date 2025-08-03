@@ -42,6 +42,7 @@ Page({
     noticeAnimationDuration: 15, // 动画持续时间(秒)
     isNoticeScrolling: false, // 是否正在滚动
     noticeAnimation: false, // 是否开启动画
+    showAITab: false
   },
 
   onLoad: function () {
@@ -64,10 +65,25 @@ Page({
 
     // 拉取公告
     this.fetchNotices();
+
+    // 订阅全局配置变化
+    this.updateHandler = (flags) => {
+      this.setData({ showAITab: flags.showAITab });
+    };
+    app.watch(this.updateHandler);
   },
 
   onShow: function () {
+    if (typeof this.getTabBar === 'function' &&
+      this.getTabBar()) {
+      this.getTabBar().setData({
+        selected: 0
+      })
+    }
     // 每次显示页面时更新用户信息
+    this.setData({
+      showAITab: app.globalData.featureFlags.showAITab
+    })
     const userInfo = wx.getStorageSync('userInfo');
     const wasLoggedIn = this.data.hasUserInfo;
     const isLoggedIn = !!userInfo;
@@ -129,6 +145,14 @@ Page({
         userInfo: mockUserInfo
       });
     }
+  },
+
+  // 接收app.js发送的feature flags更新通知
+  onFeatureFlagsUpdate: function() {
+    const app = getApp();
+    this.setData({
+      showAITab: app.globalData.featureFlags.showAITab
+    });
   },
   
   // 检查是否已选择课文
@@ -1125,17 +1149,18 @@ Page({
     });
   },
 
-  // 前往领取推广福利
-  goToPromotion: function () {
-    wx.setClipboardData({
-      data: 'WENYAN2023',
-      success: function () {
-        wx.showToast({
-          title: '推广码已复制',
-          icon: 'success'
-        });
-      }
-    });
+  // 公众号关注组件回调
+  handleOfficialAccountLoad: function (e) {
+    console.log('公众号组件加载成功', e.detail);
+  },
+
+  handleOfficialAccountError: function (e) {
+    console.error('公众号组件加载失败', e.detail);
+    // 可以在这里给用户一个提示，比如“关注组件加载失败，请稍后重试”
+    // wx.showToast({
+    //   title: '关注组件加载失败',
+    //   icon: 'none'
+    // });
   },
   
   // 前往作者介绍
@@ -1374,6 +1399,11 @@ Page({
 
   // 页面卸载时清除定时器
   onUnload() {
+    // 取消订阅
+    if (this.updateHandler) {
+      app.unwatch(this.updateHandler);
+    }
+
     if (this.data.marqueeTimer) {
       clearTimeout(this.data.marqueeTimer);
       this.data.marqueeTimer = null;

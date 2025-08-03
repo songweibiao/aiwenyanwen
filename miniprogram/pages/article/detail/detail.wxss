@@ -742,24 +742,30 @@ page {
   line-height: 2.2;
 }
 
+
 /* 分享按钮 */
-.share-button {
+.share-button-wrapper {
   position: fixed;
   right: 30rpx;
   bottom: 160rpx;
   width: 100rpx;
   height: 100rpx;
+  z-index: 100;
+}
+
+.share-button-fake {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   background-color: var(--secondary-color);
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.15);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
   transition: all 0.3s;
 }
 
-.share-button:active {
+.share-button-wrapper:active .share-button-fake {
   transform: scale(0.95);
 }
 
@@ -769,6 +775,15 @@ page {
   font-weight: bold;
 }
 
+.share-button-real {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  z-index: 1;
+}
 /* 古文原文容器 */
 .ancient-text-container {
   position: relative;

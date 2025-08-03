@@ -1,7 +1,19 @@
 {
     "libVersion": "3.8.6",
     "projectname": "%E6%96%87%E8%A8%80%E6%82%A6%E8%AF%BB",
-    "condition": {},
+    "condition": {
+        "miniprogram": {
+            "list": [
+                {
+                    "name": "pages/index/index",
+                    "pathName": "pages/index/index",
+                    "query": "",
+                    "scene": null,
+                    "launchMode": "default"
+                }
+            ]
+        }
+    },
     "setting": {
         "urlCheck": true,
         "coverView": true,

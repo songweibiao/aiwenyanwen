@@ -1,0 +1,74 @@
+.container {
+  background: #f7f2ec;
+  min-height: 100vh;
+  padding: 40rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.content-card {
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(139, 110, 79, 0.08);
+  padding: 50rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 60rpx;
+}
+
+.logo {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(139, 110, 79, 0.1);
+}
+
+.app-name {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+  margin-top: 20rpx;
+}
+
+.version {
+  font-size: 24rpx;
+  color: #aaa;
+  margin-top: 10rpx;
+}
+
+.section {
+  margin-bottom: 50rpx;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 20rpx;
+  padding-left: 20rpx;
+  border-left: 6rpx solid #8B6E4F;
+  line-height: 1.2;
+}
+
+.section-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.footer {
+  margin-top: 60rpx;
+  font-size: 24rpx;
+  color: #bbb;
+}

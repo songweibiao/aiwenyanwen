@@ -18,7 +18,7 @@
         <view>
           <image wx:if="{{item.role === 'assistant'}}" class="avatar" src="/images/laibai-avatar.png" />
           <view wx:if="{{item.role === 'assistant'}}" class="avatar-label">李白</view>
-          <image wx:if="{{item.role === 'user'}}" class="avatar" src="/images/default-avatar.png" />
+          <image wx:if="{{item.role === 'user'}}" class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" />
           <view wx:if="{{item.role === 'user'}}" class="avatar-label">我</view>
         </view>
         <view class="bubble {{item.content === '李白思考中...' ? 'loading' : ''}}">

@@ -4,7 +4,7 @@ Page({
    * 页面的初始数据
    */
   data: {
-    currentTab: 'article', // 当前选中的标签页：'quote'(名句) 或 'article'(文章)
+    activeTab: 'article', // 当前选中的标签页：'quote'(名句) 或 'article'(文章)
     quoteList: [], // 收藏的名句列表
     articleList: [], // 收藏的文章列表
     loading: false, // 加载状态
@@ -22,7 +22,7 @@ Page({
     // 如果有传入tab参数，则切换到对应标签页
     if (options.tab && ['quote', 'article'].includes(options.tab)) {
       this.setData({
-        currentTab: options.tab
+        activeTab: options.tab
       });
     }
   },
@@ -64,11 +64,11 @@ Page({
   /**
    * 切换标签页
    */
-  switchTab: function (e) {
+  onTabChange: function (e) {
     const tab = e.currentTarget.dataset.tab;
     
     this.setData({
-      currentTab: tab
+      activeTab: tab
     });
   },
 

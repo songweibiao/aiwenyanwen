@@ -71,7 +71,8 @@ Page({
     // 学习记录相关
     enterTime: 0, // 进入页面的时间戳
     learnDuration: 0, // 本次学习时长（秒）
-    isRecordingTime: false // 是否正在记录时间
+    isRecordingTime: false, // 是否正在记录时间
+    showAITab: false
   },
 
   onLoad: function (options) {
@@ -106,6 +107,9 @@ Page({
   
   // 页面显示时触发
   onShow: function() {
+    this.setData({
+      showAITab: app.globalData.featureFlags.showAITab
+    })
     // 如果之前记录过时间，且不是第一次加载（enterTime已设置）
     if (!this.data.isRecordingTime && this.data.enterTime > 0) {
       // 重新开始记录时间
@@ -526,7 +530,7 @@ Page({
       'author': 3,       // 作者介绍
       'background': 4,   // 背景知识
       'exercise': 5,     // 练习巩固
-      'qa': 6            // AI互动
+      'qa': 6            // 互动问答
     };
     
     const functionIndex = tabToFunctionMap[tab];
@@ -539,7 +543,7 @@ Page({
       3: '作者介绍',
       4: '背景知识',
       5: '练习巩固',
-      6: 'AI互动'
+      6: '互动问答'
     };
     
     console.log(`点击功能: ${functionNames[functionIndex]}`);
@@ -1314,7 +1318,7 @@ Page({
     if (!userInfo) {
       wx.showModal({
         title: '提示',
-        content: '请先登录后再使用AI互动功能',
+        content: '请先登录后再使用互动问答功能',
         showCancel: false,
         success: (res) => {
           if (res.confirm) {
@@ -1365,7 +1369,7 @@ Page({
     if (!userInfo) {
       wx.showModal({
         title: '提示',
-        content: '请先登录后再使用AI互动功能',
+        content: '请先登录后再使用互动问答功能',
         showCancel: false,
         success: (res) => {
           if (res.confirm) {
@@ -1975,4 +1979,25 @@ Page({
       }
     });
   },
+
+  // 页面分享功能
+  onShareAppMessage: function () {
+    const article = this.data.article;
+    if (!article) {
+      // 如果文章数据还未加载，返回一个默认的分享内容
+      return {
+        title: '一起来学习文言文吧！',
+        path: '/pages/index/index',
+        imageUrl: '/images/share.jpg' // 使用默认的分享图片
+      };
+    }
+
+    // 自定义分享内容
+    return {
+      title: `我发现“蜗牛学诗词”把《${article.title}》讲得非常清楚，推荐给你试试～`,
+      path: `/pages/article/detail/detail?id=${this.data.articleId}`,
+      // 如果有文章相关的图片，可以设置为imageUrl，否则使用默认图片
+      imageUrl: '/images/share.jpg'
+    };
+  }
 });

@@ -186,11 +186,11 @@
           </view>
           <text class="tool-text">练习巩固</text>
         </view>
-        <view class="tool-item" bindtap="goToAIInteraction">
+        <view class="tool-item" bindtap="goToAIInteraction" wx:if="{{showAITab}}">
           <view class="tool-icon ai-icon">
             <image src="/images/icons/ai.svg" mode="aspectFit"></image>
           </view>
-          <text class="tool-text">AI互动</text>
+          <text class="tool-text">互动问答</text>
         </view>
       </view>
     </view>
@@ -228,13 +228,16 @@
   </view>
 
   <!-- 推广领取区域 -->
-  <view class="promo-card" bindtap="goToPromotion">
+  <!--
+  <view class="promo-card">
     <view class="promo-content">
       <view class="promo-info">
-        <text class="promo-title">文言文学习资料</text>
-        <text class="promo-desc">点击复制推广码，关注公众号领取</text>
+        <text class="promo-title">关注我，第一时间获得产品更新动态</text>
       </view>
-      <view class="btn btn-light promo-btn">立即领取</view>
+    </view>
+    <view class="official-account-wrapper">
+      <official-account bindload="handleOfficialAccountLoad" binderror="handleOfficialAccountError"></official-account>
     </view>
   </view>
+  -->
 </view> 

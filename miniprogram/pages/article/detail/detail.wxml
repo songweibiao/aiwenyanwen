@@ -2,8 +2,11 @@
   <!-- 课文详情内容 -->
   <view class="article-container">
     <!-- 分享按钮（悬浮） -->
-    <view class="share-button" bindtap="onShareTap">
-      <text class="share-text">分享</text>
+    <view class="share-button-wrapper">
+      <button class="share-button-real" open-type="share"></button>
+      <view class="share-button-fake">
+        <text class="share-text">分享</text>
+      </view>
     </view>
 
     <!-- 原文区域 -->
@@ -68,9 +71,9 @@
         <image class="tab-icon" src="/images/icons/exercise.svg" mode="aspectFit"></image>
         <text>练习巩固</text>
       </view>
-      <view class="tab-item {{currentTab === 'qa' ? 'active' : ''}}" bindtap="switchTab" data-tab="qa">
+      <view class="tab-item {{currentTab === 'qa' ? 'active' : ''}}" bindtap="switchTab" data-tab="qa" wx:if="{{showAITab}}">
         <image class="tab-icon" src="/images/icons/ai.svg" mode="aspectFit"></image>
-        <text>AI互动</text>
+        <text>互动问答</text>
       </view>
     </view>
 
@@ -82,7 +85,7 @@
           <!-- 翻译加载中 -->
           <view class="section-loading" wx:if="{{aiProcessing && !article.translation}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+            <text class="section-loading-text">加载中...</text>
           </view>
           <view class="translation-section" wx:else>
             <view class="section-title">白话文翻译</view>
@@ -99,7 +102,7 @@
           <!-- 作者介绍加载中 -->
           <view class="section-loading" wx:if="{{aiProcessing && !article.author_intro}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+            <text class="section-loading-text">加载中...</text>
           </view>
           <view class="author-section" wx:else>
             <view class="author-header">
@@ -132,7 +135,7 @@
           <!-- 句子解析加载中 -->
           <view class="section-loading" wx:if="{{aiProcessing && (!sentences[currentSentenceIndex].phonetic_notation || !sentences[currentSentenceIndex].translation)}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+            <text class="section-loading-text">加载中...</text>
           </view>
           <view class="sentence-card" wx:else>
             <view class="sentence-section">
@@ -185,7 +188,7 @@
           <!-- 背景知识加载中 -->
           <view class="section-loading" wx:if="{{aiProcessing && !article.background_info}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考中...</text>
+            <text class="section-loading-text">加载中...</text>
           </view>
           <block wx:else>
             <view class="background-section">
@@ -209,7 +212,7 @@
         <!-- AI加载动画 -->
         <view class="section-loading" wx:if="{{aiProcessing}}">
             <view class="section-loading-spinner"></view>
-          <text class="section-loading-text">AI出题中</text>
+          <text class="section-loading-text">加载中...</text>
         </view>
         <!-- 答题前：只显示当前题目 -->
         <view class="exercise-section" wx:elif="{{!aiProcessing && !showExerciseResult}}">
@@ -300,7 +303,7 @@
           <!-- AI加载动画 -->
           <view class="section-loading" wx:if="{{aiProcessing}}">
             <view class="section-loading-spinner"></view>
-            <text class="section-loading-text">AI思考问题中...</text>
+            <text class="section-loading-text">加载中...</text>
           </view>
           
           <!-- 推荐问题区域 -->

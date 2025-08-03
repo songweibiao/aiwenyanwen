@@ -1,15 +1,15 @@
 <view class="container">
   <view class="content-card">
     <view class="logo-section">
-      <image class="logo" src="/images/tabbar/tab-home-active.png" mode="aspectFit"></image>
-      <view class="app-name">文言悦读</view>
+      <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+      <view class="app-name">蜗牛学诗文</view>
       <view class="version">Version 1.0.0</view>
     </view>
 
     <view class="section">
       <view class="section-title">关于产品</view>
       <view class="section-content">
-        <text>“文言悦读”是一款专为中小学生设计的文言文学习微信小程序，致力于通过先进的AI技术，让古老的文言经典焕发新的活力，帮助学生轻松跨越语言的障碍。</text>
+        <text>“蜗牛学诗文”是一款专为中小学生设计的文言文学习微信小程序，致力于通过先进的AI技术，让古老的文言经典焕发新的活力，帮助学生轻松跨越语言的障碍。</text>
       </view>
     </view>
 
@@ -36,6 +36,6 @@
   </view>
 
   <view class="footer">
-    <text>文言悦读 &copy; 2025</text>
+    <text>蜗牛学诗文 ©️ 2025</text>
   </view>
 </view>

@@ -1,19 +1,7 @@
 /* 收藏页面样式 */
 .container {
-  padding: 0 30rpx;
-}
-
-.header {
-  padding: 30rpx 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #333;
+  padding: 20rpx 30rpx 0;
+  background-color: #f7f2ec;
 }
 
 /* 未登录状态 */
@@ -44,38 +32,32 @@
   font-size: 28rpx;
 }
 
-/* 标签页切换 */
-.tab-header {
+/* Tab样式 */
+.tab-container {
   display: flex;
-  background-color: #fff;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 20rpx;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 40rpx;
+  background-color: #f0e9e1;
+  border-radius: 30rpx;
+  padding: 5rpx;
 }
 
 .tab-item {
   flex: 1;
   text-align: center;
-  padding: 20rpx 0;
+  padding: 15rpx 0;
   font-size: 28rpx;
   color: #666;
-  position: relative;
+  border-radius: 25rpx;
+  transition: all 0.3s ease;
 }
 
 .tab-item.active {
+  background-color: #fff;
   color: #8B6E4F;
   font-weight: bold;
-}
-
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60rpx;
-  height: 6rpx;
-  background-color: #8B6E4F;
-  border-radius: 3rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 /* 加载中状态 */

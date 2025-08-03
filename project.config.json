@@ -6,7 +6,7 @@
     },
     "miniprogramRoot": "miniprogram/",
     "compileType": "miniprogram",
-    "projectname": "AI学文言文",
+    "projectname": "蜗牛学诗文",
     "setting": {
         "useCompilerPlugins": [
             "sass"

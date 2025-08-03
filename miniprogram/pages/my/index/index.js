@@ -23,6 +23,14 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow: function () {
+    if (typeof this.getTabBar === 'function' &&
+      this.getTabBar()) {
+      const app = getApp()
+      const showAITab = app.globalData.featureFlags.showAITab
+      this.getTabBar().setData({
+        selected: showAITab ? 3 : 2
+      })
+    }
     // 每次显示页面时检查登录状态
     this.checkLoginStatus();
   },
@@ -129,9 +137,12 @@ Page({
         wx.setStorageSync('userInfo', userData);
         
         // 更新页面状态
+        const openid = userData.openid;
+        const maskedOpenid = openid.substring(0, 4) + '****' + openid.substring(openid.length - 4);
         this.setData({
           isLoggedIn: true,
-          userInfo: userData
+          userInfo: userData,
+          maskedOpenid: maskedOpenid
         });
         
         wx.showToast({

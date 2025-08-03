@@ -12,6 +12,7 @@
     "pages/my/history/history",
     "pages/my/favorites/favorites",
     "pages/my/profile/profile",
+    "pages/my/about/about",
     "pages/logs/logs"
   ],
   "window": {
@@ -21,6 +22,7 @@
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
+    "custom": true,
     "color": "#999999",
     "selectedColor": "#1A1A1A",
     "backgroundColor": "#ffffff",

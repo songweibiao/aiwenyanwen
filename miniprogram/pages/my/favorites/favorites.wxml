@@ -1,7 +1,4 @@
 <view class="container">
-  <view class="header">
-    <view class="title">我的收藏</view>
-  </view>
   
   <!-- 未登录状态 -->
   <view class="not-login-container" wx:if="{{!isLoggedIn}}">
@@ -13,13 +10,9 @@
   <!-- 已登录状态 -->
   <block wx:else>
     <!-- 标签页切换 -->
-    <view class="tab-header">
-      <view class="tab-item {{currentTab === 'article' ? 'active' : ''}}" bindtap="switchTab" data-tab="article">
-        <text>文章收藏</text>
-      </view>
-      <view class="tab-item {{currentTab === 'quote' ? 'active' : ''}}" bindtap="switchTab" data-tab="quote">
-        <text>名句收藏</text>
-      </view>
+    <view class="tab-container">
+      <view class="tab-item {{activeTab === 'article' ? 'active' : ''}}" data-tab="article" bindtap="onTabChange">文章收藏</view>
+      <view class="tab-item {{activeTab === 'quote' ? 'active' : ''}}" data-tab="quote" bindtap="onTabChange">名句收藏</view>
     </view>
     
     <!-- 加载中状态 -->
@@ -29,7 +22,7 @@
     </view>
     
     <!-- 文章收藏列表 -->
-    <view class="article-list" wx:if="{{currentTab === 'article' && !loading}}">
+    <view class="article-list" wx:if="{{activeTab === 'article' && !loading}}">
       <!-- 没有收藏内容 -->
       <view class="empty-container" wx:if="{{articleList.length === 0}}">
         <image class="empty-image" src="/images/icons/empty.png" mode="aspectFit"></image>
@@ -55,7 +48,7 @@
     </view>
     
     <!-- 名句收藏列表 -->
-    <view class="quote-list" wx:if="{{currentTab === 'quote' && !loading}}">
+    <view class="quote-list" wx:if="{{activeTab === 'quote' && !loading}}">
       <!-- 没有收藏内容 -->
       <view class="empty-container" wx:if="{{quoteList.length === 0}}">
         <image class="empty-image" src="/images/icons/empty.png" mode="aspectFit"></image>

@@ -15,7 +15,8 @@ Page({
     showBackButton: false, // 是否显示返回按钮
     articleId: null, // 来源文章ID
     isLoggedIn: false, // 用户是否已登录
-    loginModalShown: false // 是否已弹出登录提示
+    loginModalShown: false, // 是否已弹出登录提示
+    userInfo: null
   },
 
   onLoad(options) {
@@ -44,6 +45,12 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' &&
+      this.getTabBar()) {
+      this.getTabBar().setData({
+        selected: 2
+      })
+    }
     console.log('AI助手页面显示');
     this.checkLoginStatus();
     const app = getApp();
@@ -105,8 +112,10 @@ Page({
   checkLoginStatus() {
     const userInfo = wx.getStorageSync('userInfo');
     const isLoggedIn = !!userInfo;
-    // 只做状态设置，不弹窗
-    this.setData({ isLoggedIn });
+    this.setData({
+      isLoggedIn: isLoggedIn,
+      userInfo: userInfo
+    });
   },
   
   // 加载聊天历史

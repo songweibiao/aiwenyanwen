@@ -1,5 +1,23 @@
 // app.js
 App({
+  // 观察者列表
+  watchers: [],
+
+  // 注册观察者
+  watch: function (method) {
+    if (!this.watchers.includes(method)) {
+      this.watchers.push(method);
+    }
+  },
+
+  // 移除观察者
+  unwatch: function (method) {
+    const index = this.watchers.indexOf(method);
+    if (index > -1) {
+      this.watchers.splice(index, 1);
+    }
+  },
+
   onLaunch: function () {
     if (!wx.cloud) {
       console.error('请使用 2.2.3 或以上的基础库以使用云能力')
@@ -29,14 +47,67 @@ App({
       defaultUserInfo: {
         nickname: '新同学',
         avatarUrl: '/images/default-avatar.png'
-      }
+      },
+      // 功能开关
+      featureFlags: {
+        showAITab: false // 默认关闭
+      },
+      featureFlagsReady: false, // 新增：标记配置是否加载完成
     }
-
+ 
     // 获取系统信息（现在可以安全调用了）
     this.getSystemInfo()
     
+    // 获取远程配置
+    this.loadFeatureConfig()
+
     // 获取用户信息（放在最后）
     this.getUserInfo()
+
+    // 版本更新
+    this.checkUpdate()
+  },
+
+  // 小程序从后台切回前台时触发
+  onShow: function() {
+    console.log('App onShow - 刷新远程配置')
+    // 刷新远程功能配置
+    this.loadFeatureConfig().then(() => {
+      console.log('App onShow - 远程配置刷新完成')
+    }).catch(err => {
+      console.error('App onShow - 刷新远程配置失败', err)
+    })
+  },
+
+
+  // 获取远程功能配置
+  loadFeatureConfig: function() {
+    return new Promise(resolve => {
+      wx.cloud.callFunction({
+        name: 'getFeatureConfig',
+        success: res => {
+          console.log('[云函数] [getFeatureConfig] 调用成功', res.result)
+          if (res.result) {
+            this.globalData.featureFlags = res.result
+          }
+        },
+        fail: err => {
+          console.error('[云函数] [getFeatureConfig] 调用失败', err)
+          // 失败时使用默认配置
+          this.globalData.featureFlags = {
+            showAITab: false
+          }
+        },
+        complete: () => {
+          this.globalData.featureFlagsReady = true
+          // 通知所有观察者
+          this.watchers.forEach(watcher => {
+            watcher(this.globalData.featureFlags);
+          });
+          resolve()
+        }
+      })
+    })
   },
 
   // 获取用户信息
@@ -190,5 +261,35 @@ App({
     } catch (e) {
       console.error('获取系统信息失败', e)
     }
+  },
+
+  checkUpdate: function() {
+    const updateManager = wx.getUpdateManager()
+
+    updateManager.onCheckForUpdate(function (res) {
+      // 请求完新版本信息的回调
+      console.log('hasUpdate', res.hasUpdate)
+    })
+
+    updateManager.onUpdateReady(function () {
+      wx.showModal({
+        title: '更新提示',
+        content: '新版本已经准备好，是否重启应用？',
+        success: function (res) {
+          if (res.confirm) {
+            // 新的版本已经下载好，调用 applyUpdate 应用新版本并重启
+            updateManager.applyUpdate()
+          }
+        }
+      })
+    })
+
+    updateManager.onUpdateFailed(function () {
+      // 新版本下载失败
+      wx.showToast({
+        title: '新版本下载失败',
+        icon: 'none'
+      })
+    })
   }
-}) 
+})

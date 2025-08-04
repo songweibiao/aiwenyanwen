@@ -20,7 +20,6 @@ Page({
   },
 
   onLoad(options) {
-    console.log('AI助手页面加载，参数:', options);
     
     // 检查登录状态
     const userInfo = wx.getStorageSync('userInfo');
@@ -45,6 +44,24 @@ Page({
   },
 
   onShow() {
+    const app = getApp();
+    // 页面守卫：检查功能是否开启
+    if (!app.globalData.featureFlags.showAITab) {
+      wx.showModal({
+        title: '提示',
+        content: '该功能正在升级中，敬请期待',
+        showCancel: false,
+        success: (res) => {
+          if (res.confirm) {
+            wx.switchTab({
+              url: '/pages/index/index'
+            });
+          }
+        }
+      });
+      return; // 阻止后续代码执行
+    }
+
     if (typeof this.getTabBar === 'function' &&
       this.getTabBar()) {
       this.getTabBar().setData({
@@ -53,7 +70,6 @@ Page({
     }
     console.log('AI助手页面显示');
     this.checkLoginStatus();
-    const app = getApp();
     const isFromArticle = app.globalData && app.globalData.fromArticleDetail;
     const isLoggedIn = this.data.isLoggedIn;
     
@@ -177,7 +193,7 @@ Page({
     this.setData({ loginModalShown: true });
     wx.showModal({
       title: '提示',
-      content: '请先登录后再使用AI助手功能',
+      content: '请先登录后再使用互动问答功能',
       showCancel: false,
       success: (res) => {
         this.setData({ loginModalShown: false });
@@ -200,7 +216,7 @@ Page({
     if (!this.data.isLoggedIn) {
       wx.showModal({
         title: '提示',
-        content: '请先登录后再使用AI助手功能',
+        content: '请先登录后再使用互动问答功能',
         showCancel: false,
         success: (res) => {
           if (res.confirm) {

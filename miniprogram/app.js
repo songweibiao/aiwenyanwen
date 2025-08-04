@@ -88,7 +88,12 @@ App({
         success: res => {
           console.log('[云函数] [getFeatureConfig] 调用成功', res.result)
           if (res.result) {
-            this.globalData.featureFlags = res.result
+            const { showAITab, isReviewing } = res.result;
+            // 如果isReviewing为true，则强制隐藏AI Tab
+            this.globalData.featureFlags = {
+              ...res.result,
+              showAITab: isReviewing ? false : showAITab
+            };
           }
         },
         fail: err => {

@@ -41,7 +41,7 @@
       },
       {
         "pagePath": "pages/ai/index/index",
-        "text": "AI助手",
+        "text": "互动问答",
         "iconPath": "images/tabbar/tab-ai.png",
         "selectedIconPath": "images/tabbar/tab-ai-active.png"
       },

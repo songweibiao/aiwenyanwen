@@ -119,10 +119,10 @@ Page({
         });
       } else {
         console.warn('获取每日一词失败:', res.result);
-        wx.showToast({
-          title: '获取词条失败',
-          icon: 'none'
-        });
+        // wx.showToast({
+        //   title: '获取词条失败',
+        //   icon: 'none'
+        // });
       }
     })
     .catch(err => {

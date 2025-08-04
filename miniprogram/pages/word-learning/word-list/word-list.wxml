@@ -47,11 +47,6 @@
     <text class="loading-text">正在加载词条...</text>
   </view>
 
-  <!-- 错误信息 -->
-  <view class="error-message" wx:if="{{error}}">
-    <text class="error-title">错误:</text>
-    <text class="error-text">{{error}}</text>
-  </view>
 
   <!-- 无数据提示 -->
   <view class="no-data" wx:if="{{!loading && loaded && (!wordList || wordList.length === 0)}}">

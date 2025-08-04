@@ -119,15 +119,17 @@
               id="article-{{item._id}}"
               hover-class="article-item-hover"
             >
-              <view class="article-title text-bold">{{item.title}}</view>
+              <view class="title-container">
+                <view class="article-title text-bold">{{item.title}}</view>
+                <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">
+                  {{item.statusText || '未学习'}}
+                </view>
+              </view>
               <view class="article-info">
                 <text class="article-meta text-secondary">{{item.author}} · {{item.dynasty}}</text>
                 <view class="chapter-info">
                   <text class="chapter-text">{{item.chapter || '无章节'}}</text>
                 </view>
-              </view>
-              <view class="study-status {{item.learn_status === 2 ? 'completed' : item.learn_status === 1 ? 'learning' : 'not-started'}}" wx:if="{{isLoggedIn}}">
-                {{item.statusText || '未学习'}}
               </view>
             </view>
           </view>

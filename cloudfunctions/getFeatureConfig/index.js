@@ -14,7 +14,8 @@ exports.main = async (event, context) => {
     console.error(e)
     // 如果获取失败，返回一个默认的安全配置
     return {
-      showAITab: false
+      showAITab: false,
+      isReviewing: false // 默认返回false
     }
   }
 }

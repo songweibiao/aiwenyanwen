@@ -287,10 +287,19 @@
   background-color: rgba(139, 110, 79, 0.05);
 }
 
+.title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xs);
+}
+
 .article-title {
   font-size: var(--font-md);
   color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
+  flex: 1;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .article-info {
@@ -393,14 +402,13 @@
 
 /* 添加学习状态样式 */
 .study-status {
-  position: absolute;
-  top: 30rpx;
-  right: 30rpx;
   font-size: 24rpx;
   color: #999;
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
   background-color: #f0f0f0;
+  flex-shrink: 0;
+  margin-left: 20rpx;
 }
 
 .study-status.learning {

@@ -242,16 +242,20 @@ Page({
         this.setData({
           loading: false,
           loaded: true,
-          error: res.result ? res.result.error : '获取数据失败'
+          wordList: [],
+          allWordList: []
         });
+        this.filterAndDisplayWords(); // 确保显示空状态
       }
     }).catch(err => {
       console.error('加载词条列表失败:', err);
       this.setData({
         loading: false,
         loaded: true,
-        error: err.message || '加载失败，请重试'
+        wordList: [],
+        allWordList: []
       });
+      this.filterAndDisplayWords(); // 确保显示空状态
     });
   },
   
@@ -399,10 +403,6 @@ Page({
     
     if (!wordId) {
       console.error('词条ID无效');
-      wx.showToast({
-        title: '词条ID无效',
-        icon: 'none'
-      });
       return;
     }
     
@@ -417,10 +417,6 @@ Page({
       },
       fail: (err) => {
         console.error('跳转失败:', err);
-        wx.showToast({
-          title: '跳转失败，请重试',
-          icon: 'none'
-        });
       }
     });
   },

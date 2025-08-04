@@ -79,15 +79,15 @@
 }
 
 /* 空状态样式 */
-.empty-wrapper {
+.empty-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding-top: 100rpx;
+  justify-content: center;
+  padding: 100rpx 0;
 }
 
-.empty-icon {
+.empty-image {
   width: 200rpx;
   height: 200rpx;
   margin-bottom: 30rpx;

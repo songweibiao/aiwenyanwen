@@ -42,10 +42,6 @@
       <view class="feature-name">学习历史</view>
       <view class="feature-arrow"></view>
     </view>
-    <view class="feature-item flex-between" bindtap="handleFeedback">
-      <view class="feature-name">意见反馈</view>
-      <view class="feature-arrow"></view>
-    </view>
     <view class="feature-item flex-between" bindtap="handleNavigate" data-url="/pages/my/about/about">
       <view class="feature-name">关于我们</view>
       <view class="feature-arrow"></view>

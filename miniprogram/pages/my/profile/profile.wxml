@@ -3,11 +3,10 @@
     <view class="profile-item flex-between" style="padding: 16rpx 0;">
       <view class="item-label">头像</view>
       <view class="item-content">
-        <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-          <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill"></image>
-        </button>
+        <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill"></image>
         <view class="arrow"></view>
       </view>
+      <button class="full-cover-button" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
     </view>
     <view class="profile-item flex-between" bindtap="showEditNicknameModal">
       <view class="item-label">昵称</view>

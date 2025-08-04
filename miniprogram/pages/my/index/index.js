@@ -183,38 +183,4 @@ Page({
     });
   },
 
-  /**
-   * 处理意见反馈
-   */
-  handleFeedback: function() {
-    const pid = 682297; // 您的产品ID
-    const userInfo = this.data.userInfo;
-
-    if (!userInfo) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none'
-      });
-      return;
-    }
-
-    // 将参数拼接到path中，以获得最佳兼容性
-    const path = `pages/index/index?pid=${pid}&openid=${userInfo.openid}&nickname=${encodeURIComponent(userInfo.nickname)}&avatar=${encodeURIComponent(userInfo.avatarUrl)}`;
-
-    wx.openEmbeddedMiniProgram({
-      appId: 'wx8abaf00ee8c3202e', // 兔小巢appid
-      path: path,
-      halfScreen: true, // 尝试半屏打开，低版本会自动降级为全屏
-      success(res) {
-        console.log('小程序打开成功', res);
-      },
-      fail(res) {
-        console.error('小程序打开失败', res);
-        wx.showToast({
-          title: '无法打开反馈页面',
-          icon: 'none'
-        });
-      }
-    });
-  }
 })

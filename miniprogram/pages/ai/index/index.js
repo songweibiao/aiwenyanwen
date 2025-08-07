@@ -16,7 +16,8 @@ Page({
     articleId: null, // 来源文章ID
     isLoggedIn: false, // 用户是否已登录
     loginModalShown: false, // 是否已弹出登录提示
-    userInfo: null
+    userInfo: null,
+    isUnavailable: false // 新增：用于控制遮罩显示
   },
 
   onLoad(options) {
@@ -46,21 +47,14 @@ Page({
   onShow() {
     const app = getApp();
     // 页面守卫：检查功能是否开启
-    if (!app.globalData.featureFlags.showAITab) {
-      wx.showModal({
-        title: '提示',
-        content: '该功能正在升级中，敬请期待',
-        showCancel: false,
-        success: (res) => {
-          if (res.confirm) {
-            wx.switchTab({
-              url: '/pages/index/index'
-            });
-          }
-        }
-      });
+    const featureFlags = app.globalData.featureFlags || {};
+    if (featureFlags.isReviewing) {
+      this.setData({ isUnavailable: true });
       return; // 阻止后续代码执行
     }
+
+    // 如果不是审核模式，确保遮罩是关闭的
+    this.setData({ isUnavailable: false });
 
     if (typeof this.getTabBar === 'function' &&
       this.getTabBar()) {

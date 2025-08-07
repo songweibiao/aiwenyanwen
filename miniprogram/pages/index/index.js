@@ -1541,4 +1541,13 @@ Page({
     }
     // 如果用户已登录，则不做任何操作
   },
-}) 
+
+  // 页面分享功能
+  onShareAppMessage: function () {
+    return {
+      title: '文言文阅读理解神器！覆盖小学到高中的课文，逐句精讲，快来试试！',
+      path: '/pages/index/index',
+      imageUrl: '/images/share.jpg'
+    };
+  }
+})

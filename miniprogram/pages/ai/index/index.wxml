@@ -1,4 +1,13 @@
 <view class="ai-container">
+  <!-- 功能不可用遮罩 -->
+  <view class="unavailable-mask" wx:if="{{isUnavailable}}">
+    <view class="unavailable-content">
+      <image class="unavailable-icon" src="/images/icons/ai.svg" mode="aspectFit"></image>
+      <view class="unavailable-text">此功能暂不可用</view>
+      <view class="unavailable-subtext">敬请期待</view>
+    </view>
+  </view>
+
   <!-- 悬浮返回按钮 -->
   <view class="back-button" bindtap="goBackToArticle" wx:if="{{showBackButton}}">
     <view class="back-icon"></view>

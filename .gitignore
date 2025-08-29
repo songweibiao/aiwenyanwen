@@ -19,6 +19,10 @@ dist/
 miniprogram/miniprogram_npm/
 miniprogram/node_modules/
 
+# 小程序构建输出文件
+miniprogram/sitemap.json
+miniprogram/app-config.json
+
 # 本地缓存文件
 .idea/
 .vscode/
@@ -28,11 +32,17 @@ miniprogram/node_modules/
 *.bak
 *.tmp
 
+# 云开发本地缓存
+.cloudbase/
+.cursor/
+.kilocode/
+
 # 云函数编译临时文件
 cloudfunctions/*/node_modules/
 cloudfunctions/*/package-lock.json
 cloudfunctions/*/.env
 cloudfunctions/*/dist/
+cloudfunctions/*/.env.local
 
 # 小程序测试相关
 coverage/
@@ -41,4 +51,9 @@ minitest/
 # 本地的环境变量和私有配置
 .env
 .env.local
-config.private.js 
+config.private.js
+
+# 临时文件和缓存
+*.cache
+*.temp
+*.pid
